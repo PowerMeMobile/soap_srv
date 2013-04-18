@@ -6,8 +6,6 @@
 %% Implement following methods:
 %% - SendBinarySms 			(11,12)
 %% - HTTP_SendBinarySms 	(11,12,get,post)
-%% - HTTP_KeepAlive 		(11,12,get,post)
-%% - KeepAlive 				(11,12)
 %% - HTTP_Authenticate 		(11,12,get,post)
 %% - Authenticate 			(11,12)
 %% add support for defDate MM/DD/YYYY HH:MM
@@ -275,6 +273,24 @@ process(http_get, <<"SendServiceSms">>, Req) ->
 	{ok, Req3} = cowboy_req:reply(200, [], Resp, Req2),
 	{ok, Req3, undefined};
 
+
+process(http_get, <<"HTTP_KeepAlive">>, Req) ->
+
+	{QsVals, Req2} = get_qs_val(Req),
+
+	CustomerID = ?gv(<<"customerid">>, QsVals),
+	UserName = ?gv(<<"username">>, QsVals),
+	Pswd = ?gv(<<"userpassword">>, QsVals),
+
+	{ok, _Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Resp =
+		<<"<?xml version=\"1.0\" encoding=\"utf-8\"?><CommonResult xmlns=\"http://pmmsoapmessenger.com/\"><Result>OK</Result></CommonResult>">>,
+
+	{ok, Req3} = cowboy_req:reply(200, [], Resp, Req2),
+	{ok, Req3, undefined};
+
 %% ===================================================================
 %% HTTP POST
 %% ===================================================================
@@ -309,6 +325,23 @@ process(http_post, <<"HTTP_SendSms">>, Req) ->
 		{transaction, RequestID}
 	],
 	Resp = soap12_resp(RespProps),
+
+	{ok, Req3} = cowboy_req:reply(200, [], Resp, Req2),
+	{ok, Req3, undefined};
+
+process(http_post, <<"HTTP_KeepAlive">>, Req) ->
+
+	{QsVals, Req2} = get_qs_val(Req),
+
+	CustomerID = ?gv(<<"customerid">>, QsVals),
+	UserName = ?gv(<<"username">>, QsVals),
+	Pswd = ?gv(<<"userpassword">>, QsVals),
+
+	{ok, _Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Resp =
+		<<"<?xml version=\"1.0\" encoding=\"utf-8\"?><CommonResult xmlns=\"http://pmmsoapmessenger.com/\"><Result>OK</Result></CommonResult>">>,
 
 	{ok, Req3} = cowboy_req:reply(200, [], Resp, Req2),
 	{ok, Req3, undefined};
@@ -393,6 +426,56 @@ process({Transport, SendSms}, "SendSms", Req) when
 		{transaction, RequestID}
 	],
 	Resp = soap12_resp(RespProps),
+	{ok, Req2} = cowboy_req:reply(200, [], Resp, Req),
+	{ok, Req2, undefined};
+
+process({Transport, Method}, "KeepAlive", Req) when
+												Transport =:= soap12 orelse
+												Transport =:= soap11 ->
+	{value, {_, _, User}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}user", 1, Method),
+	{value, {_, _, [CustomerID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}CustomerID", 1, User),
+	{value, {_, _, [UserName]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}Name", 1, User),
+	{value, {_, _, [Pswd]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}Password", 1, User),
+
+	{ok, _Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Resp =
+	case Transport of
+		soap11 ->
+			<<"<?xml version=\"1.0\" encoding=\"utf-8\"?><soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><KeepAliveResponse xmlns=\"http://pmmsoapmessenger.com/\"><KeepAliveResult><Result>OK</Result></KeepAliveResult></KeepAliveResponse></soap:Body></soap:Envelope>">>;
+		soap12 ->
+			<<"<?xml version=\"1.0\" encoding=\"utf-8\"?><soap12:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\"><soap12:Body><KeepAliveResponse xmlns=\"http://pmmsoapmessenger.com/\"><KeepAliveResult><Result>OK</Result></KeepAliveResult></KeepAliveResponse></soap12:Body></soap12:Envelope>">>
+	end,
+
+	{ok, Req2} = cowboy_req:reply(200, [], Resp, Req),
+	{ok, Req2, undefined};
+
+process({Transport, Method}, "HTTP_KeepAlive", Req) when
+												Transport =:= soap12 orelse
+												Transport =:= soap11 ->
+	{value, {_, _, [CustomerID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}customerID", 1, Method),
+	{value, {_, _, [UserName]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}userName", 1, Method),
+	{value, {_, _, [Pswd]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}userPassword", 1, Method),
+
+	{ok, _Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Resp =
+	case Transport of
+		soap11 ->
+			<<"<?xml version=\"1.0\" encoding=\"utf-8\"?><soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><HTTP_KeepAliveResponse xmlns=\"http://pmmsoapmessenger.com/\"><HTTP_KeepAliveResult><Result>OK</Result></HTTP_KeepAliveResult></HTTP_KeepAliveResponse></soap:Body></soap:Envelope>">>;
+		soap12 ->
+			<<"<?xml version=\"1.0\" encoding=\"utf-8\"?><soap12:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\"><soap12:Body><HTTP_KeepAliveResponse xmlns=\"http://pmmsoapmessenger.com/\"><HTTP_KeepAliveResult><Result>OK</Result></HTTP_KeepAliveResult></HTTP_KeepAliveResponse></soap12:Body></soap12:Envelope>">>
+	end,
+
 	{ok, Req2} = cowboy_req:reply(200, [], Resp, Req),
 	{ok, Req2, undefined};
 
