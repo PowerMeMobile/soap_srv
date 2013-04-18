@@ -191,7 +191,7 @@ send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
 			?just_sms_request_param(<<"priority_flag">>, 0),
 			?just_sms_request_param(<<"esm_class">>, 3),
 			?just_sms_request_param(<<"protocol_id">>, 0)
-			]),
+			]) ++ flash(SendSmsReq#send_sms_req.flash, Encoding),
 	Destinations = SendSmsReq#send_sms_req.recipients,
 	Message = SendSmsReq#send_sms_req.text,
 	NumberOfDests = length(Destinations),
@@ -219,6 +219,12 @@ send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
 	ok = publish_sms_request(Bin, ReqID, GtwID),
 	{ok, ReqID}.
 
+flash(false, _) ->
+	[];
+flash(true, default) ->
+	[?just_sms_request_param(<<"data_coding">>, 240)];
+flash(true, ucs2) ->
+	[?just_sms_request_param(<<"data_coding">>, 248)].
 
 publish_sms_request(Payload, ReqID, GtwID) ->
     Basic = #'P_basic'{

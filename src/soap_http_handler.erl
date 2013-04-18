@@ -11,7 +11,6 @@
 %% - HTTP_Authenticate 		(11,12,get,post)
 %% - Authenticate 			(11,12)
 %% add support for defDate MM/DD/YYYY HH:MM
-%% add support for flash
 %% add support for messageType
 %% add support for rejectedNumbers
 %% {{badmatch,{error,socket_closed_remotely}} on large sendSmsReq (2000 recipients)
@@ -44,6 +43,7 @@
 -define(PATH, "/bmsgw/soap/messenger.asmx").
 
 -define(gv(K, PList), proplists:get_value(K, PList)).
+-define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
 
 %% ===================================================================
 %% API
@@ -165,6 +165,8 @@ get_qs_val(Req) ->
 		[{cowboy_bstr:to_lower(K), V} || {K, V} <- QsVals],
 	{QsValsLowerCase, Req3}.
 
+get_boolean(<<"true">>) -> true;
+get_boolean(<<"false">>) -> false.
 
 %% ===================================================================
 %% Process Requests
@@ -215,6 +217,7 @@ process(http_get, <<"HTTP_SendSms">>, Req) ->
 	Originator = ?gv(<<"originator">>, QsVals),
 	MsgText = ?gv(<<"smstext">>, QsVals),
 	Recipients = ?gv(<<"recipientphone">>, QsVals),
+	Flash = get_boolean(?gv(<<"flash">>, QsVals, false)),
 
 	SendSmsReq = #send_sms_req{
 		customer_id = CustomerID,
@@ -225,7 +228,7 @@ process(http_get, <<"HTTP_SendSms">>, Req) ->
 		text = MsgText,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = Flash
 	},
 	lager:debug("Got HTTP_SendSms HTTP GET request -> ~p", [SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
@@ -247,6 +250,7 @@ process(http_get, <<"SendServiceSms">>, Req) ->
 	Recipients = ?gv(<<"recipientphone">>, QsVals),
 	ServiceName = ?gv(<<"servicename">>, QsVals),
 	ServiceUrl = ?gv(<<"serviceurl">>, QsVals),
+	Flash = get_boolean(?gv(<<"flash">>, QsVals, false)),
 
 	SendServiceSmsReq = #send_service_sms_req{
 		customer_id = CustomerID,
@@ -258,7 +262,7 @@ process(http_get, <<"SendServiceSms">>, Req) ->
 		service_url = ServiceUrl,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = Flash
 	},
 
 	lager:debug("Got SendServiceSms HTTP GET request -> ~p", [SendServiceSmsReq]),
@@ -285,6 +289,7 @@ process(http_post, <<"HTTP_SendSms">>, Req) ->
 	Originator = ?gv(<<"originator">>, QsVals),
 	MsgText = ?gv(<<"smstext">>, QsVals),
 	Recipients = ?gv(<<"recipientphone">>, QsVals),
+	Flash = get_boolean(?gv(<<"flash">>, QsVals, false)),
 
 	SendSmsReq = #send_sms_req{
 		customer_id = CustomerID,
@@ -295,7 +300,7 @@ process(http_post, <<"HTTP_SendSms">>, Req) ->
 		text = MsgText,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = Flash
 	},
 	lager:debug("Got HTTP_SendSms HTTP POST request -> ~p", [SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
@@ -320,6 +325,7 @@ process(http_post, <<"SendServiceSms">>, Req) ->
 
 	ServiceName = ?gv(<<"servicename">>, QsVals),
 	ServiceUrl = ?gv(<<"serviceurl">>, QsVals),
+	Flash = get_boolean(?gv(<<"flash">>, QsVals, false)),
 
 	SendServiceSmsReq = #send_service_sms_req{
 		customer_id = CustomerID,
@@ -331,7 +337,7 @@ process(http_post, <<"SendServiceSms">>, Req) ->
 		service_url = ServiceUrl,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = Flash
 	},
 
 	lager:debug("Got SendServiceSms HTTP POST request -> ~p", [SendServiceSmsReq]),
@@ -366,6 +372,8 @@ process({Transport, SendSms}, "SendSms", Req) when
 		lists:keysearch("{http://pmmsoapmessenger.com/}smsText", 1, SendSms),
 	{value, {_, _, [Recipients]}} =
 		lists:keysearch("{http://pmmsoapmessenger.com/}recipientPhone", 1, SendSms),
+	{value, {_, _, [Flash]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}flash", 1, SendSms),
 
 	SendSmsReq = #send_sms_req{
 		customer_id = CustomerID,
@@ -376,7 +384,7 @@ process({Transport, SendSms}, "SendSms", Req) when
 		text = MsgText,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = get_boolean(Flash)
 	},
 	lager:debug("~p: got -> ~p", [Transport, SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
@@ -405,6 +413,8 @@ process({Transport, SendSms2}, "SendSms2", Req) when
 		lists:keysearch("{http://pmmsoapmessenger.com/}smsText", 1, SendSms2),
 	{value, {_, _, [Base64Recipients]}} =
 		lists:keysearch("{http://pmmsoapmessenger.com/}recipientPhonesFile", 1, SendSms2),
+	{value, {_, _, [Flash]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}flash", 1, SendSms2),
 
 	Recipients = base64:decode(Base64Recipients),
 
@@ -417,7 +427,7 @@ process({Transport, SendSms2}, "SendSms2", Req) when
 		text = MsgText,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = get_boolean(Flash)
 	},
 	lager:debug("~p: got -> ~p", [Transport, SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
@@ -444,6 +454,8 @@ process({Transport, HTTP_SendSms}, "HTTP_SendSms", Req) when
 		lists:keysearch("{http://pmmsoapmessenger.com/}smsText", 1, HTTP_SendSms),
 	{value, {_, _, [Recipients]}} =
 		lists:keysearch("{http://pmmsoapmessenger.com/}recipientPhone", 1, HTTP_SendSms),
+	{value, {_, _, [Flash]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}flash", 1, HTTP_SendSms),
 
 	SendSmsReq = #send_sms_req{
 		customer_id = CustomerID,
@@ -454,7 +466,7 @@ process({Transport, HTTP_SendSms}, "HTTP_SendSms", Req) when
 		text = MsgText,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = get_boolean(Flash)
 	},
 	lager:debug("~p: got -> ~p", [Transport, SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
@@ -483,6 +495,8 @@ process({Transport, SendServiceSms}, "SendServiceSms", Req) when
 		lists:keysearch("{http://pmmsoapmessenger.com/}serviceName", 1, SendServiceSms),
 	{value, {_, _, [ServiceUrl]}} =
 		lists:keysearch("{http://pmmsoapmessenger.com/}serviceUrl", 1, SendServiceSms),
+	{value, {_, _, [Flash]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}flash", 1, SendServiceSms),
 
 	SendServiceSmsReq = #send_service_sms_req{
 		customer_id = CustomerID,
@@ -494,7 +508,7 @@ process({Transport, SendServiceSms}, "SendServiceSms", Req) when
 		service_url = ServiceUrl,
 		type = latin,
 		def_date = undefined,
-		flash = false
+		flash = get_boolean(Flash)
 	},
 
 	lager:debug("~p: got -> ~p", [Transport, SendServiceSmsReq]),
