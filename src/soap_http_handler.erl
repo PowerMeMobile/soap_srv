@@ -6,8 +6,6 @@
 %% Implement following methods:
 %% - SendBinarySms 			(11,12)
 %% - HTTP_SendBinarySms 	(11,12,get,post)
-%% - HTTP_Authenticate 		(11,12,get,post)
-%% - Authenticate 			(11,12)
 %% add support for defDate MM/DD/YYYY HH:MM
 %% add support for messageType
 %% add support for rejectedNumbers
@@ -36,6 +34,7 @@
 	terminate/3
 ]).
 
+-include_lib("alley_dto/include/adto.hrl").
 -include("soap_srv.hrl").
 
 -define(PATH, "/bmsgw/soap/messenger.asmx").
@@ -291,6 +290,40 @@ process(http_get, <<"HTTP_KeepAlive">>, Req) ->
 	{ok, Req3} = cowboy_req:reply(200, [], Resp, Req2),
 	{ok, Req3, undefined};
 
+process(http_get, <<"HTTP_Authenticate">>, Req) ->
+
+	{QsVals, Req2} = get_qs_val(Req),
+
+	CustomerID = ?gv(<<"customerid">>, QsVals),
+	UserName = ?gv(<<"username">>, QsVals),
+	Pswd = ?gv(<<"userpassword">>, QsVals),
+
+	{ok, Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Originators =
+		list_to_binary(
+		[<<"<string>", (Addr#addr.addr)/binary, "</string>">> ||
+			Addr <- Customer#k1api_auth_response_dto.allowed_sources]),
+	Resp =
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<AuthResult xmlns=\"http://pmmsoapmessenger.com/\">"
+		  "<NetPoints>undefined</NetPoints>"
+		  "<Originators>"
+		    "%originators%"
+		  "</Originators>"
+		  "<CustomerID>%customer_id%</CustomerID>"
+		  "<CreditSMS>undefined</CreditSMS>"
+		  "<CreditMMS>undefined</CreditMMS>"
+		"</AuthResult>"
+		>>,
+	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
+	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
+
+	{ok, Req4} = cowboy_req:reply(200, [], Resp3, Req),
+	{ok, Req4, undefined};
+
 %% ===================================================================
 %% HTTP POST
 %% ===================================================================
@@ -383,6 +416,41 @@ process(http_post, <<"SendServiceSms">>, Req) ->
 
 	{ok, Req3} = cowboy_req:reply(200, [], Resp, Req2),
 	{ok, Req3, undefined};
+
+process(http_post, <<"HTTP_Authenticate">>, Req) ->
+
+	{QsVals, Req2} = get_qs_val(Req),
+
+	CustomerID = ?gv(<<"customerid">>, QsVals),
+	UserName = ?gv(<<"username">>, QsVals),
+	Pswd = ?gv(<<"userpassword">>, QsVals),
+
+	{ok, Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Originators =
+		list_to_binary(
+		[<<"<string>", (Addr#addr.addr)/binary, "</string>">> ||
+			Addr <- Customer#k1api_auth_response_dto.allowed_sources]),
+	Resp =
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<AuthResult xmlns=\"http://pmmsoapmessenger.com/\">"
+		  "<NetPoints>undefined</NetPoints>"
+		  "<Originators>"
+		    "%originators%"
+		  "</Originators>"
+		  "<CustomerID>%customer_id%</CustomerID>"
+		  "<CreditSMS>undefined</CreditSMS>"
+		  "<CreditMMS>undefined</CreditMMS>"
+		"</AuthResult>"
+		>>,
+	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
+	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
+
+	{ok, Req4} = cowboy_req:reply(200, [], Resp3, Req),
+	{ok, Req4, undefined};
+
 
 %% ===================================================================
 %% SOAP
@@ -477,6 +545,144 @@ process({Transport, Method}, "HTTP_KeepAlive", Req) when
 	end,
 
 	{ok, Req2} = cowboy_req:reply(200, [], Resp, Req),
+	{ok, Req2, undefined};
+
+process({Transport, Method}, "HTTP_Authenticate", Req) when
+												Transport =:= soap12 orelse
+												Transport =:= soap11 ->
+	{value, {_, _, [CustomerID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}customerID", 1, Method),
+	{value, {_, _, [UserName]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}userName", 1, Method),
+	{value, {_, _, [Pswd]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}userPassword", 1, Method),
+
+	{ok, Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Originators =
+		list_to_binary(
+		[<<"<string>", (Addr#addr.addr)/binary, "</string>">> ||
+			Addr <- Customer#k1api_auth_response_dto.allowed_sources]),
+	Resp =
+	case Transport of
+		soap11 ->
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+			"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+			"xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+		  "<soap:Body>"
+		    "<HTTP_AuthenticateResponse xmlns=\"http://pmmsoapmessenger.com/\">"
+		      "<HTTP_AuthenticateResult>"
+		        "<NetPoints>undefined</NetPoints>"
+		        "<Originators>"
+		          "%originators%"
+		        "</Originators>"
+		        "<CustomerID>%customer_id%</CustomerID>"
+		        "<CreditSMS>undefined</CreditSMS>"
+		        "<CreditMMS>undefined</CreditMMS>"
+		      "</HTTP_AuthenticateResult>"
+		    "</HTTP_AuthenticateResponse>"
+		  "</soap:Body>"
+		"</soap:Envelope>"
+		>>;
+		soap12 ->
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<soap12:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+			"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+			"xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">"
+		  "<soap12:Body>"
+		    "<HTTP_AuthenticateResponse xmlns=\"http://pmmsoapmessenger.com/\">"
+		      "<HTTP_AuthenticateResult>"
+		        "<NetPoints>undefined</NetPoints>"
+		        "<Originators>"
+		          "%originators%"
+		        "</Originators>"
+		        "<CustomerID>%customer_id%</CustomerID>"
+		        "<CreditSMS>undefined</CreditSMS>"
+		        "<CreditMMS>undefined</CreditMMS>"
+		      "</HTTP_AuthenticateResult>"
+		    "</HTTP_AuthenticateResponse>"
+		  "</soap12:Body>"
+		"</soap12:Envelope>"
+		>>
+	end,
+	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
+	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
+
+	{ok, Req2} = cowboy_req:reply(200, [], Resp3, Req),
+	{ok, Req2, undefined};
+
+process({Transport, Method}, "Authenticate", Req) when
+												Transport =:= soap12 orelse
+												Transport =:= soap11 ->
+	{value, {_, _, User}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}user", 1, Method),
+	{value, {_, _, [CustomerID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}CustomerID", 1, User),
+	{value, {_, _, [UserName]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}Name", 1, User),
+	{value, {_, _, [Pswd]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}Password", 1, User),
+
+	{ok, Customer} =
+		soap_auth_srv:authenticate(CustomerID, UserName, Pswd),
+
+	Originators =
+		list_to_binary(
+		[<<"<string>", (Addr#addr.addr)/binary, "</string>">> ||
+			Addr <- Customer#k1api_auth_response_dto.allowed_sources]),
+	Resp =
+	case Transport of
+		soap11 ->
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+			"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+			"xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+		  "<soap:Body>"
+		    "<AuthenticateResponse xmlns=\"http://pmmsoapmessenger.com/\">"
+		      "<AuthenticateResult>"
+		        "<NetPoints>undefined</NetPoints>"
+		        "<Originators>"
+		          "%originators%"
+		        "</Originators>"
+		        "<CustomerID>%customer_id%</CustomerID>"
+		        "<CreditSMS>undefined</CreditSMS>"
+		        "<CreditMMS>undefined</CreditMMS>"
+		      "</AuthenticateResult>"
+		    "</AuthenticateResponse>"
+		  "</soap:Body>"
+		"</soap:Envelope>"
+		>>;
+		soap12 ->
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<soap12:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+			"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+			"xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">"
+		  "<soap12:Body>"
+		    "<AuthenticateResponse xmlns=\"http://pmmsoapmessenger.com/\">"
+		      "<AuthenticateResult>"
+		        "<NetPoints>undefined</NetPoints>"
+		        "<Originators>"
+		          "%originators%"
+		        "</Originators>"
+		        "<CustomerID>%customer_id%</CustomerID>"
+		        "<CreditSMS>undefined</CreditSMS>"
+		        "<CreditMMS>undefined</CreditMMS>"
+		      "</AuthenticateResult>"
+		    "</AuthenticateResponse>"
+		  "</soap12:Body>"
+		"</soap12:Envelope>"
+		>>
+	end,
+	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
+	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
+
+	{ok, Req2} = cowboy_req:reply(200, [], Resp3, Req),
 	{ok, Req2, undefined};
 
 process({Transport, SendSms2}, "SendSms2", Req) when
