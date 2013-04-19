@@ -57,8 +57,10 @@ perform_request({Method, Url, Headers, ContentType, Queries, Body}) ->
 		delete -> {FullUrl, Headers};
         _   -> {FullUrl, Headers, ContentType, Body}
     end,
-	{ok, {{_, StatusCode, _}, _ResHeaders, _ResBody}} =
+	{ok, {{_, StatusCode, _}, RespHeaders, RespBody}} =
 	   	httpc:request(Method, Request, [], []),
+	io:format("RespHeaders: ~p~n", [RespHeaders]),
+	io:format("RespBody: ~p~n", [RespBody]),
 	{ok, StatusCode}.
 
 perform_req(Req, Proplist) ->
