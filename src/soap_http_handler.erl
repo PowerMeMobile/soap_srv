@@ -6,10 +6,14 @@
 %% Implement following methods:
 %% - SendBinarySms 			(11,12)
 %% - HTTP_SendBinarySms 	(11,12,get,post)
-%% Improve HHTP_Authenticate(credits, no originators)
+%% Add proper response msgs with codes
 %% add support for defDate MM/DD/YYYY HH:MM
 %% add support for messageType
 %% add support for rejectedNumbers
+%% <RejectedNumbers>
+%% 	<string>string</string>
+%% 	<string>string</string>
+%% </RejectedNumbers>
 %% {{badmatch,{error,socket_closed_remotely}} on large sendSmsReq (2000 recipients)
 %% soap:fault on 500 error
 %% check for undefined mandatory parameters
@@ -170,6 +174,14 @@ get_qs_vals(Req) ->
 get_boolean(<<"true">>) -> true;
 get_boolean(<<"false">>) -> false.
 
+construct_xml_tag(Name, <<>>) when is_atom(Name) ->
+	<<"<", (atom_to_binary(Name, utf8))/binary,"/>">>;
+construct_xml_tag(Name, Content) when is_atom(Name) ->
+	<<
+	"<",(atom_to_binary(Name, utf8))/binary,">",
+	Content/binary,
+	"</",(atom_to_binary(Name, utf8))/binary,">">>.
+
 %% ===================================================================
 %% Process Requests
 %% ===================================================================
@@ -230,15 +242,12 @@ process(http, "HTTP_SendSms", Req) ->
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
 	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
 
+	RejectedNumbers = <<>>,
 	RawResp =
 		<<
 		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
-		"<SendResult xmlns=\"http://pmmsoapmessenger.com/\">"
-			"<RejectedNumbers/>"
-			%% <RejectedNumbers>
-			%%   <string>string</string>
-			%%   <string>string</string>
-			%% </RejectedNumbers>
+		"<SendResult xmlns=\"http://pmmsoapmessenger.com/\">",
+			(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 			"<TransactionID>%transaction_id%</TransactionID>"
 			"<NetPoints>POSTPAID</NetPoints>"
 		"</SendResult>"
@@ -277,16 +286,13 @@ process(http, "SendServiceSms", Req) ->
 	lager:debug("Got HTTP request -> ~p", [SendServiceSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendServiceSmsReq),
 	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
 
 	RawResp =
 		<<
 		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
-		"<SendResult xmlns=\"http://pmmsoapmessenger.com/\">"
-			"<RejectedNumbers/>"
-			%% <RejectedNumbers>
-		    %% 	<string>string</string>
-		    %% 	<string>string</string>
-			%% </RejectedNumbers>
+		"<SendResult xmlns=\"http://pmmsoapmessenger.com/\">",
+			(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 			"<TransactionID>%transaction_id%</TransactionID>"
 			"<NetPoints>POSTPAID</NetPoints>"
 		"</SendResult>"
@@ -338,20 +344,17 @@ process(http, "HTTP_Authenticate", Req) ->
 		<<
 		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
 		"<AuthResult xmlns=\"http://pmmsoapmessenger.com/\">"
-			"<NetPoints>undefined</NetPoints>"
-			"<Originators>"
-				"%originators%"
-			"</Originators>"
+			"<NetPoints>POSTPAID</NetPoints>",
+			(construct_xml_tag('Originators', Originators))/binary,
 			"<CustomerID>%customer_id%</CustomerID>"
-			"<CreditSMS>undefined</CreditSMS>"
-			"<CreditMMS>undefined</CreditMMS>"
+			"<CreditSMS>POSTPAID</CreditSMS>"
+			"<CreditMMS/>"
 		"</AuthResult>"
 		>>,
 	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
-	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
 	Headers = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
 
-	{ok, Req3} = cowboy_req:reply(200, Headers, Resp3, Req2),
+	{ok, Req3} = cowboy_req:reply(200, Headers, Resp2, Req2),
 	{ok, Req3, undefined};
 
 %% ===================================================================
@@ -392,6 +395,7 @@ process({Transport, SendSms}, "SendSms", Req) when
 	lager:debug("~p: got -> ~p", [Transport, SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
 	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
 	{Headers, RawResp} =
 	case Transport of
 		soap11 ->
@@ -405,12 +409,8 @@ process({Transport, SendSms}, "SendSms", Req) when
 				"xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
 				"<soap:Body>"
 		    		"<SendSmsResponse xmlns=\"http://pmmsoapmessenger.com/\">"
-		      			"<SendSmsResult>"
-							"<RejectedNumbers/>"
-		        			%% <RejectedNumbers>
-		          			%% 	<string>string</string>
-		          			%% 	<string>string</string>
-		        			%% </RejectedNumbers>
+		      			"<SendSmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 		        			"<TransactionID>%transaction_id%</TransactionID>"
 		        			"<NetPoints>POSTPAID</NetPoints>"
 		      			"</SendSmsResult>"
@@ -430,12 +430,8 @@ process({Transport, SendSms}, "SendSms", Req) when
 				"xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">"
 				"<soap12:Body>"
 					"<SendSmsResponse xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<SendSmsResult>"
-							"<RejectedNumbers/>"
-							%% <RejectedNumbers>
-							%% 	<string>string</string>
-							%% 	<string>string</string>
-							%% </RejectedNumbers>
+						"<SendSmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</SendSmsResult>"
@@ -601,13 +597,11 @@ process({Transport, Method}, "HTTP_Authenticate", Req) when
 					"<HTTP_AuthenticateResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
 						"<HTTP_AuthenticateResult>"
-							"<NetPoints>undefined</NetPoints>"
-							"<Originators>"
-								"%originators%"
-							"</Originators>"
+							"<NetPoints>POSTPAID</NetPoints>",
+							(construct_xml_tag('Originators', Originators))/binary,
 							"<CustomerID>%customer_id%</CustomerID>"
-							"<CreditSMS>undefined</CreditSMS>"
-							"<CreditMMS>undefined</CreditMMS>"
+							"<CreditSMS>POSTPAID</CreditSMS>"
+							"<CreditMMS/>"
 						"</HTTP_AuthenticateResult>"
 					"</HTTP_AuthenticateResponse>"
 				"</soap:Body>"
@@ -627,13 +621,11 @@ process({Transport, Method}, "HTTP_Authenticate", Req) when
 					"<HTTP_AuthenticateResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
 						"<HTTP_AuthenticateResult>"
-							"<NetPoints>undefined</NetPoints>"
-							"<Originators>"
-								"%originators%"
-							"</Originators>"
+							"<NetPoints>POSTPAID</NetPoints>",
+							(construct_xml_tag('Originators', Originators))/binary,
 							"<CustomerID>%customer_id%</CustomerID>"
-							"<CreditSMS>undefined</CreditSMS>"
-							"<CreditMMS>undefined</CreditMMS>"
+							"<CreditSMS>POSTPAID</CreditSMS>"
+							"<CreditMMS/>"
 						"</HTTP_AuthenticateResult>"
 					"</HTTP_AuthenticateResponse>"
 				"</soap12:Body>"
@@ -642,9 +634,8 @@ process({Transport, Method}, "HTTP_Authenticate", Req) when
 			{H, R}
 	end,
 	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
-	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
 
-	{ok, Req2} = cowboy_req:reply(200, Headers, Resp3, Req),
+	{ok, Req2} = cowboy_req:reply(200, Headers, Resp2, Req),
 	{ok, Req2, undefined};
 
 process({Transport, Method}, "Authenticate", Req) when
@@ -681,10 +672,8 @@ process({Transport, Method}, "Authenticate", Req) when
 					"<AuthenticateResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
 						"<AuthenticateResult>"
-							"<NetPoints>undefined</NetPoints>"
-							"<Originators>"
-								"%originators%"
-							"</Originators>"
+							"<NetPoints>undefined</NetPoints>",
+							(construct_xml_tag('Originators', Originators))/binary,
 							"<CustomerID>%customer_id%</CustomerID>"
 							"<CreditSMS>undefined</CreditSMS>"
 							"<CreditMMS>undefined</CreditMMS>"
@@ -707,10 +696,8 @@ process({Transport, Method}, "Authenticate", Req) when
 					"<AuthenticateResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
 						"<AuthenticateResult>"
-							"<NetPoints>undefined</NetPoints>"
-							"<Originators>"
-								"%originators%"
-							"</Originators>"
+							"<NetPoints>undefined</NetPoints>",
+							(construct_xml_tag('Originators', Originators))/binary,
 							"<CustomerID>%customer_id%</CustomerID>"
 							"<CreditSMS>undefined</CreditSMS>"
 							"<CreditMMS>undefined</CreditMMS>"
@@ -722,9 +709,8 @@ process({Transport, Method}, "Authenticate", Req) when
 			{H, R}
 	end,
 	Resp2 = binary:replace(Resp, <<"%customer_id%">>, CustomerID, [global]),
-	Resp3 = binary:replace(Resp2, <<"%originators%">>, Originators, [global]),
 
-	{ok, Req2} = cowboy_req:reply(200, Headers, Resp3, Req),
+	{ok, Req2} = cowboy_req:reply(200, Headers, Resp2, Req),
 	{ok, Req2, undefined};
 
 process({Transport, SendSms2}, "SendSms2", Req) when
@@ -763,6 +749,7 @@ process({Transport, SendSms2}, "SendSms2", Req) when
 	lager:debug("~p: got -> ~p", [Transport, SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
 	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
 	{Headers, RawResp} =
 	case Transport of
 		soap11 ->
@@ -777,12 +764,8 @@ process({Transport, SendSms2}, "SendSms2", Req) when
 				"<soap:Body>"
 					"<SendSms2Response "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<SendSms2Result>"
-							"<RejectedNumbers/>"
-							%% "<RejectedNumbers>"
-							%% 	"<string>string</string>"
-							%% 	"<string>string</string>"
-							%% "</RejectedNumbers>"
+						"<SendSms2Result>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</SendSms2Result>"
@@ -803,12 +786,8 @@ process({Transport, SendSms2}, "SendSms2", Req) when
 				"<soap12:Body>"
 					"<SendSms2Response "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<SendSms2Result>"
-							"<RejectedNumbers/>"
-							%% "<RejectedNumbers>"
-							%% 	"<string>string</string>"
-							%% 	"<string>string</string>"
-							%% "</RejectedNumbers>"
+						"<SendSms2Result>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</SendSms2Result>"
@@ -854,6 +833,7 @@ process({Transport, HTTP_SendSms}, "HTTP_SendSms", Req) when
 	lager:debug("~p: got -> ~p", [Transport, SendSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
 	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
 	{Headers, RawResp} =
 	case Transport of
 		soap11 ->
@@ -868,12 +848,8 @@ process({Transport, HTTP_SendSms}, "HTTP_SendSms", Req) when
 				"<soap:Body>"
 					"<HTTP_SendSmsResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<HTTP_SendSmsResult>"
-							"<RejectedNumbers/>"
-							%% "<RejectedNumbers>"
-							%% 	"<string>string</string>"
-							%% 	"<string>string</string>"
-							%% "</RejectedNumbers>"
+						"<HTTP_SendSmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</HTTP_SendSmsResult>"
@@ -894,12 +870,8 @@ process({Transport, HTTP_SendSms}, "HTTP_SendSms", Req) when
 				"<soap12:Body>"
 					"<HTTP_SendSmsResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<HTTP_SendSmsResult>"
-							"<RejectedNumbers/>"
-							%% "<RejectedNumbers>"
-							%% 	"<string>string</string>"
-							%% 	"<string>string</string>"
-							%% "</RejectedNumbers>"
+						"<HTTP_SendSmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</HTTP_SendSmsResult>"
@@ -949,6 +921,8 @@ process({Transport, SendServiceSms}, "SendServiceSms", Req) when
 	lager:debug("~p: got -> ~p", [Transport, SendServiceSmsReq]),
 	{ok, RequestID} = soap_mt_srv:process(SendServiceSmsReq),
 	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
+
 	{Headers, RawResp} =
 	case Transport of
 		soap11 ->
@@ -963,12 +937,8 @@ process({Transport, SendServiceSms}, "SendServiceSms", Req) when
 				"<soap:Body>"
 					"<SendServiceSmsResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<SendServiceSmsResult>"
-							"<RejectedNumbers/>"
-							%% "<RejectedNumbers>"
-							%% 	"<string>string</string>"
-							%% 	"<string>string</string>"
-							%% "</RejectedNumbers>"
+						"<SendServiceSmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</SendServiceSmsResult>"
@@ -989,12 +959,8 @@ process({Transport, SendServiceSms}, "SendServiceSms", Req) when
 				"<soap12:Body>"
 					"<SendServiceSmsResponse "
 						"xmlns=\"http://pmmsoapmessenger.com/\">"
-						"<SendServiceSmsResult>"
-							"<RejectedNumbers/>"
-							%% "<RejectedNumbers>"
-							%% 	"<string>string</string>"
-							%% 	"<string>string</string>"
-							%% "</RejectedNumbers>"
+						"<SendServiceSmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
 							"<TransactionID>%transaction_id%</TransactionID>"
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</SendServiceSmsResult>"
