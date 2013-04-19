@@ -131,8 +131,10 @@ handle(Req, wsdl) ->
 handle(Req, _State) ->
 	{ReqPath, Req} = cowboy_req:path(Req),
 	case ReqPath of
-		<<?PATH>> -> process(soap, undefined, Req);
-		<<?PATH, $/, SoapMethod/binary>> -> process(http, SoapMethod, Req)
+		<<?PATH>> ->
+			process(soap, undefined, Req);
+		<<?PATH, $/, SoapMethod/binary>> ->
+			process(http, binary_to_list(SoapMethod), Req)
 	end.
 
 terminate(_Reason, _Req, _St) ->
@@ -152,7 +154,7 @@ dispatch_rules() ->
 		}],
 	cowboy_router:compile(DispatchRaw).
 
-get_qs_val(Req) ->
+get_qs_vals(Req) ->
 	{QsVals, Req3} =
 	case cowboy_req:method(Req) of
 		{<<"GET">>, Req2} ->
@@ -171,12 +173,6 @@ get_boolean(<<"false">>) -> false.
 %% ===================================================================
 %% Process Requests
 %% ===================================================================
-
-process(http, SoapMethod, Req) ->
-	case cowboy_req:method(Req) of
-		{<<"GET">>, Req2} -> process(http_get, SoapMethod, Req2);
-		{<<"POST">>, Req2} -> process(http_post, SoapMethod, Req2)
-	end;
 
 process(soap, undefined, Req) ->
 	Body = get_body(),
@@ -208,10 +204,8 @@ process({soap12, Envelope}, undefined, Req) ->
 %% HTTP
 %% ===================================================================
 
-process(Transport, <<"HTTP_SendSms">>, Req) when
-								Transport =:= http_get orelse
-								Transport =:= http_post ->
-	{QsVals, Req2} = get_qs_val(Req),
+process(http, "HTTP_SendSms", Req) ->
+	{QsVals, Req2} = get_qs_vals(Req),
 
 	CustomerID = ?gv(<<"customerid">>, QsVals),
 	UserName = ?gv(<<"username">>, QsVals),
@@ -254,11 +248,9 @@ process(Transport, <<"HTTP_SendSms">>, Req) when
 	{ok, Req3} = cowboy_req:reply(200, Headers, Resp, Req2),
 	{ok, Req3, undefined};
 
-process(Transport, <<"SendServiceSms">>, Req) when
-								Transport =:= http_get orelse
-								Transport =:= http_post ->
+process(http, "SendServiceSms", Req) ->
 
-	{QsVals, Req2} = get_qs_val(Req),
+	{QsVals, Req2} = get_qs_vals(Req),
 
 	CustomerID = ?gv(<<"customerid">>, QsVals),
 	UserName = ?gv(<<"username">>, QsVals),
@@ -305,11 +297,9 @@ process(Transport, <<"SendServiceSms">>, Req) when
 	{ok, Req3, undefined};
 
 
-process(Transport, <<"HTTP_KeepAlive">>, Req) when
-							Transport =:= http_get orelse
-							Transport =:= http_post ->
+process(http, "HTTP_KeepAlive", Req) ->
 
-	{QsVals, Req2} = get_qs_val(Req),
+	{QsVals, Req2} = get_qs_vals(Req),
 
 	CustomerID = ?gv(<<"customerid">>, QsVals),
 	UserName = ?gv(<<"username">>, QsVals),
@@ -329,11 +319,9 @@ process(Transport, <<"HTTP_KeepAlive">>, Req) when
 	{ok, Req3} = cowboy_req:reply(200, Headers, Resp, Req2),
 	{ok, Req3, undefined};
 
-process(Transport, <<"HTTP_Authenticate">>, Req) when
-							Transport =:= http_post orelse
-							Transport =:= http_get ->
+process(http, "HTTP_Authenticate", Req) ->
 
-	{QsVals, Req2} = get_qs_val(Req),
+	{QsVals, Req2} = get_qs_vals(Req),
 
 	CustomerID = ?gv(<<"customerid">>, QsVals),
 	UserName = ?gv(<<"username">>, QsVals),
