@@ -182,6 +182,14 @@ construct_xml_tag(Name, Content) when is_atom(Name) ->
 	Content/binary,
 	"</",(atom_to_binary(Name, utf8))/binary,">">>.
 
+hexstr_to_bin(S) ->
+  hexstr_to_bin(S, []).
+hexstr_to_bin([], Acc) ->
+  list_to_binary(lists:reverse(Acc));
+hexstr_to_bin([X,Y|T], Acc) ->
+  {ok, [V], []} = io_lib:fread("~16u", [X,Y]),
+  hexstr_to_bin(T, [V | Acc]).
+
 %% ===================================================================
 %% Process Requests
 %% ===================================================================
@@ -355,6 +363,50 @@ process(http, "HTTP_Authenticate", Req) ->
 	Headers = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
 
 	{ok, Req3} = cowboy_req:reply(200, Headers, Resp2, Req2),
+	{ok, Req3, undefined};
+
+process(http, "HTTP_SendBinarySms", Req) ->
+	{QsVals, Req2} = get_qs_vals(Req),
+
+	CustomerID = ?gv(<<"customerid">>, QsVals),
+	UserName = ?gv(<<"username">>, QsVals),
+	Password = ?gv(<<"userpassword">>, QsVals),
+	Originator = ?gv(<<"originator">>, QsVals),
+	Recipients = ?gv(<<"recipientphone">>, QsVals),
+	HexBody = ?gv(<<"binarybody">>, QsVals),
+	DataCodign = ?gv(<<"data_coding">>, QsVals),
+	ESMClass = ?gv(<<"esm_class">>, QsVals),
+	ProtocolID = ?gv(<<"pid">>, QsVals),
+
+	SendBinarySmsReq = #send_binary_sms_req{
+		customer_id = CustomerID,
+		user_name = UserName,
+		password = Password,
+		originator = soap_utils:addr_to_dto(Originator),
+		binary_body = hexstr_to_bin(binary_to_list(HexBody)),
+		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
+		def_date = undefined,
+		data_coding = list_to_integer(binary_to_list(DataCodign)),
+		esm_class = list_to_integer(binary_to_list(ESMClass)),
+		protocol_id = list_to_integer(binary_to_list(ProtocolID))
+	},
+	lager:debug("http got -> ~p", [SendBinarySmsReq]),
+	{ok, RequestID} = soap_mt_srv:process(SendBinarySmsReq),
+	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
+
+	RawResp =
+		<<
+		"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+		"<SendResult xmlns=\"http://pmmsoapmessenger.com/\">",
+			(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
+			"<TransactionID>%transaction_id%</TransactionID>"
+			"<NetPoints>POSTPAID</NetPoints>"
+		"</SendResult>"
+		>>,
+	Headers = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
+	Resp = binary:replace(RawResp, <<"%transaction_id%">>, RequestID),
+	{ok, Req3} = cowboy_req:reply(200, Headers, Resp, Req2),
 	{ok, Req3, undefined};
 
 %% ===================================================================
@@ -965,6 +1017,190 @@ process({Transport, SendServiceSms}, "SendServiceSms", Req) when
 							"<NetPoints>POSTPAID</NetPoints>"
 						"</SendServiceSmsResult>"
 					"</SendServiceSmsResponse>"
+				"</soap12:Body>"
+			"</soap12:Envelope>"
+			>>,
+			{H, R}
+	end,
+	Resp = binary:replace(RawResp, <<"%transaction_id%">>, RequestID),
+	{ok, Req2} = cowboy_req:reply(200, Headers, Resp, Req),
+	{ok, Req2, undefined};
+
+process({Transport, SOAPBody}, "SendBinarySms", Req) when
+												Transport =:= soap12 orelse
+												Transport =:= soap11 ->
+	{value, {_, _, User}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}user", 1, SOAPBody),
+	{value, {_, _, [CustomerID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}CustomerID", 1, User),
+	{value, {_, _, [UserName]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}Name", 1, User),
+	{value, {_, _, [Password]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}Password", 1, User),
+
+	{value, {_, _, [Originator]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}originator", 1, SOAPBody),
+	{value, {_, _, [Recipients]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}recipientPhone", 1, SOAPBody),
+	{value, {_, _, [HexBody]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}binaryBody", 1, SOAPBody),
+	{value, {_, _, [DataCodign]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}data_coding", 1, SOAPBody),
+	{value, {_, _, [ESMClass]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}esm_class", 1, SOAPBody),
+	{value, {_, _, [ProtocolID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}PID", 1, SOAPBody),
+
+	SendBinarySmsReq = #send_binary_sms_req{
+		customer_id = CustomerID,
+		user_name = UserName,
+		password = Password,
+		originator = soap_utils:addr_to_dto(Originator),
+		binary_body = hexstr_to_bin(binary_to_list(HexBody)),
+		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
+		def_date = undefined,
+		data_coding = list_to_integer(binary_to_list(DataCodign)),
+		esm_class = list_to_integer(binary_to_list(ESMClass)),
+		protocol_id = list_to_integer(binary_to_list(ProtocolID))
+	},
+	lager:debug("~p: got -> ~p", [Transport, SendBinarySmsReq]),
+	{ok, RequestID} = soap_mt_srv:process(SendBinarySmsReq),
+	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
+
+	{Headers, RawResp} =
+	case Transport of
+		soap11 ->
+			H = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
+			R =
+			<<
+			"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+			"<soap:Envelope "
+				"xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+				"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+				"xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				"<soap:Body>"
+					"<SendBinarySmsResponse "
+						"xmlns=\"http://pmmsoapmessenger.com/\">"
+						"<SendBinarySmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
+							"<TransactionID>%transaction_id%</TransactionID>"
+							"<NetPoints>POSTPAID</NetPoints>"
+						"</SendBinarySmsResult>"
+					"</SendBinarySmsResponse>"
+				"</soap:Body>"
+			"</soap:Envelope>"
+			>>,
+			{H, R};
+		soap12 ->
+			H = [{?ContentTypeHName, <<"application/soap+xml; charset=utf-8">>}],
+			R =
+			<<
+			"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+			"<soap12:Envelope "
+				"xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+				"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+				"xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">"
+				"<soap12:Body>"
+					"<SendBinarySmsResponse "
+						"xmlns=\"http://pmmsoapmessenger.com/\">"
+						"<SendBinarySmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
+							"<TransactionID>%transaction_id%</TransactionID>"
+							"<NetPoints>POSTPAID</NetPoints>"
+						"</SendBinarySmsResult>"
+					"</SendBinarySmsResponse>"
+				"</soap12:Body>"
+			"</soap12:Envelope>"
+			>>,
+			{H, R}
+	end,
+	Resp = binary:replace(RawResp, <<"%transaction_id%">>, RequestID),
+	{ok, Req2} = cowboy_req:reply(200, Headers, Resp, Req),
+	{ok, Req2, undefined};
+
+process({Transport, SOAPBody}, "HTTP_SendBinarySms", Req) when
+												Transport =:= soap12 orelse
+												Transport =:= soap11 ->
+	{value, {_, _, [CustomerID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}customerID", 1, SOAPBody),
+	{value, {_, _, [UserName]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}userName", 1, SOAPBody),
+	{value, {_, _, [Password]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}userPassword", 1, SOAPBody),
+
+	{value, {_, _, [Originator]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}originator", 1, SOAPBody),
+	{value, {_, _, [Recipients]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}recipientPhone", 1, SOAPBody),
+	{value, {_, _, [HexBody]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}binaryBody", 1, SOAPBody),
+	{value, {_, _, [DataCodign]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}data_coding", 1, SOAPBody),
+	{value, {_, _, [ESMClass]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}esm_class", 1, SOAPBody),
+	{value, {_, _, [ProtocolID]}} =
+		lists:keysearch("{http://pmmsoapmessenger.com/}PID", 1, SOAPBody),
+
+	SendBinarySmsReq = #send_binary_sms_req{
+		customer_id = CustomerID,
+		user_name = UserName,
+		password = Password,
+		originator = soap_utils:addr_to_dto(Originator),
+		binary_body = hexstr_to_bin(binary_to_list(HexBody)),
+		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
+		def_date = undefined,
+		data_coding = list_to_integer(binary_to_list(DataCodign)),
+		esm_class = list_to_integer(binary_to_list(ESMClass)),
+		protocol_id = list_to_integer(binary_to_list(ProtocolID))
+	},
+	lager:debug("~p: got -> ~p", [Transport, SendBinarySmsReq]),
+	{ok, RequestID} = soap_mt_srv:process(SendBinarySmsReq),
+	lager:info("Message sucessfully sent [id: ~p]", [RequestID]),
+	RejectedNumbers = <<>>,
+
+	{Headers, RawResp} =
+	case Transport of
+		soap11 ->
+			H = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
+			R =
+			<<
+			"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+			"<soap:Envelope "
+				"xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+				"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+				"xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				"<soap:Body>"
+					"<HTTP_SendBinarySmsResponse "
+						"xmlns=\"http://pmmsoapmessenger.com/\">"
+						"<HTTP_SendBinarySmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
+							"<TransactionID>%transaction_id%</TransactionID>"
+							"<NetPoints>POSTPAID</NetPoints>"
+						"</HTTP_SendBinarySmsResult>"
+					"</HTTP_SendBinarySmsResponse>"
+				"</soap:Body>"
+			"</soap:Envelope>"
+			>>,
+			{H, R};
+		soap12 ->
+			H = [{?ContentTypeHName, <<"application/soap+xml; charset=utf-8">>}],
+			R =
+			<<
+			"<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+			"<soap12:Envelope "
+				"xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+				"xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
+				"xmlns:soap12=\"http://www.w3.org/2003/05/soap-envelope\">"
+				"<soap12:Body>"
+					"<HTTP_SendBinarySmsResponse "
+						"xmlns=\"http://pmmsoapmessenger.com/\">"
+						"<HTTP_SendBinarySmsResult>",
+							(construct_xml_tag('RejectedNumbers', RejectedNumbers))/binary,
+							"<TransactionID>%transaction_id%</TransactionID>"
+							"<NetPoints>POSTPAID</NetPoints>"
+						"</HTTP_SendBinarySmsResult>"
+					"</HTTP_SendBinarySmsResponse>"
 				"</soap12:Body>"
 			"</soap12:Envelope>"
 			>>,

@@ -139,6 +139,58 @@ process(SendServiceSmsReq = #send_service_sms_req{}) ->
 	soap_srv_pdu_logger:log(DTO),
 	lager:debug("SmsRequest was sucessfully encoded", []),
 	ok = publish_sms_request(Bin, ReqID, GtwID),
+	{ok, ReqID};
+
+process(SendBinarySmsReq = #send_binary_sms_req{}) ->
+
+	{ok, Customer} =
+		soap_auth_srv:authenticate(
+			SendBinarySmsReq#send_binary_sms_req.customer_id,
+			SendBinarySmsReq#send_binary_sms_req.user_name,
+			SendBinarySmsReq#send_binary_sms_req.password),
+
+	#k1api_auth_response_dto{
+		uuid = CustomerID,
+		allowed_sources = _AllowedSources,
+		default_validity = DefaultValidity,
+		no_retry = NoRetry
+	} = Customer,
+	ReqID = uuid:unparse(uuid:generate_time()),
+	Params = lists:flatten([
+			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"service_type">>, <<>>),
+			?just_sms_request_param(<<"no_retry">>, NoRetry),
+			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+			?just_sms_request_param(<<"priority_flag">>, 0),
+			?just_sms_request_param(<<"esm_class">>, SendBinarySmsReq#send_binary_sms_req.esm_class),
+			?just_sms_request_param(<<"protocol_id">>, SendBinarySmsReq#send_binary_sms_req.protocol_id)
+			%% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
+			]),
+
+	Destinations = SendBinarySmsReq#send_binary_sms_req.recipients,
+	NumberOfDests = length(Destinations),
+	GtwID = get_suitable_gtw(Customer, NumberOfDests),
+	MessageIDs = get_ids(CustomerID, NumberOfDests, 1), %% NumberOfParts
+   	lager:debug("Message IDs: ~p", [MessageIDs]),
+	DTO = #just_sms_request_dto{
+		id = ReqID,
+		gateway_id = GtwID,
+		customer_id = CustomerID,
+		user_id = SendBinarySmsReq#send_binary_sms_req.user_name,
+		client_type = k1api,
+		type = regular,
+		message = SendBinarySmsReq#send_binary_sms_req.binary_body,
+		encoding = default, %% data coding
+		params = Params,
+		source_addr = SendBinarySmsReq#send_binary_sms_req.originator,
+		dest_addrs = {regular, Destinations},
+		message_ids = MessageIDs
+	},
+	lager:debug("Built SmsRequest: ~p", [DTO]),
+	{ok, Bin} = adto:encode(DTO),
+	soap_srv_pdu_logger:log(DTO),
+	lager:debug("SmsRequest was sucessfully encoded", []),
+	ok = publish_sms_request(Bin, ReqID, GtwID),
 	{ok, ReqID}.
 
 

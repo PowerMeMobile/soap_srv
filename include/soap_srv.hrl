@@ -33,6 +33,19 @@
 		flash 			:: boolean
 }).
 
+-record(send_binary_sms_req,{
+	customer_id :: binary(),
+	user_name 	:: binary(),
+	password 	:: binary(),
+	originator 	:: #addr{},
+	binary_body :: binary(),
+	recipients 	:: [#addr{}],
+	def_date 	:: boolean(),
+	data_coding :: integer(),
+	esm_class 	:: integer(),
+	protocol_id :: integer()
+}).
+
 -record(pworker, {
 	id			:: term(),
 	timestamp	:: integer(),
