@@ -54,8 +54,7 @@ Feel free to open [issues] and [pull requests] on github.
 ## TODO ##
 
 1. Support for mo sms (incoming) messages
-2. WSDL
-3. RabbitMQ public confirms for mt sms messages
+2. RabbitMQ public confirms for mt sms messages
 
 [OpenAlley]: http://www.powermemobile.com/PressRelease-OpenAlley
 [kelly]: https://github.com/PowerMeMobile/kelly
