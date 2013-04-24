@@ -16,7 +16,7 @@
 start(_StartType, _StartArgs) ->
 	soap_db:init_mnesia(),
     {ok, SupervisorPid} = soap_srv_sup:start_link(),
-	soap_http_handler:init(),
+	soap_srv_protocol:init(),
 	{ok, SupervisorPid}.
 
 stop(_State) ->
