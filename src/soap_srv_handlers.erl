@@ -20,10 +20,10 @@ handle(Req = #'SendSms'{}) ->
 		def_date = undefined,
 		flash = get_boolean(Req#'SendSms'.flash)
 	},
-	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
+	{ok, RequestID, Rejected} = soap_mt_srv:process(SendSmsReq),
 	{ok, #'SendResult'{
 			'Result' = <<"OK">>,
-			'RejectedNumbers' = [],
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
 			'TransactionID' = RequestID,
 			'NetPoints' = <<"POSTPAID">> }};
 
@@ -40,10 +40,10 @@ handle(Req = #'HTTP_SendSms'{}) ->
 		def_date = undefined,
 		flash = get_boolean(Req#'HTTP_SendSms'.flash)
 	},
-	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
+	{ok, RequestID, Rejected} = soap_mt_srv:process(SendSmsReq),
 	{ok, #'SendResult'{
 			'Result' = <<"OK">>,
-			'RejectedNumbers' = [],
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
 			'TransactionID' = RequestID,
 			'NetPoints' = <<"POSTPAID">> }};
 
@@ -61,10 +61,10 @@ handle(Req = #'SendSms2'{}) ->
 		def_date = undefined,
 		flash = get_boolean(Req#'SendSms2'.flash)
 	},
-	{ok, RequestID} = soap_mt_srv:process(SendSmsReq),
+	{ok, RequestID, Rejected} = soap_mt_srv:process(SendSmsReq),
 	{ok, #'SendResult'{
 			'Result' = <<"OK">>,
-			'RejectedNumbers' = [],
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
 			'TransactionID' = RequestID,
 			'NetPoints' = <<"POSTPAID">> }};
 
@@ -82,10 +82,10 @@ handle(Req = #'SendServiceSms'{}) ->
 		def_date = undefined,
 		flash = get_boolean(Req#'SendServiceSms'.flash)
 	},
-	{ok, RequestID} = soap_mt_srv:process(SendServiceSmsReq),
+	{ok, RequestID, Rejected} = soap_mt_srv:process(SendServiceSmsReq),
 	{ok, #'SendResult'{
 			'Result' = <<"OK">>,
-			'RejectedNumbers' = [],
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
 			'TransactionID' = RequestID,
 			'NetPoints' = <<"POSTPAID">> }};
 handle(Req = #'SendBinarySms'{}) ->
@@ -103,10 +103,10 @@ handle(Req = #'SendBinarySms'{}) ->
 		esm_class = list_to_integer(binary_to_list(Req#'SendBinarySms'.esm_class)),
 		protocol_id = list_to_integer(binary_to_list(Req#'SendBinarySms'.'PID'))
 	},
-	{ok, RequestID} = soap_mt_srv:process(SendBinarySmsReq),
+	{ok, RequestID, Rejected} = soap_mt_srv:process(SendBinarySmsReq),
 	{ok, #'SendResult'{
 			'Result' = <<"OK">>,
-			'RejectedNumbers' = [],
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
 			'TransactionID' = RequestID,
 			'NetPoints' = <<"POSTPAID">> }};
 
@@ -124,10 +124,10 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
 		esm_class = list_to_integer(binary_to_list(Req#'HTTP_SendBinarySms'.esm_class)),
 		protocol_id = list_to_integer(binary_to_list(Req#'HTTP_SendBinarySms'.'PID'))
 	},
-	{ok, RequestID} = soap_mt_srv:process(SendBinarySmsReq),
+	{ok, RequestID, Rejected} = soap_mt_srv:process(SendBinarySmsReq),
 	{ok, #'SendResult'{
 			'Result' = <<"OK">>,
-			'RejectedNumbers' = [],
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
 			'TransactionID' = RequestID,
 			'NetPoints' = <<"POSTPAID">> }};
 

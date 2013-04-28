@@ -114,8 +114,9 @@ process(SendServiceSmsReq = #send_service_sms_req{}) ->
 			?just_sms_request_param(<<"source_port">>, 9200),
 			?just_sms_request_param(<<"destination_port">>, 2948)
 			]),
-
-	Destinations = SendServiceSmsReq#send_service_sms_req.recipients,
+	AllDestinations = SendServiceSmsReq#send_service_sms_req.recipients,
+	{Destinations, Rejected} =
+	get_allowed_destinations(AllDestinations, Customer#k1api_auth_response_dto.networks),
 	NumberOfDests = length(Destinations),
 	GtwID = get_suitable_gtw(Customer, NumberOfDests),
 	MessageIDs = get_ids(CustomerID, NumberOfDests, NumberOfParts),
@@ -139,7 +140,7 @@ process(SendServiceSmsReq = #send_service_sms_req{}) ->
 	soap_srv_pdu_logger:log(DTO),
 	lager:debug("SmsRequest was sucessfully encoded", []),
 	ok = publish_sms_request(Bin, ReqID, GtwID),
-	{ok, ReqID};
+	{ok, ReqID, Rejected};
 
 process(SendBinarySmsReq = #send_binary_sms_req{}) ->
 
@@ -166,8 +167,9 @@ process(SendBinarySmsReq = #send_binary_sms_req{}) ->
 			?just_sms_request_param(<<"protocol_id">>, SendBinarySmsReq#send_binary_sms_req.protocol_id)
 			%% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
 			]),
-
-	Destinations = SendBinarySmsReq#send_binary_sms_req.recipients,
+	AllDestinations = SendBinarySmsReq#send_binary_sms_req.recipients,
+	{Destinations, Rejected} =
+	get_allowed_destinations(AllDestinations, Customer#k1api_auth_response_dto.networks),
 	NumberOfDests = length(Destinations),
 	GtwID = get_suitable_gtw(Customer, NumberOfDests),
 	MessageIDs = get_ids(CustomerID, NumberOfDests, 1), %% NumberOfParts
@@ -191,7 +193,7 @@ process(SendBinarySmsReq = #send_binary_sms_req{}) ->
 	soap_srv_pdu_logger:log(DTO),
 	lager:debug("SmsRequest was sucessfully encoded", []),
 	ok = publish_sms_request(Bin, ReqID, GtwID),
-	{ok, ReqID}.
+	{ok, ReqID, Rejected}.
 
 
 %% ===================================================================
@@ -244,7 +246,10 @@ send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
 			?just_sms_request_param(<<"esm_class">>, 3),
 			?just_sms_request_param(<<"protocol_id">>, 0)
 			]) ++ flash(SendSmsReq#send_sms_req.flash, Encoding),
-	Destinations = SendSmsReq#send_sms_req.recipients,
+
+	AllDestinations = SendSmsReq#send_sms_req.recipients,
+	{Destinations, Rejected} =
+	get_allowed_destinations(AllDestinations, Customer#k1api_auth_response_dto.networks),
 	Message = SendSmsReq#send_sms_req.text,
 	NumberOfDests = length(Destinations),
 	GtwID = get_suitable_gtw(Customer, NumberOfDests),
@@ -269,7 +274,7 @@ send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
 	soap_srv_pdu_logger:log(DTO),
 	lager:debug("SmsRequest was sucessfully encoded", []),
 	ok = publish_sms_request(Bin, ReqID, GtwID),
-	{ok, ReqID}.
+	{ok, ReqID, Rejected}.
 
 flash(false, _) ->
 	[];
@@ -350,3 +355,39 @@ fmt_validity(SecondsTotal) ->
 		lists:flatten(io_lib:format("~2..0w~2..0w~2..0w~2..0w~2..0w~2..0w000R",
                   [Years, Months, Days, Hours, Minutes, Seconds])),
 	list_to_binary(StringValidity).
+
+-spec get_allowed_destinations([binary()], [#network_dto{}]) ->
+	{Allowed :: binary(), Rejected :: binary()}.
+get_allowed_destinations(Destinations, Networks) ->
+	get_allowed_destinations(Destinations, Networks, [], []).
+
+get_allowed_destinations([], _Networks, Allowed, Rejected) ->
+	{Allowed, Rejected};
+get_allowed_destinations([Addr | Rest], Networks, Allowed, Rejected) ->
+	case is_addr_allowed(Addr, Networks) of
+		true -> get_allowed_destinations(Rest, Networks, [Addr | Allowed], Rejected);
+		false -> get_allowed_destinations(Rest, Networks, Allowed, [Addr | Rejected])
+	end.
+
+is_addr_allowed(_Addr, []) ->
+	false;
+is_addr_allowed(Addr, [Network | Rest]) ->
+	CountryCode = Network#network_dto.country_code,
+	Length = Network#network_dto.numbers_len,
+	PrefixesWithCountryCode =
+	[<<CountryCode/binary, Prefix/binary>> || Prefix <- Network#network_dto.prefixes],
+	case is_addr_allowed(Addr, Length, PrefixesWithCountryCode) of
+		true -> true;
+		false -> is_addr_allowed(Addr, Rest)
+	end.
+
+is_addr_allowed(_Addr, _Length, []) ->
+	false;
+is_addr_allowed(Addr, Length, [FullPrefix | Rest]) when
+				size(Addr#addr.addr) =:= Length ->
+	case binary:match(Addr#addr.addr, FullPrefix) of
+		{0, _} -> true;
+		_ -> is_addr_allowed(Addr, Length, Rest)
+	end;
+is_addr_allowed(_Addr, _Length, _FullPrefixes) ->
+	false.

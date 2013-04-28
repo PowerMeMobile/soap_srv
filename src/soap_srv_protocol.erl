@@ -6,11 +6,6 @@
 %% Add proper response msgs with codes
 %% add support for defDate MM/DD/YYYY HH:MM
 %% add support for messageType
-%% add support for rejectedNumbers
-%% <RejectedNumbers>
-%% 	<string>string</string>
-%% 	<string>string</string>
-%% </RejectedNumbers>
 %% {{badmatch,{error,socket_closed_remotely}} on large sendSmsReq (2000 recipients)
 %% soap:fault on 500 error
 %% check for undefined mandatory parameters
@@ -315,12 +310,7 @@ process(Transport, "HTTP_Authenticate", Req) ->
 			#'AuthResult'{'Result' = Explanation}
 	end,
 
-	Originators =
-	list_to_binary(
-		[<<"<string>", Originator/binary, "</string>">> ||
-			Originator <- Result#'AuthResult'.'Originators']),
-	Result2 = Result#'AuthResult'{'Originators' = Originators},
-	Content = build_result_content(Result2),
+	Content = build_result_content(Result),
 
 	Headers = get_headers(Transport),
 
@@ -352,12 +342,7 @@ process({Transport, Method}, "Authenticate", Req) when
 			#'AuthResult'{'Result' = Explanation}
 	end,
 
-	Originators =
-	list_to_binary(
-		[<<"<string>", Originator/binary, "</string>">> ||
-			Originator <- Result#'AuthResult'.'Originators']),
-	Result2 = Result#'AuthResult'{'Originators' = Originators},
-	Content = build_result_content(Result2),
+	Content = build_result_content(Result),
 
 	Headers = get_headers(Transport),
 
@@ -639,6 +624,14 @@ build_result_content(Record) when is_tuple(Record) ->
 
 build_result_content([], Acc) ->
 	list_to_binary(lists:reverse(Acc));
+build_result_content([{Key, Value} | Tail], Acc) when
+					is_list(Value) andalso
+					Value =/= [] ->
+	ComposedElements =
+	list_to_binary(
+		[<<"<string>", Element/binary, "</string>">> ||
+			Element <- Value]),
+	build_result_content([{Key, ComposedElements} | Tail], Acc);
 build_result_content([{Key, Value} | Tail], Acc) ->
 	Tag = construct_xml_tag(Key, Value),
 	build_result_content(Tail, [Tag | Acc]).
