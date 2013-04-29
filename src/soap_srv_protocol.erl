@@ -5,7 +5,6 @@
 %% TODO
 %% Add proper response msgs with codes
 %% add support for defDate MM/DD/YYYY HH:MM
-%% add support for messageType
 %% {{badmatch,{error,socket_closed_remotely}} on large sendSmsReq (2000 recipients)
 %% soap:fault on 500 error
 %% check for undefined mandatory parameters

@@ -15,7 +15,7 @@ handle(Req = #'SendSms'{}) ->
 		password = User#user.'Password',
 		originator = soap_utils:addr_to_dto(Req#'SendSms'.originator),
 		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		text = Req#'SendSms'.smsText,
+		text = convert_numbers(Req#'SendSms'.smsText, Req#'SendSms'.'messageType'),
 		type = latin,
 		def_date = undefined,
 		flash = get_boolean(Req#'SendSms'.flash)
@@ -35,7 +35,7 @@ handle(Req = #'HTTP_SendSms'{}) ->
 		password = Req#'HTTP_SendSms'.userPassword,
 		originator = soap_utils:addr_to_dto(Req#'HTTP_SendSms'.originator),
 		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		text = Req#'HTTP_SendSms'.smsText,
+		text = convert_numbers(Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.'messageType'),
 		type = latin,
 		def_date = undefined,
 		flash = get_boolean(Req#'HTTP_SendSms'.flash)
@@ -56,7 +56,7 @@ handle(Req = #'SendSms2'{}) ->
 		password = User#user.'Password',
 		originator = soap_utils:addr_to_dto(Req#'SendSms2'.originator),
 		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		text = Req#'SendSms2'.smsText,
+		text = convert_numbers(Req#'SendSms2'.smsText, Req#'SendSms2'.'messageType'),
 		type = latin,
 		def_date = undefined,
 		flash = get_boolean(Req#'SendSms2'.flash)
@@ -197,3 +197,33 @@ hexstr_to_bin([], Acc) ->
 hexstr_to_bin([X,Y|T], Acc) ->
   {ok, [V], []} = io_lib:fread("~16u", [X,Y]),
   hexstr_to_bin(T, [V | Acc]).
+
+convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
+	case unicode:characters_to_list(Text, utf8) of
+		CodePoints when is_list(CodePoints) ->
+			lager:info("Text ~w to ~w" , [Text, CodePoints]),
+			ConvCP = [number_to_arabic(CP) || CP <- CodePoints],
+			unicode:characters_to_binary(ConvCP, utf8);
+		{error, CodePoints, RestData} ->
+			lager:error("Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
+					[Text, CodePoints, RestData]),
+			erlang:error("Illegal utf8 symbols");
+		{incomplete, CodePoints, IncompleteSeq} ->
+			lager:error("Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
+					[Text, CodePoints, IncompleteSeq]),
+			erlang:error("Incomplite utf8 sequence")
+	end;
+convert_numbers(Text, _) ->
+	Text.
+
+number_to_arabic(16#0030) -> 16#0660;
+number_to_arabic(16#0031) -> 16#0661;
+number_to_arabic(16#0032) -> 16#0662;
+number_to_arabic(16#0033) -> 16#0663;
+number_to_arabic(16#0034) -> 16#0664;
+number_to_arabic(16#0035) -> 16#0665;
+number_to_arabic(16#0036) -> 16#0666;
+number_to_arabic(16#0037) -> 16#0667;
+number_to_arabic(16#0038) -> 16#0668;
+number_to_arabic(16#0039) -> 16#0669;
+number_to_arabic(Any) -> Any.
