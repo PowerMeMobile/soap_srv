@@ -13,6 +13,8 @@
 -define(gv(Key, PropList, Default), proplists:get_value(Key, PropList, Default)).
 
 main(Args) ->
+	StartTime = now(),
+	process_flag(trap_exit, true),
 	io:format("Args: ~p~n", [Args]),
 	ok = inets:start(),
 	{ok, [Terms]} = file:consult("soap_test.conf"),
@@ -31,9 +33,35 @@ main(Args) ->
 	Base64Recipients = base64:encode(Recipients),
 	AdditionalProps = [{base64recipients, Base64Recipients}, {recipient, Recipients}],
 
-	[do_req(Test, AdditionalProps ++ Props) || Test <- Tests],
+	Workers =
+		[spawn_link(fun() -> do_req(Test, AdditionalProps ++ Props) end) || Test <- Tests],
+	io:format("Waiting workers...~n", []),
+	wait_workers(Workers, StartTime).
 
-	io:format("OK~n").
+wait_workers([], StartTime) ->
+	FinishTime = now(),
+	TotalTime = timer:now_diff(FinishTime, StartTime)/1000000,
+	TotalMsgs = ?proc_num * ?req_num * ?batch_size,
+	AvgThroughput = TotalMsgs/TotalTime,
+	io:format(
+		"~nSummary:~n"
+		"Proc num: ~p~n"
+		"Req num per proc: ~p~n"
+		"Batch size (recipients per sms req): ~p~n"
+		"Total msgs: ~p~n"
+		"Total time: ~p~n"
+		"Average throughput: ~p~n~n",
+			[?proc_num, ?req_num, ?batch_size, TotalMsgs, TotalTime, AvgThroughput]),
+	erlang:halt();
+wait_workers(Workers, StartTime) ->
+	receive
+		{'EXIT', Pid, Reason} ->
+			io:format("~p terminated with ~p~n", [Pid, Reason]),
+			wait_workers(Workers -- [Pid], StartTime);
+		Msg ->
+			io:format("Sup got unexpected msg: ~p~n. Halt.", [Msg]),
+			erlang:halt()
+	end.
 
 do_req(Test, Props) ->
 	io:format("START ~p !!!!!!!!!!!!!!~n", [?gv(name, Test)]),
