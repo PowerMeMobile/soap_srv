@@ -3,7 +3,6 @@
 %% TODO
 %% AllowedAddresses
 %% SwitchOff receipts on Kelly side
-%% publish confirms/transactions
 %% refactor get_ids fun to avoid double iteration
 
 -behaviour(gen_server).
@@ -42,8 +41,16 @@
 			{just_sms_request_param_dto, Name, {integer, Int}}
 	end, [Param])).
 
+-record(unconfirmed, {
+	id 						:: integer(),
+	from 					:: term(),
+	odd_confirmed = false 	:: boolean(),
+	even_confirmed = false 	:: boolean()
+}).
+
 -record(st, {
-	chan :: pid()
+	chan :: pid(),
+	next_id = 1 :: integer()
 }).
 
 %% ===================================================================
@@ -204,17 +211,29 @@ init([]) ->
 	{ok, Connection} = rmql:connection_start(),
 	{ok, Channel} = rmql:channel_open(Connection),
 	link(Channel),
+	amqp_channel:register_confirm_handler(Channel, self()),
+	ok = confirm_select(Channel),
 	ok = rmql:queue_declare(Channel, ?SmsRequestQueue, []),
+	?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
 	{ok, #st{chan = Channel}}.
 
-handle_call(get_channel, _From, St = #st{}) ->
-	{reply, {ok, St#st.chan}, St};
+handle_call({publish, GtwQueue, Payload, Basic}, From, St = #st{}) ->
+	Channel = St#st.chan,
+    ok = rmql:basic_publish(Channel, ?SmsRequestQueue, Payload, Basic),
+    ok = rmql:basic_publish(Channel, GtwQueue, Payload, Basic),
+	true = ets:insert(?MODULE, #unconfirmed{id = St#st.next_id, from = From}),
+	{noreply, St#st{next_id = St#st.next_id + 2}};
 
 handle_call(_Request, _From, St) ->
     {stop, unexpected_call, St}.
 
 handle_cast(Req, St) ->
     {stop, {unexpected_cast, Req}, St}.
+
+handle_info(Confirm, St) when is_record(Confirm, 'basic.ack');
+                              is_record(Confirm, 'basic.nack') ->
+	handle_confirm(Confirm),
+    {noreply, St};
 
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
@@ -226,8 +245,88 @@ code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
 
 %% ===================================================================
+%% Public Confirms
+%% ===================================================================
+
+handle_confirm(#'basic.ack'{delivery_tag = DTag, multiple = false}) ->
+	update_unconfirmed(DTag);
+handle_confirm(#'basic.ack'{delivery_tag = DTag, multiple = true}) ->
+	case even_or_odd(DTag) of
+		even -> reply_up_to(DTag, ok);
+		odd ->
+			reply_up_to(DTag - 1, ok),
+			update_unconfirmed(DTag)
+	end;
+
+handle_confirm(#'basic.nack'{delivery_tag = DTag, multiple = false}) ->
+	reply_client(unconfirmed_key(DTag), {error, nack});
+handle_confirm(#'basic.nack'{delivery_tag = DTag, multiple = true}) ->
+	case even_or_odd(DTag) of
+		even -> reply_up_to(DTag, {error, nack});
+		odd ->
+			reply_up_to(DTag + 1, {error, nack})
+	end.
+
+update_unconfirmed(DTag) ->
+	case ets:lookup(?MODULE, unconfirmed_key(DTag)) of
+		[Unconfirmed] ->
+			update_unconfirmed(Unconfirmed, even_or_odd(DTag));
+		[] -> ignore %% record may not be represented as result of nack
+	end.
+
+update_unconfirmed(Unconf = #unconfirmed{odd_confirmed = true}, even) ->
+	gen_server:reply(Unconf#unconfirmed.from, ok),
+	true = ets:delete(?MODULE, Unconf#unconfirmed.id);
+update_unconfirmed(Unconf, even) ->
+	true = ets:insert(?MODULE, Unconf#unconfirmed{even_confirmed = true});
+update_unconfirmed(Unconf = #unconfirmed{even_confirmed = true}, odd) ->
+	gen_server:reply(Unconf#unconfirmed.from, ok),
+	true = ets:delete(?MODULE, Unconf#unconfirmed.id);
+update_unconfirmed(Unconf, odd) ->
+	true = ets:insert(?MODULE, Unconf#unconfirmed{odd_confirmed = true}).
+
+unconfirmed_key(Int) ->
+	case even_or_odd(Int) of
+		even -> Int -1;
+		odd -> Int
+	end.
+
+even_or_odd(Int) ->
+	case Int rem 2 of
+		0 -> even;
+		_ -> odd
+	end.
+
+reply_up_to(DTag, Reply) ->
+	IDs = unconfirmed_ids_up_to(DTag),
+	[reply_client(ID, Reply) || ID <- IDs].
+
+reply_client(ID, Reply) ->
+	[Unconf] = ets:lookup(?MODULE, ID), %% without case, since all IDs submited by ets
+	gen_server:reply(Unconf#unconfirmed.from, Reply),
+	true = ets:delete(?MODULE, Unconf#unconfirmed.id).
+
+unconfirmed_ids_up_to(UpToID) ->
+	case ets:first(?MODULE) of
+		'$end_of_table' -> [];
+		FirstID ->
+			unconfirmed_ids_up_to(UpToID, [], FirstID)
+	end.
+unconfirmed_ids_up_to(UpToID, Acc, LastID) when LastID =< UpToID ->
+	case ets:next(?MODULE, LastID) of
+		'$end_of_table' -> [LastID | Acc];
+		NextID ->
+			unconfirmed_ids_up_to(UpToID, [LastID | Acc], NextID)
+	end;
+unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
+	Acc.
+
+%% ===================================================================
 %% Local Functions Definitions
 %% ===================================================================
+
+publish(GtwQueue, Payload, Basic) ->
+	gen_server:call(?MODULE, {publish, GtwQueue, Payload, Basic}).
 
 send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
 	#k1api_auth_response_dto{
@@ -290,12 +389,9 @@ publish_sms_request(Payload, ReqID, GtwID) ->
         priority = 1,
         message_id = ReqID
     },
-	{ok, Channel} = gen_server:call(?MODULE, get_channel),
 	GtwQueue = binary:replace(<<"pmm.just.gateway.%id%">>, <<"%id%">>, GtwID),
-	lager:debug("Sending message to ~p & ~p through the ~p",
-		[?SmsRequestQueue, GtwQueue, Channel]),
-    ok = rmql:basic_publish(Channel, ?SmsRequestQueue, Payload, Basic),
-    ok = rmql:basic_publish(Channel, GtwQueue, Payload, Basic).
+	lager:debug("Sending message to ~p & ~p", [?SmsRequestQueue, GtwQueue]),
+	publish(GtwQueue, Payload, Basic).
 
 get_suitable_gtw(Customer, NumberOfDests) ->
 	#k1api_auth_response_dto{
@@ -391,3 +487,8 @@ is_addr_allowed(Addr, Length, [FullPrefix | Rest]) when
 	end;
 is_addr_allowed(_Addr, _Length, _FullPrefixes) ->
 	false.
+
+confirm_select(Channel) ->
+    Method = #'confirm.select'{},
+    #'confirm.select_ok'{} = amqp_channel:call(Channel, Method),
+    ok.
