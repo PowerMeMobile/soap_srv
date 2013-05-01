@@ -201,7 +201,6 @@ hexstr_to_bin([X,Y|T], Acc) ->
 convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
 	case unicode:characters_to_list(Text, utf8) of
 		CodePoints when is_list(CodePoints) ->
-			lager:info("Text ~w to ~w" , [Text, CodePoints]),
 			ConvCP = [number_to_arabic(CP) || CP <- CodePoints],
 			unicode:characters_to_binary(ConvCP, utf8);
 		{error, CodePoints, RestData} ->
