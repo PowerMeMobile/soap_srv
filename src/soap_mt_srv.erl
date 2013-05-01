@@ -42,14 +42,12 @@
 	end, [Param])).
 
 -record(unconfirmed, {
-	id 						:: integer(),
-	from 					:: term(),
-	odd_confirmed = false 	:: boolean(),
-	even_confirmed = false 	:: boolean()
+	id		:: integer(),
+	from	:: term()
 }).
 
 -record(st, {
-	chan :: pid(),
+	chan 		:: pid(),
 	next_id = 1 :: integer()
 }).
 
@@ -217,12 +215,22 @@ init([]) ->
 	?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
 	{ok, #st{chan = Channel}}.
 
-handle_call({publish, GtwQueue, Payload, Basic}, From, St = #st{}) ->
+handle_call({publish, Payload, ReqID, GtwID}, From, St = #st{}) ->
+	GtwQueue = binary:replace(<<"pmm.just.gateway.%id%">>, <<"%id%">>, GtwID),
+
+	%% use rabbitMQ 'CC' extention to avoid double publish confirm per 1 request
+	CC = {<<"CC">>, array, [{longstr, GtwQueue}]},
+    Basic = #'P_basic'{
+        content_type = <<"k1apiSmsRequest">>,
+        delivery_mode = 2,
+        priority = 1,
+        message_id = ReqID,
+		headers = [CC]
+    },
 	Channel = St#st.chan,
     ok = rmql:basic_publish(Channel, ?SmsRequestQueue, Payload, Basic),
-    ok = rmql:basic_publish(Channel, GtwQueue, Payload, Basic),
 	true = ets:insert(?MODULE, #unconfirmed{id = St#st.next_id, from = From}),
-	{noreply, St#st{next_id = St#st.next_id + 2}};
+	{noreply, St#st{next_id = St#st.next_id + 1}};
 
 handle_call(_Request, _From, St) ->
     {stop, unexpected_call, St}.
@@ -249,60 +257,20 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 
 handle_confirm(#'basic.ack'{delivery_tag = DTag, multiple = false}) ->
-	update_unconfirmed(DTag);
+	reply_to(DTag, ok);
 handle_confirm(#'basic.ack'{delivery_tag = DTag, multiple = true}) ->
-	case even_or_odd(DTag) of
-		even -> reply_up_to(DTag, ok);
-		odd ->
-			reply_up_to(DTag - 1, ok),
-			update_unconfirmed(DTag)
-	end;
-
+	reply_up_to(DTag, ok);
 handle_confirm(#'basic.nack'{delivery_tag = DTag, multiple = false}) ->
-	reply_client(unconfirmed_key(DTag), {error, nack});
+	reply_to(DTag, {error, nack});
 handle_confirm(#'basic.nack'{delivery_tag = DTag, multiple = true}) ->
-	case even_or_odd(DTag) of
-		even -> reply_up_to(DTag, {error, nack});
-		odd ->
-			reply_up_to(DTag + 1, {error, nack})
-	end.
-
-update_unconfirmed(DTag) ->
-	case ets:lookup(?MODULE, unconfirmed_key(DTag)) of
-		[Unconfirmed] ->
-			update_unconfirmed(Unconfirmed, even_or_odd(DTag));
-		[] -> ignore %% record may not be represented as result of nack
-	end.
-
-update_unconfirmed(Unconf = #unconfirmed{odd_confirmed = true}, even) ->
-	gen_server:reply(Unconf#unconfirmed.from, ok),
-	true = ets:delete(?MODULE, Unconf#unconfirmed.id);
-update_unconfirmed(Unconf, even) ->
-	true = ets:insert(?MODULE, Unconf#unconfirmed{even_confirmed = true});
-update_unconfirmed(Unconf = #unconfirmed{even_confirmed = true}, odd) ->
-	gen_server:reply(Unconf#unconfirmed.from, ok),
-	true = ets:delete(?MODULE, Unconf#unconfirmed.id);
-update_unconfirmed(Unconf, odd) ->
-	true = ets:insert(?MODULE, Unconf#unconfirmed{odd_confirmed = true}).
-
-unconfirmed_key(Int) ->
-	case even_or_odd(Int) of
-		even -> Int -1;
-		odd -> Int
-	end.
-
-even_or_odd(Int) ->
-	case Int rem 2 of
-		0 -> even;
-		_ -> odd
-	end.
+	reply_up_to(DTag, {error, nack}).
 
 reply_up_to(DTag, Reply) ->
 	IDs = unconfirmed_ids_up_to(DTag),
-	[reply_client(ID, Reply) || ID <- IDs].
+	[reply_to(ID, Reply) || ID <- IDs].
 
-reply_client(ID, Reply) ->
-	[Unconf] = ets:lookup(?MODULE, ID), %% without case, since all IDs submited by ets
+reply_to(DTag, Reply) when is_integer(DTag) ->
+	[Unconf] = ets:lookup(?MODULE, DTag),
 	gen_server:reply(Unconf#unconfirmed.from, Reply),
 	true = ets:delete(?MODULE, Unconf#unconfirmed.id).
 
@@ -324,9 +292,6 @@ unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
 %% ===================================================================
 %% Local Functions Definitions
 %% ===================================================================
-
-publish(GtwQueue, Payload, Basic) ->
-	gen_server:call(?MODULE, {publish, GtwQueue, Payload, Basic}).
 
 send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
 	#k1api_auth_response_dto{
@@ -383,15 +348,7 @@ flash(true, ucs2) ->
 	[?just_sms_request_param(<<"data_coding">>, 248)].
 
 publish_sms_request(Payload, ReqID, GtwID) ->
-    Basic = #'P_basic'{
-        content_type = <<"k1apiSmsRequest">>,
-        delivery_mode = 2,
-        priority = 1,
-        message_id = ReqID
-    },
-	GtwQueue = binary:replace(<<"pmm.just.gateway.%id%">>, <<"%id%">>, GtwID),
-	lager:debug("Sending message to ~p & ~p", [?SmsRequestQueue, GtwQueue]),
-	publish(GtwQueue, Payload, Basic).
+	gen_server:call(?MODULE, {publish, Payload, ReqID, GtwID}).
 
 get_suitable_gtw(Customer, NumberOfDests) ->
 	#k1api_auth_response_dto{
