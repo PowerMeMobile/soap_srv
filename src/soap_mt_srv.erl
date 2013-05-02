@@ -10,7 +10,7 @@
 %% API
 -export([
 	start_link/0,
-	process/1
+	send/1
 ]).
 
 %% GenServer Callbacks
@@ -59,147 +59,9 @@
 start_link() ->
 	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--spec process(#send_sms_req{}) ->
-	{ok, RequestID :: binary()} |
-	{error, Reason :: any()}.
-process(SendSmsReq = #send_sms_req{}) ->
-	{ok, Customer} =
-		soap_auth_srv:authenticate(
-			SendSmsReq#send_sms_req.customer_id,
-			SendSmsReq#send_sms_req.user_name,
-			SendSmsReq#send_sms_req.password),
-
-	{Encoding, Encoded} =
-		case gsm0338:from_utf8(SendSmsReq#send_sms_req.text) of
-			{valid, Binary} -> {default, Binary};
-			{invalid, Binary} -> {ucs2, Binary}
-		end,
-	NumberOfSymbols = size(Encoded),
-
-	{ok, NumberOfParts} = get_message_parts(NumberOfSymbols, Encoding),
-	lager:debug("Encoded message: ~p, Encoding: ~p, Symbols: ~p, Parts: ~p",
-		[Encoded, Encoding, NumberOfSymbols, NumberOfParts]),
-	send(SendSmsReq, Customer, Encoding, NumberOfParts);
-process(SendServiceSmsReq = #send_service_sms_req{}) ->
-	{ok, Customer} =
-		soap_auth_srv:authenticate(
-			SendServiceSmsReq#send_service_sms_req.customer_id,
-			SendServiceSmsReq#send_service_sms_req.user_name,
-			SendServiceSmsReq#send_service_sms_req.password),
-	Message =
-		<<"<%SERVICEMESSAGE:",
-		(SendServiceSmsReq#send_service_sms_req.service_name)/binary,	";",
-		(SendServiceSmsReq#send_service_sms_req.service_url)/binary, "%>">>,
-	{Encoding, Encoded} =
-		case gsm0338:from_utf8(Message) of
-			{valid, Binary} -> {default, Binary};
-			{invalid, Binary} -> {ucs2, Binary}
-		end,
-	NumberOfSymbols = size(Encoded),
-
-	{ok, NumberOfParts} = get_message_parts(NumberOfSymbols, Encoding),
-	lager:debug("Encoded message: ~p, Encoding: ~p, Symbols: ~p, Parts: ~p",
-		[Encoded, Encoding, NumberOfSymbols, NumberOfParts]),
-		#k1api_auth_response_dto{
-		uuid = CustomerID,
-		allowed_sources = _AllowedSources,
-		default_validity = DefaultValidity,
-		no_retry = NoRetry
-	} = Customer,
-	ReqID = uuid:unparse(uuid:generate_time()),
-	Params = lists:flatten([
-			?just_sms_request_param(<<"registered_delivery">>, false),
-			?just_sms_request_param(<<"service_type">>, <<>>),
-			?just_sms_request_param(<<"no_retry">>, NoRetry),
-			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
-			?just_sms_request_param(<<"priority_flag">>, 0),
-			?just_sms_request_param(<<"esm_class">>, 64),
-			?just_sms_request_param(<<"protocol_id">>, 0),
-			?just_sms_request_param(<<"data_coding">>, 245),
-			?just_sms_request_param(<<"source_port">>, 9200),
-			?just_sms_request_param(<<"destination_port">>, 2948)
-			]),
-	AllDestinations = SendServiceSmsReq#send_service_sms_req.recipients,
-	{Destinations, Rejected} =
-	get_allowed_destinations(AllDestinations, Customer#k1api_auth_response_dto.networks),
-	NumberOfDests = length(Destinations),
-	GtwID = get_suitable_gtw(Customer, NumberOfDests),
-	MessageIDs = get_ids(CustomerID, NumberOfDests, NumberOfParts),
-   	lager:debug("Message IDs: ~p", [MessageIDs]),
-	DTO = #just_sms_request_dto{
-		id = ReqID,
-		gateway_id = GtwID,
-		customer_id = CustomerID,
-		user_id = SendServiceSmsReq#send_service_sms_req.user_name,
-		client_type = k1api,
-		type = regular,
-		message = Message,
-		encoding = Encoding,
-		params = Params,
-		source_addr = SendServiceSmsReq#send_service_sms_req.originator,
-		dest_addrs = {regular, Destinations},
-		message_ids = MessageIDs
-	},
-	lager:debug("Built SmsRequest: ~p", [DTO]),
-	{ok, Bin} = adto:encode(DTO),
-	soap_srv_pdu_logger:log(DTO),
-	lager:debug("SmsRequest was sucessfully encoded", []),
-	ok = publish_sms_request(Bin, ReqID, GtwID),
-	{ok, ReqID, Rejected};
-
-process(SendBinarySmsReq = #send_binary_sms_req{}) ->
-
-	{ok, Customer} =
-		soap_auth_srv:authenticate(
-			SendBinarySmsReq#send_binary_sms_req.customer_id,
-			SendBinarySmsReq#send_binary_sms_req.user_name,
-			SendBinarySmsReq#send_binary_sms_req.password),
-
-	#k1api_auth_response_dto{
-		uuid = CustomerID,
-		allowed_sources = _AllowedSources,
-		default_validity = DefaultValidity,
-		no_retry = NoRetry
-	} = Customer,
-	ReqID = uuid:unparse(uuid:generate_time()),
-	Params = lists:flatten([
-			?just_sms_request_param(<<"registered_delivery">>, false),
-			?just_sms_request_param(<<"service_type">>, <<>>),
-			?just_sms_request_param(<<"no_retry">>, NoRetry),
-			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
-			?just_sms_request_param(<<"priority_flag">>, 0),
-			?just_sms_request_param(<<"esm_class">>, SendBinarySmsReq#send_binary_sms_req.esm_class),
-			?just_sms_request_param(<<"protocol_id">>, SendBinarySmsReq#send_binary_sms_req.protocol_id)
-			%% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
-			]),
-	AllDestinations = SendBinarySmsReq#send_binary_sms_req.recipients,
-	{Destinations, Rejected} =
-	get_allowed_destinations(AllDestinations, Customer#k1api_auth_response_dto.networks),
-	NumberOfDests = length(Destinations),
-	GtwID = get_suitable_gtw(Customer, NumberOfDests),
-	MessageIDs = get_ids(CustomerID, NumberOfDests, 1), %% NumberOfParts
-   	lager:debug("Message IDs: ~p", [MessageIDs]),
-	DTO = #just_sms_request_dto{
-		id = ReqID,
-		gateway_id = GtwID,
-		customer_id = CustomerID,
-		user_id = SendBinarySmsReq#send_binary_sms_req.user_name,
-		client_type = k1api,
-		type = regular,
-		message = SendBinarySmsReq#send_binary_sms_req.binary_body,
-		encoding = default, %% data coding
-		params = Params,
-		source_addr = SendBinarySmsReq#send_binary_sms_req.originator,
-		dest_addrs = {regular, Destinations},
-		message_ids = MessageIDs
-	},
-	lager:debug("Built SmsRequest: ~p", [DTO]),
-	{ok, Bin} = adto:encode(DTO),
-	soap_srv_pdu_logger:log(DTO),
-	lager:debug("SmsRequest was sucessfully encoded", []),
-	ok = publish_sms_request(Bin, ReqID, GtwID),
-	{ok, ReqID, Rejected}.
-
+-spec send(#send_req{}) -> {ok, [{K :: atom(), V :: any()}]}.
+send(Req) ->
+	send(authenticate, Req).
 
 %% ===================================================================
 %% GenServer Callback Functions Definitions
@@ -210,7 +72,7 @@ init([]) ->
 	{ok, Channel} = rmql:channel_open(Connection),
 	link(Channel),
 	amqp_channel:register_confirm_handler(Channel, self()),
-	ok = confirm_select(Channel),
+    #'confirm.select_ok'{} = amqp_channel:call(Channel, #'confirm.select'{}),
 	ok = rmql:queue_declare(Channel, ?SmsRequestQueue, []),
 	?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
 	{ok, #st{chan = Channel}}.
@@ -253,6 +115,151 @@ code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
 
 %% ===================================================================
+%% Sent steps
+%% ===================================================================
+
+
+send(authenticate, Req) ->
+	CustID = Req#send_req.customer_id,
+	UserName = Req#send_req.user_name,
+	Pass = Req#send_req.password,
+	try soap_auth_srv:authenticate(CustID, UserName, Pass) of
+		{ok, Customer} ->
+			Req2 = Req#send_req{customer = Customer},
+			send(is_originator_allowed, Req2)
+	catch
+		_:_ -> {ok, [{result, ?authError}]}
+	end;
+
+send(is_originator_allowed, Req) ->
+	Originator = soap_utils:addr_to_dto(Req#send_req.originator),
+	send(perform_dest_addr, Req#send_req{originator = Originator});
+
+send(perform_dest_addr, Req = #send_req{}) ->
+	ReqRecipients = Req#send_req.recipients,
+	Recipients =
+		[soap_utils:addr_to_dto(R) || R <- binary:split(ReqRecipients, <<",">>, [trim, global])],
+	send(process_msg_type, Req#send_req{recipients = Recipients});
+
+send(process_msg_type, Req) when 	Req#send_req.text =:= undefined andalso
+									Req#send_req.action =:= 'SendServiceSms' ->
+	Text =
+		<<"<%SERVICEMESSAGE:",
+		(Req#send_req.s_name)/binary,	";",
+		(Req#send_req.s_url)/binary, "%>">>,
+	send(process_msg_type, Req#send_req{text = Text});
+
+send(process_msg_type, Req) when 	Req#send_req.text =:= undefined andalso (
+									Req#send_req.action =:= 'SendBinarySms' orelse
+									Req#send_req.action =:= 'HTTP_SendBinarySms') ->
+
+	Text = hexstr_to_bin(binary_to_list(Req#send_req.binary_body)),
+	send(define_smpp_params, Req#send_req{text = Text, encoding = default, encoded = <<" ">>});
+
+send(process_msg_type, Req) ->
+	Text = convert_numbers(Req#send_req.text, Req#send_req.type),
+	send(define_text_encoding, Req#send_req{text = Text});
+
+send(define_text_encoding, Req) ->
+	{Encoding, Encoded} =
+		case gsm0338:from_utf8(Req#send_req.text) of
+			{valid, Binary} -> {default, Binary};
+			{invalid, Binary} -> {ucs2, Binary}
+		end,
+	send(define_smpp_params, Req#send_req{encoding = Encoding, encoded = Encoded});
+
+send(define_smpp_params, Req) when Req#send_req.action =:= 'SendServiceSms' ->
+	Customer = Req#send_req.customer,
+	NoRetry = Customer#k1api_auth_response_dto.no_retry,
+	DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
+	Params = lists:flatten([
+			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"service_type">>, <<>>),
+			?just_sms_request_param(<<"no_retry">>, NoRetry),
+			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+			?just_sms_request_param(<<"priority_flag">>, 0),
+			?just_sms_request_param(<<"esm_class">>, 64),
+			?just_sms_request_param(<<"protocol_id">>, 0),
+			?just_sms_request_param(<<"data_coding">>, 245),
+			?just_sms_request_param(<<"source_port">>, 9200),
+			?just_sms_request_param(<<"destination_port">>, 2948)
+			]),
+	send(build_dto, Req#send_req{smpp_params = Params});
+
+send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orelse
+									Req#send_req.action =:= 'HTTP_SendBinarySms' ->
+	Customer = Req#send_req.customer,
+	NoRetry = Customer#k1api_auth_response_dto.no_retry,
+	DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
+	DC = list_to_integer(binary_to_list(Req#send_req.data_coding)),
+	ESMClass = list_to_integer(binary_to_list(Req#send_req.esm_class)),
+	ProtocolID = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
+	Params = lists:flatten([
+			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"service_type">>, <<>>),
+			?just_sms_request_param(<<"no_retry">>, NoRetry),
+			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+			?just_sms_request_param(<<"priority_flag">>, 0),
+			?just_sms_request_param(<<"esm_class">>, ESMClass),
+			?just_sms_request_param(<<"protocol_id">>, ProtocolID)
+			%% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
+			]),
+	send(build_dto, Req#send_req{smpp_params = Params});
+
+send(define_smpp_params, Req) ->
+	Encoding = Req#send_req.encoding,
+	Customer = Req#send_req.customer,
+	NoRetry = Customer#k1api_auth_response_dto.no_retry,
+	DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
+	Params = lists:flatten([
+			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"service_type">>, <<>>),
+			?just_sms_request_param(<<"no_retry">>, NoRetry),
+			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+			?just_sms_request_param(<<"priority_flag">>, 0),
+			?just_sms_request_param(<<"esm_class">>, 3),
+			?just_sms_request_param(<<"protocol_id">>, 0)
+			]) ++ flash(get_boolean(Req#send_req.flash), Encoding),
+	send(build_dto, Req#send_req{smpp_params = Params});
+
+send(build_dto, Req) ->
+	Encoding = Req#send_req.encoding,
+	Encoded = Req#send_req.encoded,
+	NumberOfSymbols = size(Encoded),
+	{ok, NumberOfParts} = get_message_parts(NumberOfSymbols, Encoding),
+	#k1api_auth_response_dto{
+		uuid = CustomerID,
+		networks = Networks
+	} = Req#send_req.customer,
+	ReqID = uuid:unparse(uuid:generate_time()),
+	Params = Req#send_req.smpp_params,
+	AllDestinations = Req#send_req.recipients,
+	{Destinations, Rejected} =
+	get_allowed_destinations(AllDestinations, Networks),
+	Message = Req#send_req.text,
+	NumberOfDests = length(Destinations),
+	GtwID = get_suitable_gtw(Req#send_req.customer, NumberOfDests),
+	MessageIDs = get_ids(CustomerID, NumberOfDests, NumberOfParts),
+	DTO = #just_sms_request_dto{
+		id = ReqID,
+		gateway_id = GtwID,
+		customer_id = CustomerID,
+		user_id = Req#send_req.user_name,
+		client_type = k1api,
+		type = regular,
+		message = Message,
+		encoding = Encoding,
+		params = Params,
+		source_addr = Req#send_req.originator,
+		dest_addrs = {regular, Destinations},
+		message_ids = MessageIDs
+	},
+	{ok, Bin} = adto:encode(DTO),
+	soap_srv_pdu_logger:log(DTO),
+	ok = gen_server:call(?MODULE, {publish, Bin, ReqID, GtwID}),
+	{ok, [{id,ReqID}, {rejected, Rejected}]}.
+
+%% ===================================================================
 %% Public Confirms
 %% ===================================================================
 
@@ -293,62 +300,12 @@ unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
 %% Local Functions Definitions
 %% ===================================================================
 
-send(SendSmsReq, Customer, Encoding, NumberOfParts) ->
-	#k1api_auth_response_dto{
-		uuid = CustomerID,
-		allowed_sources = _AllowedSources,
-		default_validity = DefaultValidity,
-		no_retry = NoRetry
-	} = Customer,
-	ReqID = uuid:unparse(uuid:generate_time()),
-	Params = lists:flatten([
-			?just_sms_request_param(<<"registered_delivery">>, false),
-			?just_sms_request_param(<<"service_type">>, <<>>),
-			?just_sms_request_param(<<"no_retry">>, NoRetry),
-			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
-			?just_sms_request_param(<<"priority_flag">>, 0),
-			?just_sms_request_param(<<"esm_class">>, 3),
-			?just_sms_request_param(<<"protocol_id">>, 0)
-			]) ++ flash(SendSmsReq#send_sms_req.flash, Encoding),
-
-	AllDestinations = SendSmsReq#send_sms_req.recipients,
-	{Destinations, Rejected} =
-	get_allowed_destinations(AllDestinations, Customer#k1api_auth_response_dto.networks),
-	Message = SendSmsReq#send_sms_req.text,
-	NumberOfDests = length(Destinations),
-	GtwID = get_suitable_gtw(Customer, NumberOfDests),
-	MessageIDs = get_ids(CustomerID, NumberOfDests, NumberOfParts),
-   	lager:debug("Message IDs: ~p", [MessageIDs]),
-	DTO = #just_sms_request_dto{
-		id = ReqID,
-		gateway_id = GtwID,
-		customer_id = CustomerID,
-		user_id = SendSmsReq#send_sms_req.user_name,
-		client_type = k1api,
-		type = regular,
-		message = Message,
-		encoding = Encoding,
-		params = Params,
-		source_addr = SendSmsReq#send_sms_req.originator,
-		dest_addrs = {regular, Destinations},
-		message_ids = MessageIDs
-	},
-	lager:debug("Built SmsRequest: ~p", [DTO]),
-	{ok, Bin} = adto:encode(DTO),
-	soap_srv_pdu_logger:log(DTO),
-	lager:debug("SmsRequest was sucessfully encoded", []),
-	ok = publish_sms_request(Bin, ReqID, GtwID),
-	{ok, ReqID, Rejected}.
-
 flash(false, _) ->
 	[];
 flash(true, default) ->
 	[?just_sms_request_param(<<"data_coding">>, 240)];
 flash(true, ucs2) ->
 	[?just_sms_request_param(<<"data_coding">>, 248)].
-
-publish_sms_request(Payload, ReqID, GtwID) ->
-	gen_server:call(?MODULE, {publish, Payload, ReqID, GtwID}).
 
 get_suitable_gtw(Customer, NumberOfDests) ->
 	#k1api_auth_response_dto{
@@ -445,7 +402,42 @@ is_addr_allowed(Addr, Length, [FullPrefix | Rest]) when
 is_addr_allowed(_Addr, _Length, _FullPrefixes) ->
 	false.
 
-confirm_select(Channel) ->
-    Method = #'confirm.select'{},
-    #'confirm.select_ok'{} = amqp_channel:call(Channel, Method),
-    ok.
+get_boolean(<<"true">>) -> true;
+get_boolean(<<"false">>) -> false.
+
+convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
+	case unicode:characters_to_list(Text, utf8) of
+		CodePoints when is_list(CodePoints) ->
+			ConvCP = [number_to_arabic(CP) || CP <- CodePoints],
+			unicode:characters_to_binary(ConvCP, utf8);
+		{error, CodePoints, RestData} ->
+			lager:error("Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
+					[Text, CodePoints, RestData]),
+			erlang:error("Illegal utf8 symbols");
+		{incomplete, CodePoints, IncompleteSeq} ->
+			lager:error("Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
+					[Text, CodePoints, IncompleteSeq]),
+			erlang:error("Incomplite utf8 sequence")
+	end;
+convert_numbers(Text, _) ->
+	Text.
+
+number_to_arabic(16#0030) -> 16#0660;
+number_to_arabic(16#0031) -> 16#0661;
+number_to_arabic(16#0032) -> 16#0662;
+number_to_arabic(16#0033) -> 16#0663;
+number_to_arabic(16#0034) -> 16#0664;
+number_to_arabic(16#0035) -> 16#0665;
+number_to_arabic(16#0036) -> 16#0666;
+number_to_arabic(16#0037) -> 16#0667;
+number_to_arabic(16#0038) -> 16#0668;
+number_to_arabic(16#0039) -> 16#0669;
+number_to_arabic(Any) -> Any.
+
+hexstr_to_bin(S) ->
+  hexstr_to_bin(S, []).
+hexstr_to_bin([], Acc) ->
+  list_to_binary(lists:reverse(Acc));
+hexstr_to_bin([X,Y|T], Acc) ->
+  {ok, [V], []} = io_lib:fread("~16u", [X,Y]),
+  hexstr_to_bin(T, [V | Acc]).

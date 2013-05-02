@@ -3,48 +3,35 @@
 
 -include_lib("alley_dto/include/adto.hrl").
 
--type soap_sms_type() ::
-	latin |
-	arabic_with_arabic_numbers |
-	arabic_with_latin_numbers.
+-type auth_resp() :: #k1api_auth_response_dto{}.
+-record(send_req, {
+	action 		:: atom(),
+	customer 	:: undefined | auth_resp(),
+	customer_id :: undefined | binary(),
+	user_name	:: undefined | binary(),
+	password	:: undefined | binary(),
+	originator 	:: undefined | binary(),
+	recipients	:: undefined | binary(),
+	text		:: undefined | binary(),
+	type		:: undefined | binary(),
+	def_date	:: undefined | binary(),
+	flash		:: undefined | binary(),
+	smpp_params :: undefined | term(),
+	encoding 	:: undefined | default | ucs2,
+	encoded 	:: undefined | binary(),
 
--record(send_sms_req, {
-	customer_id :: binary(),
-	user_name	:: binary(),
-	password	:: binary(),
-	originator 	:: #addr{},
-	recipients	:: [#addr{}],
-	text		:: binary(),
-	type		:: soap_sms_type(),
-	def_date	:: binary() | undefined,
-	flash		:: boolean()
+	%% SendServiceSms extention
+	s_name 		:: undefined | binary(),
+	s_url		:: undefined | binary(),
+
+	%% SendBinarySms extention
+	binary_body :: undefined | binary(),
+	data_coding :: undefined | binary(),
+	esm_class 	:: undefined | binary(),
+	protocol_id :: undefined | binary()
 }).
 
--record(send_service_sms_req, {
-		customer_id 	:: binary(),
-		user_name 		:: binary(),
-		password 		:: binary(),
-		originator 		::  #addr{},
-		recipients		:: [#addr{}],
-		service_name 	:: binary(),
-		service_url 	:: binary(),
-		type 			:: soap_sms_type(),
-		def_date 		:: binary() | undefined,
-		flash 			:: boolean
-}).
-
--record(send_binary_sms_req,{
-	customer_id :: binary(),
-	user_name 	:: binary(),
-	password 	:: binary(),
-	originator 	:: #addr{},
-	binary_body :: binary(),
-	recipients 	:: [#addr{}],
-	def_date 	:: boolean(),
-	data_coding :: integer(),
-	esm_class 	:: integer(),
-	protocol_id :: integer()
-}).
+-define(authError, "Access denied. Check your account settiongs").
 
 -record(pworker, {
 	id			:: term(),

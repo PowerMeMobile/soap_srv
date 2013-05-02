@@ -5,131 +5,134 @@
 
 -export([handle/1]).
 
+-define(gv(K, PList), proplists:get_value(K, PList)).
+-define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
 
 handle(Req = #'SendSms'{}) ->
 	User = Req#'SendSms'.user,
-	Recipients = Req#'SendSms'.recipientPhone,
-	SendSmsReq = #send_sms_req{
+	Req2 = #send_req{
+		action = 'SendSms',
 		customer_id = User#user.'CustomerID',
 		user_name = User#user.'Name',
 		password = User#user.'Password',
-		originator = soap_utils:addr_to_dto(Req#'SendSms'.originator),
-		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		text = convert_numbers(Req#'SendSms'.smsText, Req#'SendSms'.'messageType'),
-		type = latin,
-		def_date = undefined,
-		flash = get_boolean(Req#'SendSms'.flash)
+		recipients = Req#'SendSms'.recipientPhone,
+		originator = Req#'SendSms'.originator,
+		text = Req#'SendSms'.smsText,
+		type = Req#'SendSms'.messageType,
+		def_date =  Req#'SendSms'.defDate,
+		flash = Req#'SendSms'.flash
 	},
-	{ok, RequestID, Rejected} = soap_mt_srv:process(SendSmsReq),
+	{ok, Result} = soap_mt_srv:send(Req2),
 	{ok, #'SendResult'{
-			'Result' = <<"OK">>,
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
-			'TransactionID' = RequestID,
-			'NetPoints' = <<"POSTPAID">> }};
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
 
 handle(Req = #'HTTP_SendSms'{}) ->
-	Recipients = Req#'HTTP_SendSms'.recipientPhone,
-	SendSmsReq = #send_sms_req{
+	Req2 = #send_req{
+		action = 'HTTP_SendSms',
 		customer_id = Req#'HTTP_SendSms'.'customerID',
-		user_name = Req#'HTTP_SendSms'.userName,
-		password = Req#'HTTP_SendSms'.userPassword,
-		originator = soap_utils:addr_to_dto(Req#'HTTP_SendSms'.originator),
-		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		text = convert_numbers(Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.'messageType'),
-		type = latin,
-		def_date = undefined,
-		flash = get_boolean(Req#'HTTP_SendSms'.flash)
+		user_name = Req#'HTTP_SendSms'.'userName',
+		password = Req#'HTTP_SendSms'.'userPassword',
+		recipients = Req#'HTTP_SendSms'.recipientPhone,
+		originator = Req#'HTTP_SendSms'.originator,
+		text = Req#'HTTP_SendSms'.smsText,
+		type = Req#'HTTP_SendSms'.messageType,
+		def_date =  Req#'HTTP_SendSms'.defDate,
+		flash = Req#'HTTP_SendSms'.flash
 	},
-	{ok, RequestID, Rejected} = soap_mt_srv:process(SendSmsReq),
+	{ok, Result} = soap_mt_srv:send(Req2),
 	{ok, #'SendResult'{
-			'Result' = <<"OK">>,
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
-			'TransactionID' = RequestID,
-			'NetPoints' = <<"POSTPAID">> }};
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' =  case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end}};
 
 handle(Req = #'SendSms2'{}) ->
-	Recipients = base64:decode(Req#'SendSms2'.recipientPhonesFile),
 	User = Req#'SendSms2'.user,
-	SendSmsReq = #send_sms_req{
+	Req2 = #send_req{
+		action = 'SendSms2',
 		customer_id = User#user.'CustomerID',
 		user_name = User#user.'Name',
 		password = User#user.'Password',
-		originator = soap_utils:addr_to_dto(Req#'SendSms2'.originator),
-		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		text = convert_numbers(Req#'SendSms2'.smsText, Req#'SendSms2'.'messageType'),
-		type = latin,
-		def_date = undefined,
-		flash = get_boolean(Req#'SendSms2'.flash)
+		recipients = base64:decode(Req#'SendSms2'.recipientPhonesFile),
+		originator = Req#'SendSms2'.originator,
+		text = Req#'SendSms2'.smsText,
+		type = Req#'SendSms2'.messageType,
+		def_date =  Req#'SendSms2'.defDate,
+		flash = Req#'SendSms2'.flash
 	},
-	{ok, RequestID, Rejected} = soap_mt_srv:process(SendSmsReq),
+	{ok, Result} = soap_mt_srv:send(Req2),
 	{ok, #'SendResult'{
-			'Result' = <<"OK">>,
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
-			'TransactionID' = RequestID,
-			'NetPoints' = <<"POSTPAID">> }};
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
 
 handle(Req = #'SendServiceSms'{}) ->
-	Recipients = Req#'SendServiceSms'.recipientPhone,
-	SendServiceSmsReq = #send_service_sms_req{
+	Req2 = #send_req{
+		action = 'SendServiceSms',
 		customer_id = Req#'SendServiceSms'.'customerID',
 		user_name = Req#'SendServiceSms'.userName,
 		password = Req#'SendServiceSms'.userPassword,
-		originator = soap_utils:addr_to_dto(Req#'SendServiceSms'.originator),
-		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		service_name = Req#'SendServiceSms'.serviceName,
-		service_url = Req#'SendServiceSms'.serviceUrl,
-		type = latin,
-		def_date = undefined,
-		flash = get_boolean(Req#'SendServiceSms'.flash)
+		recipients = Req#'SendServiceSms'.recipientPhone,
+		originator = Req#'SendServiceSms'.originator,
+		s_name = Req#'SendServiceSms'.serviceName,
+		s_url = Req#'SendServiceSms'.serviceUrl,
+		type = Req#'SendServiceSms'.messageType,
+		def_date =  Req#'SendServiceSms'.defDate,
+		flash = Req#'SendServiceSms'.flash
 	},
-	{ok, RequestID, Rejected} = soap_mt_srv:process(SendServiceSmsReq),
+	{ok, Result} = soap_mt_srv:send(Req2),
 	{ok, #'SendResult'{
-			'Result' = <<"OK">>,
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
-			'TransactionID' = RequestID,
-			'NetPoints' = <<"POSTPAID">> }};
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
+
 handle(Req = #'SendBinarySms'{}) ->
 	User = Req#'SendBinarySms'.user,
-	Recipients = Req#'SendBinarySms'.recipientPhone,
-	SendBinarySmsReq = #send_binary_sms_req{
+	Req2 = #send_req{
+		action = 'SendBinarySms',
 		customer_id = User#user.'CustomerID',
 		user_name = User#user.'Name',
 		password = User#user.'Password',
-		originator = soap_utils:addr_to_dto(Req#'SendBinarySms'.originator),
-		binary_body = hexstr_to_bin(binary_to_list(Req#'SendBinarySms'.binaryBody)),
-		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		def_date = undefined,
-		data_coding = list_to_integer(binary_to_list(Req#'SendBinarySms'.data_coding)),
-		esm_class = list_to_integer(binary_to_list(Req#'SendBinarySms'.esm_class)),
-		protocol_id = list_to_integer(binary_to_list(Req#'SendBinarySms'.'PID'))
+		originator = Req#'SendBinarySms'.originator,
+		binary_body = Req#'SendBinarySms'.binaryBody,
+		recipients = Req#'SendBinarySms'.recipientPhone,
+		def_date = Req#'SendBinarySms'.defDate,
+		data_coding = Req#'SendBinarySms'.data_coding,
+		esm_class = Req#'SendBinarySms'.esm_class,
+		protocol_id = Req#'SendBinarySms'.'PID'
 	},
-	{ok, RequestID, Rejected} = soap_mt_srv:process(SendBinarySmsReq),
+	{ok, Result} = soap_mt_srv:send(Req2),
 	{ok, #'SendResult'{
-			'Result' = <<"OK">>,
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
-			'TransactionID' = RequestID,
-			'NetPoints' = <<"POSTPAID">> }};
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
-	Recipients = Req#'HTTP_SendBinarySms'.recipientPhone,
-	SendBinarySmsReq = #send_binary_sms_req{
-		customer_id = Req#'HTTP_SendBinarySms'.customerID,
-		user_name = Req#'HTTP_SendBinarySms'.userName,
-		password = Req#'HTTP_SendBinarySms'.userPassword,
-		originator = soap_utils:addr_to_dto(Req#'HTTP_SendBinarySms'.originator),
-		binary_body = hexstr_to_bin(binary_to_list(Req#'HTTP_SendBinarySms'.binaryBody)),
-		recipients = [soap_utils:addr_to_dto(R) || R <- binary:split(Recipients, <<",">>, [trim, global])],
-		def_date = undefined,
-		data_coding = list_to_integer(binary_to_list(Req#'HTTP_SendBinarySms'.data_coding)),
-		esm_class = list_to_integer(binary_to_list(Req#'HTTP_SendBinarySms'.esm_class)),
-		protocol_id = list_to_integer(binary_to_list(Req#'HTTP_SendBinarySms'.'PID'))
+	Req2 = #send_req{
+		action = 'HTTP_SendBinarySms',
+		customer_id = Req#'HTTP_SendBinarySms'.'customerID',
+		user_name = Req#'HTTP_SendBinarySms'.'userName',
+		password = Req#'HTTP_SendBinarySms'.'userPassword',
+		originator = Req#'HTTP_SendBinarySms'.originator,
+		binary_body = Req#'HTTP_SendBinarySms'.binaryBody,
+		recipients = Req#'HTTP_SendBinarySms'.recipientPhone,
+		def_date = Req#'HTTP_SendBinarySms'.defDate,
+		data_coding = Req#'HTTP_SendBinarySms'.data_coding,
+		esm_class = Req#'HTTP_SendBinarySms'.esm_class,
+		protocol_id = Req#'HTTP_SendBinarySms'.'PID'
 	},
-	{ok, RequestID, Rejected} = soap_mt_srv:process(SendBinarySmsReq),
+	{ok, Result} = soap_mt_srv:send(Req2),
 	{ok, #'SendResult'{
-			'Result' = <<"OK">>,
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
-			'TransactionID' = RequestID,
-			'NetPoints' = <<"POSTPAID">> }};
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
 
 handle(Req = #'KeepAlive'{}) ->
 	User = Req#'KeepAlive'.user,
@@ -186,43 +189,3 @@ handle(_) -> erlang:error(method_not_implemented).
 %% ===================================================================
 %% Internals
 %% ===================================================================
-
-get_boolean(<<"true">>) -> true;
-get_boolean(<<"false">>) -> false.
-
-hexstr_to_bin(S) ->
-  hexstr_to_bin(S, []).
-hexstr_to_bin([], Acc) ->
-  list_to_binary(lists:reverse(Acc));
-hexstr_to_bin([X,Y|T], Acc) ->
-  {ok, [V], []} = io_lib:fread("~16u", [X,Y]),
-  hexstr_to_bin(T, [V | Acc]).
-
-convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
-	case unicode:characters_to_list(Text, utf8) of
-		CodePoints when is_list(CodePoints) ->
-			ConvCP = [number_to_arabic(CP) || CP <- CodePoints],
-			unicode:characters_to_binary(ConvCP, utf8);
-		{error, CodePoints, RestData} ->
-			lager:error("Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
-					[Text, CodePoints, RestData]),
-			erlang:error("Illegal utf8 symbols");
-		{incomplete, CodePoints, IncompleteSeq} ->
-			lager:error("Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
-					[Text, CodePoints, IncompleteSeq]),
-			erlang:error("Incomplite utf8 sequence")
-	end;
-convert_numbers(Text, _) ->
-	Text.
-
-number_to_arabic(16#0030) -> 16#0660;
-number_to_arabic(16#0031) -> 16#0661;
-number_to_arabic(16#0032) -> 16#0662;
-number_to_arabic(16#0033) -> 16#0663;
-number_to_arabic(16#0034) -> 16#0664;
-number_to_arabic(16#0035) -> 16#0665;
-number_to_arabic(16#0036) -> 16#0666;
-number_to_arabic(16#0037) -> 16#0667;
-number_to_arabic(16#0038) -> 16#0668;
-number_to_arabic(16#0039) -> 16#0669;
-number_to_arabic(Any) -> Any.
