@@ -1,7 +1,8 @@
 -module(soap_auth_srv).
 
 %% TODO
-%% Check specs
+%% Remove from cache RPC call to make cache consistent
+%% with Kelly
 
 -behaviour(gen_server).
 
@@ -44,21 +45,11 @@ start_link() ->
 	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 -spec authenticate(binary(), binary(), binary()) ->
-	{ok, Customer :: any()}.
-authenticate(CustomerID, UserID, Pswd) ->
-	case soap_auth_cache:fetch(CustomerID, UserID, Pswd) of
-		{ok, Customer} ->
-			lager:debug("User found in cache", []),
-			{ok, Customer};
-		not_found ->
-			lager:debug("User NOT found in cache", []),
-			{ok, RequestID} = request_backend_auth(CustomerID, UserID, Pswd),
-			lager:debug("Sent auth request [id: ~p]", [RequestID]),
-			{ok, Customer} = get_auth_response(RequestID),
-			ok = soap_auth_cache:store(CustomerID, UserID, Pswd, Customer),
-			lager:debug("Got sucessful auth response", []),
-			{ok, Customer}
-	end.
+	{ok, Customer :: #k1api_auth_response_dto{}} |
+	{error, timeout}.
+authenticate(CustomerID, UserID, Password) ->
+	User = {CustomerID, UserID, Password},
+	authenticate(check_cache, User).
 
 %% ===================================================================
 %% GenServer Callbacks
@@ -131,6 +122,26 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 %% Internal
 %% ===================================================================
+
+authenticate(check_cache, User) ->
+	{CustomerID, UserID, Password} = User,
+	case soap_auth_cache:fetch(CustomerID, UserID, Password) of
+		{ok, Customer} ->
+			{ok, Customer};
+		not_found ->
+			authenticate(request_backend, User)
+	end;
+
+authenticate(request_backend, User) ->
+	{CustomerID, UserID, Password} = User,
+	{ok, RequestID} = request_backend_auth(CustomerID, UserID, Password),
+	try get_auth_response(RequestID) of
+		{ok, Customer} ->
+			ok = soap_auth_cache:store(CustomerID, UserID, Password, Customer),
+			{ok, Customer}
+	catch
+		_:{timeout, _} -> {error, timeout}
+	end.
 
 get_channel() ->
 	gen_server:call(?MODULE, get_channel).

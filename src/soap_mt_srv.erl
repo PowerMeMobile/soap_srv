@@ -1,9 +1,8 @@
 -module(soap_mt_srv).
 
 %% TODO
-%% AllowedAddresses
-%% SwitchOff receipts on Kelly side
-%% refactor get_ids fun to avoid double iteration
+%% Disable receipts in Kelly
+%% Implement get_suitable_gtw
 
 -behaviour(gen_server).
 
@@ -123,23 +122,35 @@ send(authenticate, Req) ->
 	CustID = Req#send_req.customer_id,
 	UserName = Req#send_req.user_name,
 	Pass = Req#send_req.password,
-	try soap_auth_srv:authenticate(CustID, UserName, Pass) of
+	case soap_auth_srv:authenticate(CustID, UserName, Pass) of
 		{ok, Customer} ->
 			Req2 = Req#send_req{customer = Customer},
-			send(is_originator_allowed, Req2)
-	catch
-		_:_ -> {ok, [{result, ?authError}]}
+			send(perform_src_addr, Req2);
+		{error, timeout} ->
+			{ok, [{result, ?authError}]}
 	end;
 
-send(is_originator_allowed, Req) ->
+send(perform_src_addr, Req) ->
+	Customer = Req#send_req.customer,
 	Originator = soap_utils:addr_to_dto(Req#send_req.originator),
-	send(perform_dest_addr, Req#send_req{originator = Originator});
+	AllowedSources = Customer#k1api_auth_response_dto.allowed_sources,
+	case lists:member(Originator, AllowedSources) of
+		true ->
+			send(perform_dest_addr, Req#send_req{originator = Originator});
+		false ->
+			{ok, [{result, ?originatorNotAllowedError}]}
+	end;
 
 send(perform_dest_addr, Req = #send_req{}) ->
-	ReqRecipients = Req#send_req.recipients,
-	Recipients =
-		[soap_utils:addr_to_dto(R) || R <- binary:split(ReqRecipients, <<",">>, [trim, global])],
-	send(process_msg_type, Req#send_req{recipients = Recipients});
+	Customer = Req#send_req.customer,
+	Networks = Customer#k1api_auth_response_dto.networks,
+	BlobRecipients = Req#send_req.recipients,
+	RawRecipients = binary:split(BlobRecipients, <<",">>, [trim, global]),
+	case get_allowed_destinations(RawRecipients, Networks) of
+		{[], _} -> {ok, [{result, ?noAnyDestAddrError}]};
+		{Recipients, Rejected} ->
+			send(process_msg_type, Req#send_req{recipients = Recipients, rejected = Rejected})
+	end;
 
 send(process_msg_type, Req) when 	Req#send_req.text =:= undefined andalso
 									Req#send_req.action =:= 'SendServiceSms' ->
@@ -227,16 +238,10 @@ send(build_dto, Req) ->
 	Encoded = Req#send_req.encoded,
 	NumberOfSymbols = size(Encoded),
 	{ok, NumberOfParts} = get_message_parts(NumberOfSymbols, Encoding),
-	#k1api_auth_response_dto{
-		uuid = CustomerID,
-		networks = Networks
-	} = Req#send_req.customer,
+	Customer = Req#send_req.customer,
+	CustomerID = Customer#k1api_auth_response_dto.uuid,
 	ReqID = uuid:unparse(uuid:generate_time()),
-	Params = Req#send_req.smpp_params,
-	AllDestinations = Req#send_req.recipients,
-	{Destinations, Rejected} =
-	get_allowed_destinations(AllDestinations, Networks),
-	Message = Req#send_req.text,
+	Destinations = Req#send_req.recipients,
 	NumberOfDests = length(Destinations),
 	GtwID = get_suitable_gtw(Req#send_req.customer, NumberOfDests),
 	MessageIDs = get_ids(CustomerID, NumberOfDests, NumberOfParts),
@@ -247,17 +252,17 @@ send(build_dto, Req) ->
 		user_id = Req#send_req.user_name,
 		client_type = k1api,
 		type = regular,
-		message = Message,
+		message = Req#send_req.text,
 		encoding = Encoding,
-		params = Params,
+		params = Req#send_req.smpp_params,
 		source_addr = Req#send_req.originator,
 		dest_addrs = {regular, Destinations},
 		message_ids = MessageIDs
 	},
 	{ok, Bin} = adto:encode(DTO),
-	soap_srv_pdu_logger:log(DTO),
 	ok = gen_server:call(?MODULE, {publish, Bin, ReqID, GtwID}),
-	{ok, [{id,ReqID}, {rejected, Rejected}]}.
+	soap_srv_pdu_logger:log(DTO),
+	{ok, [{id,ReqID}, {rejected, Req#send_req.rejected}]}.
 
 %% ===================================================================
 %% Public Confirms
@@ -324,15 +329,15 @@ get_suitable_gtw(DefaultProviderID, _Networks, Providers, _NumberOfDests) ->
 
 get_ids(CustomerID, NumberOfDests, Parts) ->
 	{ok, IDs} = soap_db:next_id(CustomerID, NumberOfDests * Parts),
-	StringIDs = [integer_to_list(ID) || ID <- IDs],
 	{DTOIDs, []} =
 		lists:foldl(
 		  fun	(ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->
-					GroupIDs = list_to_binary(string:join(lists:reverse([ID | Group]), ":")),
+					StrID = integer_to_list(ID),
+					GroupIDs = list_to_binary(string:join(lists:reverse([StrID | Group]), ":")),
 				  	{[GroupIDs | Acc], []};
 				(ID, {Acc, Group}) ->
-				  	{Acc, [ID | Group]}
-		  end, {[], []}, StringIDs),
+				  	{Acc, [integer_to_list(ID) | Group]}
+		  end, {[], []}, IDs),
 	DTOIDs.
 
 get_message_parts(Size, default) when Size =< 160 ->
@@ -367,7 +372,7 @@ fmt_validity(SecondsTotal) ->
 	list_to_binary(StringValidity).
 
 -spec get_allowed_destinations([binary()], [#network_dto{}]) ->
-	{Allowed :: binary(), Rejected :: binary()}.
+	{Allowed :: [#addr{}], Rejected :: [binary()]}.
 get_allowed_destinations(Destinations, Networks) ->
 	get_allowed_destinations(Destinations, Networks, [], []).
 
@@ -375,7 +380,9 @@ get_allowed_destinations([], _Networks, Allowed, Rejected) ->
 	{Allowed, Rejected};
 get_allowed_destinations([Addr | Rest], Networks, Allowed, Rejected) ->
 	case is_addr_allowed(Addr, Networks) of
-		true -> get_allowed_destinations(Rest, Networks, [Addr | Allowed], Rejected);
+		true ->
+			AddrDTO = soap_utils:addr_to_dto(Addr),
+			get_allowed_destinations(Rest, Networks, [AddrDTO | Allowed], Rejected);
 		false -> get_allowed_destinations(Rest, Networks, Allowed, [Addr | Rejected])
 	end.
 
@@ -394,8 +401,8 @@ is_addr_allowed(Addr, [Network | Rest]) ->
 is_addr_allowed(_Addr, _Length, []) ->
 	false;
 is_addr_allowed(Addr, Length, [FullPrefix | Rest]) when
-				size(Addr#addr.addr) =:= Length ->
-	case binary:match(Addr#addr.addr, FullPrefix) of
+				size(Addr) =:= Length ->
+	case binary:match(Addr, FullPrefix) of
 		{0, _} -> true;
 		_ -> is_addr_allowed(Addr, Length, Rest)
 	end;
@@ -441,3 +448,19 @@ hexstr_to_bin([], Acc) ->
 hexstr_to_bin([X,Y|T], Acc) ->
   {ok, [V], []} = io_lib:fread("~16u", [X,Y]),
   hexstr_to_bin(T, [V | Acc]).
+
+is_deffered(<<>>) -> false;
+is_deffered(undefined) -> false;
+is_deffered(DefDateList) when is_list(DefDateList) ->
+	try [list_to_integer(binary_to_list(D)) || D <- DefDateList] of
+		[Month, Day, Year, Hour, Min] ->
+			{true, 10000}
+	catch
+		_:_ -> false
+	end;
+is_deffered(DefDate) when is_binary(DefDate) ->
+	case binary:split(DefDate, [<<"/">>, <<" ">>, <<":">>], [global]) of
+		[_M, _D, _Y, _H, _Min] = DefDateList ->
+			is_deffered(DefDateList);
+		_ -> false
+	end.

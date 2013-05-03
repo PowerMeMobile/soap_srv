@@ -23,11 +23,7 @@ handle(Req = #'SendSms'{}) ->
 		flash = Req#'SendSms'.flash
 	},
 	{ok, Result} = soap_mt_srv:send(Req2),
-	{ok, #'SendResult'{
-			'Result' = ?gv(result, Result, <<"OK">>),
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-			'TransactionID' = ?gv(id, Result),
-			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
+	send_result(Result);
 
 handle(Req = #'HTTP_SendSms'{}) ->
 	Req2 = #send_req{
@@ -43,11 +39,7 @@ handle(Req = #'HTTP_SendSms'{}) ->
 		flash = Req#'HTTP_SendSms'.flash
 	},
 	{ok, Result} = soap_mt_srv:send(Req2),
-	{ok, #'SendResult'{
-			'Result' = ?gv(result, Result, <<"OK">>),
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-			'TransactionID' = ?gv(id, Result),
-			'NetPoints' =  case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end}};
+	send_result(Result);
 
 handle(Req = #'SendSms2'{}) ->
 	User = Req#'SendSms2'.user,
@@ -64,11 +56,7 @@ handle(Req = #'SendSms2'{}) ->
 		flash = Req#'SendSms2'.flash
 	},
 	{ok, Result} = soap_mt_srv:send(Req2),
-	{ok, #'SendResult'{
-			'Result' = ?gv(result, Result, <<"OK">>),
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-			'TransactionID' = ?gv(id, Result),
-			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
+	send_result(Result);
 
 handle(Req = #'SendServiceSms'{}) ->
 	Req2 = #send_req{
@@ -85,11 +73,7 @@ handle(Req = #'SendServiceSms'{}) ->
 		flash = Req#'SendServiceSms'.flash
 	},
 	{ok, Result} = soap_mt_srv:send(Req2),
-	{ok, #'SendResult'{
-			'Result' = ?gv(result, Result, <<"OK">>),
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-			'TransactionID' = ?gv(id, Result),
-			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
+	send_result(Result);
 
 handle(Req = #'SendBinarySms'{}) ->
 	User = Req#'SendBinarySms'.user,
@@ -107,11 +91,7 @@ handle(Req = #'SendBinarySms'{}) ->
 		protocol_id = Req#'SendBinarySms'.'PID'
 	},
 	{ok, Result} = soap_mt_srv:send(Req2),
-	{ok, #'SendResult'{
-			'Result' = ?gv(result, Result, <<"OK">>),
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-			'TransactionID' = ?gv(id, Result),
-			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
+	send_result(Result);
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
 	Req2 = #send_req{
@@ -128,64 +108,69 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
 		protocol_id = Req#'HTTP_SendBinarySms'.'PID'
 	},
 	{ok, Result} = soap_mt_srv:send(Req2),
-	{ok, #'SendResult'{
-			'Result' = ?gv(result, Result, <<"OK">>),
-			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-			'TransactionID' = ?gv(id, Result),
-			'NetPoints' = case ?gv(id, Result) of undefined -> undefined; _ -> <<"POSTPAID">> end }};
+	send_result(Result);
 
 handle(Req = #'KeepAlive'{}) ->
 	User = Req#'KeepAlive'.user,
 	CustomerID = User#user.'CustomerID',
 	UserName = User#user.'Name',
 	Password = User#user.'Password',
-	{ok, _Customer} =
-		soap_auth_srv:authenticate(CustomerID, UserName, Password),
-	{ok, #'CommonResult'{
-			'Result' = <<"OK">>}};
+	handle_keep_alive(CustomerID, UserName, Password);
 
 handle(Req = #'HTTP_KeepAlive'{}) ->
 	CustomerID = Req#'HTTP_KeepAlive'.customerID,
 	UserName = Req#'HTTP_KeepAlive'.userName,
 	Password = Req#'HTTP_KeepAlive'.userPassword,
-	{ok, _Customer} =
-		soap_auth_srv:authenticate(CustomerID, UserName, Password),
-	{ok, #'CommonResult'{
-			'Result' = <<"OK">>}};
+	handle_keep_alive(CustomerID, UserName, Password);
 
 handle(Req = #'HTTP_Authenticate'{}) ->
 	CustomerID = Req#'HTTP_Authenticate'.customerID,
 	UserName = Req#'HTTP_Authenticate'.userName,
 	Password = Req#'HTTP_Authenticate'.userPassword,
-	{ok, Customer} =
-		soap_auth_srv:authenticate(CustomerID, UserName, Password),
-	Originators = [Addr#addr.addr || Addr <- Customer#k1api_auth_response_dto.allowed_sources],
-	{ok, #'AuthResult'{
-			'Result' = <<"OK">>,
-			'NetPoints' = <<"POSTPAID">>,
-			'Originators' = Originators,
-			'CustomerID' = CustomerID,
-			'CreditSMS' = <<"POSTPAID">>
-			}};
+	handle_authenticate(CustomerID, UserName, Password);
 
 handle(Req = #'Authenticate'{}) ->
 	User = Req#'Authenticate'.user,
 	CustomerID = User#user.'CustomerID',
 	UserName = User#user.'Name',
 	Password = User#user.'Password',
-	{ok, Customer} =
-		soap_auth_srv:authenticate(CustomerID, UserName, Password),
-	Originators = [Addr#addr.addr || Addr <- Customer#k1api_auth_response_dto.allowed_sources],
-	{ok, #'AuthResult'{
-			'Result' = <<"OK">>,
-			'NetPoints' = <<"POSTPAID">>,
-			'Originators' = Originators,
-			'CustomerID' = CustomerID,
-			'CreditSMS' = <<"POSTPAID">>
-			}};
+	handle_authenticate(CustomerID, UserName, Password);
 
 handle(_) -> erlang:error(method_not_implemented).
 
 %% ===================================================================
 %% Internals
 %% ===================================================================
+
+send_result(Result) when is_list(Result) ->
+	{ok, #'SendResult'{
+			'Result' = ?gv(result, Result, <<"OK">>),
+			'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+			'TransactionID' = ?gv(id, Result),
+			'NetPoints' = <<"POSTPAID">> }}.
+
+handle_authenticate(CustomerID, UserName, Password) ->
+	case soap_auth_srv:authenticate(CustomerID, UserName, Password) of
+		{ok, Customer} ->
+			Originators =
+				[Addr#addr.addr ||
+					Addr <- Customer#k1api_auth_response_dto.allowed_sources],
+			{ok, #'AuthResult'{
+					'Result' = <<"OK">>,
+					'NetPoints' = <<"POSTPAID">>,
+					'Originators' = Originators,
+					'CustomerID' = CustomerID,
+					'CreditSMS' = <<"POSTPAID">>
+					}};
+		{error, timeout} ->
+			{ok, #'AuthResult'{
+					'Result' = ?authError}}
+	end.
+
+handle_keep_alive(CustomerID, UserName, Password) ->
+	case soap_auth_srv:authenticate(CustomerID, UserName, Password) of
+		{ok, _Customer} ->
+			{ok, #'CommonResult'{'Result' = <<"OK">>}};
+		{error, timeout} ->
+			{ok, #'CommonResult'{'Result' = ?authError}}
+	end.

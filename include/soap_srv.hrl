@@ -19,6 +19,7 @@
 	smpp_params :: undefined | term(),
 	encoding 	:: undefined | default | ucs2,
 	encoded 	:: undefined | binary(),
+	rejected	:: undefined | [binary()],
 
 	%% SendServiceSms extention
 	s_name 		:: undefined | binary(),
@@ -31,7 +32,9 @@
 	protocol_id :: undefined | binary()
 }).
 
--define(authError, "Access denied. Check your account settiongs").
+-define(authError, <<"Access denied. Check your account settiongs">>).
+-define(originatorNotAllowedError, <<"Specified originator is not allowed.">>).
+-define(noAnyDestAddrError, <<"None recipient is specified or available due to your permissions">>).
 
 -record(pworker, {
 	id			:: term(),
