@@ -35,7 +35,9 @@ init([]) ->
 
 		?CHILD(soap_auth_srv, worker),
 
-		?CHILD(soap_mt_srv, worker)
+		?CHILD(soap_mt_srv, worker),
+
+		?CHILD(soap_srv_defer, worker)
 
 	]} }.
 

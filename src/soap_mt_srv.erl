@@ -9,7 +9,8 @@
 %% API
 -export([
 	start_link/0,
-	send/1
+	send/1,
+	publish/1
 ]).
 
 %% GenServer Callbacks
@@ -50,6 +51,14 @@
 	next_id = 1 :: integer()
 }).
 
+-type payload() :: binary().
+-type publish_action() ::
+	publish |
+	publish_kelly |
+	publish_just.
+-type req_id() :: binary().
+-type gtw_id() :: binary().
+
 %% ===================================================================
 %% API Functions
 %% ===================================================================
@@ -61,6 +70,10 @@ start_link() ->
 -spec send(#send_req{}) -> {ok, [{K :: atom(), V :: any()}]}.
 send(Req) ->
 	send(authenticate, Req).
+
+-spec publish({publish_action(), payload(), req_id(), gtw_id()}) -> ok.
+publish(Req) ->
+	gen_server:call(?MODULE, Req).
 
 %% ===================================================================
 %% GenServer Callback Functions Definitions
@@ -76,20 +89,32 @@ init([]) ->
 	?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
 	{ok, #st{chan = Channel}}.
 
-handle_call({publish, Payload, ReqID, GtwID}, From, St = #st{}) ->
+handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
+									Action =:= publish orelse
+									Action =:= publish_kelly orelse
+									Action =:= publish_just ->
 	GtwQueue = binary:replace(<<"pmm.just.gateway.%id%">>, <<"%id%">>, GtwID),
 
 	%% use rabbitMQ 'CC' extention to avoid double publish confirm per 1 request
-	CC = {<<"CC">>, array, [{longstr, GtwQueue}]},
+	{Headers, RoutinKey} =
+	case Action of
+		publish ->
+			CC = {<<"CC">>, array, [{longstr, GtwQueue}]},
+			{[CC], ?SmsRequestQueue};
+		publish_kelly ->
+			{[], ?SmsRequestQueue};
+		publish_just ->
+			{[], GtwQueue}
+	end,
     Basic = #'P_basic'{
         content_type = <<"k1apiSmsRequest">>,
         delivery_mode = 2,
         priority = 1,
         message_id = ReqID,
-		headers = [CC]
+		headers = Headers
     },
 	Channel = St#st.chan,
-    ok = rmql:basic_publish(Channel, ?SmsRequestQueue, Payload, Basic),
+    ok = rmql:basic_publish(Channel, RoutinKey, Payload, Basic),
 	true = ets:insert(?MODULE, #unconfirmed{id = St#st.next_id, from = From}),
 	{noreply, St#st{next_id = St#st.next_id + 1}};
 
@@ -116,7 +141,6 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 %% Sent steps
 %% ===================================================================
-
 
 send(authenticate, Req) ->
 	CustID = Req#send_req.customer_id,
@@ -259,10 +283,21 @@ send(build_dto, Req) ->
 		dest_addrs = {regular, Destinations},
 		message_ids = MessageIDs
 	},
-	{ok, Bin} = adto:encode(DTO),
-	ok = gen_server:call(?MODULE, {publish, Bin, ReqID, GtwID}),
-	soap_srv_pdu_logger:log(DTO),
-	{ok, [{id,ReqID}, {rejected, Req#send_req.rejected}]}.
+	{ok, Payload} = adto:encode(DTO),
+	case is_deffered(Req#send_req.def_date) of
+		{true, Timestamp} ->
+			lager:info("defDate: ~p, timestamp: ~p", [Req#send_req.def_date, Timestamp]),
+			soap_srv_defer:defer(ReqID, Timestamp, {publish_just, Payload, ReqID, GtwID}),
+			ok = publish({publish_kelly, Payload, ReqID, GtwID}),
+			soap_srv_pdu_logger:log(DTO),
+			{ok, [{id,ReqID}, {rejected, Req#send_req.rejected}]};
+		false ->
+			ok = publish({publish, Payload, ReqID, GtwID}),
+			soap_srv_pdu_logger:log(DTO),
+			{ok, [{id,ReqID}, {rejected, Req#send_req.rejected}]};
+		{error, invalid} ->
+			{ok, [{result, ?invalidDefDateFormatError}]}
+	end.
 
 %% ===================================================================
 %% Public Confirms
@@ -454,13 +489,14 @@ is_deffered(undefined) -> false;
 is_deffered(DefDateList) when is_list(DefDateList) ->
 	try [list_to_integer(binary_to_list(D)) || D <- DefDateList] of
 		[Month, Day, Year, Hour, Min] ->
-			{true, 10000}
+			DateTime = {{Year, Month, Day}, {Hour, Min, 0}},
+			{true, soap_srv_datetime:datetime_to_timestamp(DateTime)}
 	catch
-		_:_ -> false
+		_:_ -> {error, invalid}
 	end;
 is_deffered(DefDate) when is_binary(DefDate) ->
 	case binary:split(DefDate, [<<"/">>, <<" ">>, <<":">>], [global]) of
 		[_M, _D, _Y, _H, _Min] = DefDateList ->
 			is_deffered(DefDateList);
-		_ -> false
+		_ -> {error, invalid}
 	end.
