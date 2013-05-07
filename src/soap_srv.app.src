@@ -11,7 +11,8 @@
 		gsm0338,
 		cowboy,
 		libuuid,
-		gproc
+		gproc,
+		inets
 	]},
 	{mod, {soap_srv_app, []}},
 	{env, []}

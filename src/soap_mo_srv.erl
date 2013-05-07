@@ -1,41 +1,149 @@
 -module(soap_mo_srv).
 
-%% -export([
-%% 	deliver_incoming_sms/1
-%% ]).
+-behaviour(gen_server).
+
+%% API
+-export([
+	start_link/0
+]).
+
+%% GenServer Callback Exports
+-export([
+	init/1,
+	handle_cast/2,
+	handle_call/3,
+	handle_info/2,
+	code_change/3,
+	terminate/2
+]).
 
 -include_lib("alley_dto/include/adto.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
-%% deliver_incoming_sms(IncomingSms = #inbound_sms{}) ->
-%% 	#inbound_sms{
-%% 		notify_url = Url,
-%% 		date_time = _DateTime,
-%% 		dest_addr = DestAddr,
-%% 		message_id = _MessId,
-%% 		message = Message,
-%% 		sender_addr = SenderAddr,
-%% 		callback = _CallBack
-%% 	} = IncomingSms,
-%% 	Headers = [
-%% 		{"Content-Type", "text/html"}
-%% 	],
-%% 	Queries = [
-%% 		{'Sender', SenderAddr},
-%% 		{'Destination', DestAddr},
-%% 		{'MessageType', 1},
-%% 		{'MessageText', Message},
-%% 		{'MessageTextRaw', bin_to_hex(Message)},
-%% 		{'CurrentPart', 0},
-%% 		{'NumberOfParts', 0}
-%% 	],
-%%     FullUrl = binary_to_list(Url) ++  query_string(Queries),
-%% 	lager:debug("FullUrl: ~p", [FullUrl]),
-%% 	lager:debug("FullUrl flatten: ~p", [lists:flatten(FullUrl)]),
-%%     case httpc:request(get, {FullUrl, Headers}, [], []) of
-%%         {ok, {{_, 200, _}, _ResHeaders, _ResBody}} -> {ok, ok};
-%%         Error = {error, _} -> lager:debug("~p", [Error]),Error;
-%% 		Error -> lager:debug("~p", [Error]),{error, Error}
-%%     end.
+-define(IncomingQueue, <<"pmm.k1api.incoming">>).
+
+-record(state, {
+	chan :: pid()
+}).
+
+-record(req, {
+	chan :: pid(),
+	payload :: binary(),
+	reply_to :: binary(),
+	message_id :: binary(),
+	ct :: binary(),
+	dto :: #k1api_sms_notification_request_dto{}
+}).
+
+%% ===================================================================
+%% API Functions
+%% ===================================================================
+
+-spec start_link() -> {ok, pid()}.
+start_link() ->
+	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+%% ===================================================================
+%% GenServer Callback Functions
+%% ===================================================================
+
+init([]) ->
+	{ok, Connection} = rmql:connection_start(),
+	{ok, Chan} = rmql:channel_open(Connection),
+	link(Chan),
+	ok = rmql:queue_declare(Chan, ?IncomingQueue, []),
+	NoAck = true,
+	{ok, _ConsumerTag} = rmql:basic_consume(Chan, ?IncomingQueue, NoAck),
+	{ok, #state{chan = Chan}}.
+
+handle_call(_Request, _From, State) ->
+    {stop, unexpected_call, State}.
+
+handle_cast(_Msg, State) ->
+    {stop, unexpected_cast, State}.
+
+handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
+	#'P_basic'{
+		reply_to = ReplyTo,
+		message_id = MsgID,
+		content_type = ContentType
+	} = AMQPMsg#amqp_msg.props,
+	Req = #req{
+		reply_to = ReplyTo,
+		message_id = MsgID,
+		ct = ContentType,
+		payload = AMQPMsg#amqp_msg.payload,
+		chan = St#state.chan
+	},
+	process(decode, Req),
+	{noreply, St};
+
+handle_info(_Info, State) ->
+    {stop, unexpected_info, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%% ===================================================================
+%% Internal Functions
+%% ===================================================================
+
+process(decode, Req = #req{ct = <<"OutgoingBatch">>}) ->
+	lager:info(decode),
+	case adto:decode(#k1api_sms_notification_request_dto{}, Req#req.payload) of
+		{ok, DTO} ->
+			process(deliver, Req#req{dto = DTO});
+		Error ->
+			lager:warning("payload ~p unpack error ~p", [Req#req.payload, Error])
+	end;
+process(decode, Req) ->
+	lager:warning("Got unexpected ct: ~p", [Req#req.ct]);
+
+process(deliver, Req) ->
+	lager:info("deliver"),
+	DTO = Req#req.dto,
+	lager:info("Got InboundSms: ~p", [DTO]),
+	#k1api_sms_notification_request_dto{
+		dest_addr = DestAddr,
+		message = Message,
+		sender_addr = SenderAddr,
+		notify_url  = Url
+	} = DTO,
+
+	Queries = [
+		{'Sender', SenderAddr#addr.addr},
+		{'Destination', DestAddr#addr.addr},
+		{'MessageType', 1},
+		{'MessageText', Message},
+		{'MessageTextRaw', bin_to_hex(Message)},
+		{'CurrentPart', 0},
+		{'NumberOfParts', 0}
+	],
+    FullUrl = binary_to_list(Url) ++  query_string(Queries),
+	lager:info("FullUrl: ~p", [FullUrl]),
+	lager:info("FullUrl flatten: ~p", [lists:flatten(FullUrl)]),
+    case httpc:request(get, {FullUrl, []}, [], []) of
+        {ok, {{_, 200, _}, _ResHeaders, _ResBody}} ->
+			process(ack, Req);
+		Error ->
+			lager:debug("~p", [Error])
+    end;
+
+process(ack, Req) ->
+	lager:info("ack"),
+	ReqDTO = Req#req.dto,
+	ReqMsgID = ReqDTO#k1api_sms_notification_request_dto.message_id,
+	DTO = #funnel_ack_dto{id = ReqMsgID},
+    {ok, Encoded} =	adto:encode(DTO),
+    RespProps = #'P_basic'{
+        content_type   = <<"BatchAck">>,
+        correlation_id = Req#req.message_id,
+        message_id     = uuid:unparse(uuid:generate_time())
+    },
+    rmql:basic_publish(Req#req.chan, Req#req.reply_to, Encoded, RespProps).
 
 query_string([Head|Tail]) ->
     "?" ++ [make_query(Head) | [["&", make_query(Elem)] || Elem <- Tail]];

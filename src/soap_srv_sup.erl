@@ -37,7 +37,9 @@ init([]) ->
 
 		?CHILD(soap_mt_srv, worker),
 
-		?CHILD(soap_srv_defer, worker)
+		?CHILD(soap_srv_defer, worker),
+
+		?CHILD(soap_mo_srv, worker)
 
 	]} }.
 
