@@ -2,6 +2,8 @@
 # -*- tab-width:4;indent-tabs-mode:nil -*-
 # ex: ts=4 sw=4 et
 
+ENTOP_NODE_ARG="-name entop@127.0.0.1"
+
 RUNNER_SCRIPT_DIR=$(cd ${0%/*} && pwd)
 
 CALLER_DIR=$PWD
@@ -223,7 +225,7 @@ case "$1" in
         $ERTS_PATH/escript $RUNNER_BASE_DIR/bin/install_upgrade.escript $node_name $erlang_cookie $2
         ;;
 
-    console|console_clean|console_boot)
+    console|console_clean|console_boot|develop)
         # .boot file typically just $SCRIPT (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
@@ -235,13 +237,16 @@ case "$1" in
                 BOOTFILE="$1"
                 shift
                 ;;
+            develop)
+                BOOTFILE=develop
+                DEV_HOOK="-run soap_srv_app set_debug_level" ;;
         esac
         # Setup beam-required vars
         ROOTDIR=$RUNNER_BASE_DIR
         BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
         EMU=beam
         PROGNAME=`echo $0 | sed 's/.*\\///'`
-        CMD="$BINDIR/erlexec -boot $RUNNER_BASE_DIR/releases/$APP_VSN/$BOOTFILE -mode embedded -config $CONFIG_PATH -args_file $VMARGS_PATH"
+        CMD="$BINDIR/erlexec -boot $RUNNER_BASE_DIR/releases/$APP_VSN/$BOOTFILE -mode embedded -config $CONFIG_PATH -args_file $VMARGS_PATH $DEV_HOOK"
         export EMU
         export ROOTDIR
         export BINDIR
@@ -283,8 +288,22 @@ case "$1" in
         # Start the VM
         exec $CMD -- ${1+"$@"}
         ;;
+    top)
+        # Make sure a node IS running
+        RES=`$NODETOOL ping`
+        if [ "$RES" != "pong" ]; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+        APP_NODE=`grep -e '-[s]*name' $RUNNER_BASE_DIR/releases/$APP_VSN/vm.args | awk '{print $2}'`
+        echo app node $APP_NODE
+        $ERTS_PATH/erl -noinput -hidden +A 20 +Bc -eval "entop:start('${APP_NODE}')" $ENTOP_NODE_ARG $COOKIE_ARG $@
+        ;;
+
     *)
-        echo "Usage: $SCRIPT {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade}"
+        echo "Usage: $SCRIPT {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|develop|console_clean|console_boot <file>|attach|remote_console|upgrade}"
         exit 1
         ;;
 esac

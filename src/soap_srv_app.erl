@@ -9,6 +9,9 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+%% API
+-export([set_debug_level/0]).
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
@@ -21,3 +24,10 @@ start(_StartType, _StartArgs) ->
 
 stop(_State) ->
     ok.
+
+%% ===================================================================
+%% API
+%% ===================================================================
+
+set_debug_level() ->
+	lager:set_loglevel(lager_console_backend, debug).
