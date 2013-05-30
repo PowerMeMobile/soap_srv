@@ -23,7 +23,7 @@
 
 -include_lib("kernel/include/file.hrl").
 
--define(fileOpts, [write, raw, binary, append]).
+-define(fileOpts, [write, raw]).
 -define(midnightCheckInterval, 5000).
 
 -type log_level() :: debug | info | none.
@@ -37,6 +37,14 @@
 	tref		:: reference(),
 	max_size	:: pos_integer(),
 	log_level	:: log_level()
+}).
+
+-record(log, {
+	resp_code :: non_neg_integer(),
+	resp_headers :: list(),
+	resp_body :: binary(),
+	req :: cowboy_req:req(),
+	req_body :: binary()
 }).
 
 %% ===================================================================
@@ -59,10 +67,16 @@ set_loglevel(LogLevel) when
 %% ===================================================================
 
 -spec log(	non_neg_integer(), list(), binary(),
-			cowboy_req:req(), binary()) -> cowboy_req:req().
+			cowboy_req:req(), binary()) -> ok.
 log(RespCode, RespHeaders, RespBody, Req, ReqBody) ->
-	gen_server:cast(?MODULE,
-		{log, {RespCode, RespHeaders, RespBody, Req, ReqBody}}).
+	LogTask = #log{
+		resp_code = RespCode,
+		resp_headers = RespHeaders,
+		resp_body = RespBody,
+		req = Req,
+		req_body = ReqBody
+	},
+	gen_server:call(?MODULE, LogTask).
 
 %% ===================================================================
 %% GenServer Callbacks
@@ -75,6 +89,13 @@ init([]) ->
 	?MODULE:set_loglevel(LogLevel),
 	lager:info("http_logger: started"),
 	{ok, #st{log_level = none, max_size = LogSize}}.
+
+%% logging callbacks
+handle_call(#log{}, _From, #st{log_level = none} = St) ->
+	{reply, ok, St};
+handle_call(LogData = #log{}, _From, St) ->
+	St1 = write_log_msg(fmt_data(LogData, St#st.log_level), ensure_actual_date(St)),
+	{reply, ok, St1};
 
 handle_call(_Request, _From, State) ->
     {stop, unexpected_call, State}.
@@ -104,13 +125,6 @@ handle_cast({set_loglevel, LogLevel}, #st{log_level = none} = St) ->
 %%% change loglevel
 handle_cast({set_loglevel, LogLevel}, St) ->
 	{noreply, St#st{log_level = LogLevel}};
-
-%% logging callbacks
-handle_cast({log, _Data}, #st{log_level = none} = St) ->
-	{noreply, St};
-handle_cast({log, Data}, St) ->
-	St1 = write_log_msg(fmt_data(Data, St#st.log_level), ensure_actual_date(St)),
-	{noreply, St1};
 
 handle_cast(_Msg, State) ->
     {stop, unexpected_cast, State}.
@@ -202,19 +216,20 @@ fmt_time({H, M, S}) ->
 %% Format data
 %% ===================================================================
 
--spec fmt_data(tuple(), log_level()) -> binary().
-fmt_data({RespCode, _RespHeaders, RespBody, Req, <<>>}, debug) ->
-	ApacheFmt = fmt_apache_log(RespCode, RespBody, Req),
+-spec fmt_data(#log{}, log_level()) -> binary().
+fmt_data(LD = #log{req_body = <<>>}, debug) ->
+	ApacheFmt = fmt_apache_log(LD),
 	io_lib:format("~sResponse body:~n~s~n",
-		[ApacheFmt, RespBody]);
-fmt_data({RespCode, _RespHeaders, RespBody, Req, ReqBody}, debug) ->
-	ApacheFmt = fmt_apache_log(RespCode, RespBody, Req),
+		[ApacheFmt, LD#log.resp_body]);
+fmt_data(LD = #log{}, debug) ->
+	ApacheFmt = fmt_apache_log(LD),
 	io_lib:format("~sRequest body:~n~s~nResponse body:~n~s~n",
-		[ApacheFmt, ReqBody, RespBody]);
-fmt_data({RespCode, _RespHeaders, RespBody, Req, _ReqBody}, info) ->
-	fmt_apache_log(RespCode, RespBody, Req).
+		[ApacheFmt, LD#log.req_body, LD#log.resp_body]);
+fmt_data(LD = #log{}, info) ->
+	fmt_apache_log(LD).
 
-fmt_apache_log(RespCode, RespBody, Req) ->
+fmt_apache_log(LD = #log{}) ->
+	Req = LD#log.req,
 	%% compose client ip addr
 	{{IP0,IP1,IP2,IP3}, Req} = cowboy_req:peer_addr(Req),
 	ClientIP = io_lib:format("~p.~p.~p.~p",[IP0,IP1,IP2,IP3]),
@@ -225,7 +240,7 @@ fmt_apache_log(RespCode, RespBody, Req) ->
 	LogTime = io_lib:format("~2..0w/~s/~w:~2..0w:~2..0w:~2..0w -0000", [D,Month,Y,H,Min,S]),
 
 	%% compose response size
-	RespSize = size(RespBody),
+	RespSize = size(LD#log.resp_body),
 
 	%% compose ReqLine
 	{Method, Req} = cowboy_req:method(Req),
@@ -243,4 +258,4 @@ fmt_apache_log(RespCode, RespBody, Req) ->
 
 	%% final apache like log line
 	io_lib:format("~s - - [~s] \"~s\" ~p ~p ~p ~p~n",
-		[ClientIP, LogTime, ReqLine, RespCode, RespSize, "-", UserAgent]).
+		[ClientIP, LogTime, ReqLine, LD#log.resp_code, RespSize, "-", UserAgent]).

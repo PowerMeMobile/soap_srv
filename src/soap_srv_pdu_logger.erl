@@ -6,6 +6,7 @@
 -export([
 	start_link/2,
 	set_loglevel/2,
+	set_loglevel/3,
 	log/1
 ]).
 
@@ -22,7 +23,7 @@
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("kernel/include/file.hrl").
 
--define(fileOpts, [write, raw, binary, append]).
+-define(fileOpts, [write, raw]).
 -define(midnightCheckInterval, 5000).
 
 -type log_level() :: debug | none.
@@ -30,7 +31,7 @@
 -record(st, {
 	customer_id :: binary(),
 	user_id		:: binary(),
-	fd			:: pid(),
+	fd			:: tuple(),
 	file_name	:: string(),
 	date		:: calendar:date(),
 	first_entry :: calendar:date(),
@@ -54,6 +55,18 @@ set_loglevel(Pid, LogLevel) when
 				LogLevel =:= debug ->
 	gen_server:cast(Pid, {set_loglevel, LogLevel}).
 
+-spec set_loglevel(binary(), binary(), log_level()) ->
+	ok | logger_not_running.
+set_loglevel(CustomerID, UserID, LogLevel) when
+				LogLevel =:= none orelse
+				LogLevel =:= debug ->
+	case gproc:lookup_local_name({CustomerID, UserID}) of
+		undefined ->
+			{error, logger_not_running};
+		Pid ->
+			set_loglevel(Pid, LogLevel)
+	end.
+
 -spec log(#just_sms_request_dto{}) -> ok.
 log(SmsReq) ->
 	CustomerID = SmsReq#just_sms_request_dto.customer_id,
@@ -66,7 +79,7 @@ log(SmsReq) ->
 			{ok, Pid};
 		Pid -> {ok, Pid}
 	end,
-	gen_server:cast(LoggerPid, {log, SmsReq}).
+	gen_server:call(LoggerPid, SmsReq).
 
 %% ===================================================================
 %% GenServer Callbacks
@@ -91,6 +104,12 @@ init({CustomerID, UserID}) ->
 			ignore
 	end.
 
+%% logging callbacks
+handle_call(#just_sms_request_dto{}, _From, #st{log_level = none} = St) ->
+	{reply, ok, St};
+handle_call(SmsReq = #just_sms_request_dto{}, _From, St) ->
+	St1 = write_log_msg(fmt_data(SmsReq), ensure_actual_date(St)),
+	{reply, ok, St1};
 handle_call(_Request, _From, St) ->
     {stop, unexpected_call, St}.
 
@@ -121,13 +140,6 @@ handle_cast({set_loglevel, LogLevel}, #st{log_level = none} = St) ->
 %%% change loglevel
 handle_cast({set_loglevel, LogLevel}, St) ->
 	{noreply, St#st{log_level = LogLevel}};
-
-%% logging callbacks
-handle_cast({log, _SmsReq}, #st{log_level = none} = St) ->
-	{noreply, St};
-handle_cast({log, SmsReq}, St) ->
-	St1 = write_log_msg(fmt_data(SmsReq), ensure_actual_date(St)),
-	{noreply, St1};
 
 handle_cast(_Msg, St) ->
     {stop, unexpected_cast, St}.
