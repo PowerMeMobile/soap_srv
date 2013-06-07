@@ -92,7 +92,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% ===================================================================
 
 process(decode, Req = #req{ct = <<"OutgoingBatch">>}) ->
-	lager:info(decode),
 	case adto:decode(#k1api_sms_notification_request_dto{}, Req#req.payload) of
 		{ok, DTO} ->
 			process(deliver, Req#req{dto = DTO});
@@ -103,7 +102,6 @@ process(decode, Req) ->
 	lager:warning("Got unexpected ct: ~p", [Req#req.ct]);
 
 process(deliver, Req) ->
-	lager:info("deliver"),
 	DTO = Req#req.dto,
 	lager:info("Got InboundSms: ~p", [DTO]),
 	#k1api_sms_notification_request_dto{
@@ -123,13 +121,27 @@ process(deliver, Req) ->
 		{'NumberOfParts', 0}
 	],
     FullUrl = binary_to_list(Url) ++  query_string(Queries),
-	lager:info("FullUrl: ~p", [FullUrl]),
-	lager:info("FullUrl flatten: ~p", [lists:flatten(FullUrl)]),
-    case httpc:request(get, {FullUrl, []}, [], []) of
-        {ok, {{_, 200, _}, _ResHeaders, _ResBody}} ->
+	FlatReqURL = lists:flatten(FullUrl),
+    case httpc:request(get, {FullUrl, []}, [{timeout, 10000}], []) of
+        {ok, {{HTTPVer, 200, ReasonPhrase}, RespHeaders, RespBody}} ->
+			lager:debug("Delivered: ~p", [FlatReqURL]),
+			soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, 200, ReasonPhrase, RespHeaders, RespBody),
 			process(ack, Req);
-		Error ->
-			lager:debug("~p", [Error])
+		{ok, {{HTTPVer, RespCode, ReasonPhrase}, RespHeaders, RespBody}} ->
+			lager:debug("Srv respond ~p ~p", [RespCode, ReasonPhrase]),
+			soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, RespCode, ReasonPhrase, RespHeaders, RespBody),
+			ok;
+		{error, {connect_failed, Reason}} ->
+			lager:debug("Connect failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+			soap_srv_http_out_logger:log(FlatReqURL, connect_failed, Reason),
+			ok;
+		{error, {send_failed, Reason}} ->
+			lager:debug("Send failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+			soap_srv_http_out_logger:log(FlatReqURL, send_failed, Reason),
+			ok;
+		{error, Reason} ->
+			lager:debug("Unexpected error:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+			soap_srv_http_out_logger:log(FlatReqURL, unexpected, Reason)
     end;
 
 process(ack, Req) ->

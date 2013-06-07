@@ -4,7 +4,6 @@
 
 %% TODO
 %% Add proper response msgs with codes
-%% add support for defDate MM/DD/YYYY HH:MM
 %% {{badmatch,{error,socket_closed_remotely}} on large sendSmsReq (2000 recipients)
 %% soap:fault on 500 error
 %% check for undefined mandatory parameters
@@ -160,7 +159,7 @@ onrequest_hook(Req) ->
 		cowboy_req:req().
 onresponse_hook(RespCode, RespHeaders, RespBody, Req) ->
 	ReqBody = get_body(),
-	soap_srv_http_logger:log(RespCode, RespHeaders, RespBody,
+	soap_srv_http_in_logger:log(RespCode, RespHeaders, RespBody,
 								Req, ReqBody),
 	{ok, Req2} =
 		cowboy_req:reply(RespCode, RespHeaders, RespBody, Req),

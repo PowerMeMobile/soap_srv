@@ -29,7 +29,9 @@ init([]) ->
 			{soap_srv_plogger_sup, start_link, []},
 			permanent, infinity, supervisor, [soap_srv_plogger_sup]},
 
-		?CHILD(soap_srv_http_logger, worker),
+		?CHILD(soap_srv_http_in_logger, worker),
+
+		?CHILD(soap_srv_http_out_logger, worker),
 
 		?CHILD(soap_auth_cache, worker),
 

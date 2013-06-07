@@ -1,4 +1,4 @@
--module(soap_srv_http_logger).
+-module(soap_srv_http_out_logger).
 
 -behaviour(gen_server).
 
@@ -9,7 +9,9 @@
 ]).
 
 %% Cowboy onresponse hook callback
--export([log/5]).
+-export([
+	log/3, log/6
+]).
 
 %% GenServer Callbacks
 -export([
@@ -29,7 +31,7 @@
 -type log_level() :: debug | info | none.
 
 -record(st, {
-	fd			:: pid(),
+	fd			:: term(),
 	file_name	:: string(),
 	date		:: calendar:date(),
 	first_entry :: calendar:date(),
@@ -62,21 +64,41 @@ set_loglevel(LogLevel) when
 				LogLevel =:= debug ->
 	gen_server:cast(?MODULE, {set_loglevel, LogLevel}).
 
-%% ===================================================================
-%% Cowboy onresponse hook callback
-%% ===================================================================
+-type error_type() ::
+	connect_failed |
+	send_failed |
+	unexpected.
+-spec log(RequestURL :: string(), Type :: error_type(), Reason :: term()) -> ok.
+log(ReqURL, Type, Reason) when
+			is_atom(Type) andalso
+			is_list(ReqURL) ->
+	LogTime = get_io_list_now(),
+	Msg = io_lib:format("[~s] ~s -> ~w~n", [LogTime, ReqURL, Reason]),
+	gen_server:call(?MODULE, {log, Msg}),
+	ok.
 
--spec log(	non_neg_integer(), list(), binary(),
-			cowboy_req:req(), binary()) -> ok.
-log(RespCode, RespHeaders, RespBody, Req, ReqBody) ->
-	LogTask = #log{
-		resp_code = RespCode,
-		resp_headers = RespHeaders,
-		resp_body = RespBody,
-		req = Req,
-		req_body = ReqBody
-	},
-	gen_server:call(?MODULE, LogTask).
+get_io_list_now() ->
+	{{Y,M,D},{H,Min,S}} = calendar:universal_time(),
+	Month = httpd_util:month(M),
+	io_lib:format("~2..0w/~s/~w:~2..0w:~2..0w:~2..0w", [D,Month,Y,H,Min,S]).
+
+
+-type http_header_field() :: string().
+-type http_header_value() :: string().
+-type http_header() :: {http_header_field(), http_header_value()}.
+-type http_headers() :: [http_header()].
+-spec log(	RequestURL :: string(),
+			HTTPVer :: string(),
+			StatusCode :: integer(),
+			ReasonPhrase :: string(),
+			RespHeaders :: http_headers(),
+			RespBody :: string() ) -> ok.
+log(RequestURL, HTTPVer, StatusCode, ReasonPhrase, RespHeaders, RespBody) ->
+	LogTime = get_io_list_now(),
+	Msg = io_lib:format("[~s] ~s ->~n~s ~s ~s~n~p~n~p~n",
+			[LogTime, RequestURL, HTTPVer, StatusCode, ReasonPhrase, RespHeaders, RespBody]),
+	gen_server:call(?MODULE, {log, Msg}),
+	ok.
 
 %% ===================================================================
 %% GenServer Callbacks
@@ -87,14 +109,18 @@ init([]) ->
 	{ok, LogLevel} = application:get_env(http_log_level),
 	{ok, LogSize} = application:get_env(http_log_size),
 	?MODULE:set_loglevel(LogLevel),
-	lager:info("http_logger: started"),
+	lager:info("http_out_logger: started"),
 	{ok, #st{log_level = none, max_size = LogSize}}.
 
 %% logging callbacks
 handle_call(#log{}, _From, #st{log_level = none} = St) ->
 	{reply, ok, St};
-handle_call(LogData = #log{}, _From, St) ->
-	St1 = write_log_msg(fmt_data(LogData, St#st.log_level), ensure_actual_date(St)),
+
+%% handle_call(LogData = #log{}, _From, St) ->
+%% 	St1 = write_log_msg(fmt_data(LogData, St#st.log_level), ensure_actual_date(St)),
+%% 	{reply, ok, St1};
+handle_call({log, Msg}, _From, St) ->
+	St1 = write_log_msg(Msg, ensure_actual_date(St)),
 	{reply, ok, St1};
 
 handle_call(_Request, _From, State) ->
@@ -108,7 +134,7 @@ handle_cast({set_loglevel, LogLevel}, #st{log_level = LogLevel} = St) ->
 handle_cast({set_loglevel, none}, St) ->
 	close_and_rename_prev_file(St),
     erlang:cancel_timer(St#st.tref),
-	lager:info("http_logger: set loglevel to none"),
+	lager:info("http_out_logger: set loglevel to none"),
 	{noreply, St#st{log_level = none,
 					tref = undefined,
 					fd = undefined,
@@ -120,7 +146,7 @@ handle_cast({set_loglevel, none}, St) ->
 handle_cast({set_loglevel, LogLevel}, #st{log_level = none} = St) ->
     TRef = erlang:start_timer(?midnightCheckInterval, self(), midnight_check),
 	St2 = open_log_file(St#st{tref = TRef, log_level = LogLevel}),
-	lager:info("http_logger: set loglevel to ~p", [LogLevel]),
+	lager:info("http_out_logger: set loglevel to ~p", [LogLevel]),
 	{noreply, St2};
 %%% change loglevel
 handle_cast({set_loglevel, LogLevel}, St) ->
@@ -149,7 +175,7 @@ terminate(Reason, St) ->
         none -> ok;
         _    -> close_and_rename_prev_file(St)
     end,
-	lager:info("http_logger: terminated (~p)", [Reason]).
+	lager:info("http_out_logger: terminated (~p)", [Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -174,7 +200,7 @@ ensure_actual_date(St) ->
     case St#st.date of
         Date -> St;
         _ ->
-			lager:info("http_logger: date changed"),
+			lager:info("http_out_logger: date changed"),
 			close_and_rename_prev_file(St),
 			open_log_file(St)
     end.
@@ -204,58 +230,10 @@ new_file_name(Date, Time) ->
 	filename:join(log_dir(Date), fmt_time(Time) ++ "_present.log").
 
 log_dir(Date) ->
-	filename:join("./log/http", fmt_date(Date)).
+	filename:join("./log/http/out", fmt_date(Date)).
 
 fmt_date({Y, M, D}) ->
     lists:flatten(io_lib:format("~w-~2..0w-~2..0w", [Y, M, D])).
 
 fmt_time({H, M, S}) ->
     lists:flatten(io_lib:format("~2..0w~2..0w~2..0w", [H, M, S])).
-
-%% ===================================================================
-%% Format data
-%% ===================================================================
-
--spec fmt_data(#log{}, log_level()) -> binary().
-fmt_data(LD = #log{req_body = <<>>}, debug) ->
-	ApacheFmt = fmt_apache_log(LD),
-	io_lib:format("~sResponse body:~n~s~n",
-		[ApacheFmt, LD#log.resp_body]);
-fmt_data(LD = #log{}, debug) ->
-	ApacheFmt = fmt_apache_log(LD),
-	io_lib:format("~sRequest body:~n~s~nResponse body:~n~s~n",
-		[ApacheFmt, LD#log.req_body, LD#log.resp_body]);
-fmt_data(LD = #log{}, info) ->
-	fmt_apache_log(LD).
-
-fmt_apache_log(LD = #log{}) ->
-	Req = LD#log.req,
-	%% compose client ip addr
-	{{IP0,IP1,IP2,IP3}, Req} = cowboy_req:peer_addr(Req),
-	ClientIP = io_lib:format("~p.~p.~p.~p",[IP0,IP1,IP2,IP3]),
-
-	%% compose log time
-	{{Y,M,D},{H,Min,S}} = calendar:universal_time(),
-	Month = httpd_util:month(M),
-	LogTime = io_lib:format("~2..0w/~s/~w:~2..0w:~2..0w:~2..0w -0000", [D,Month,Y,H,Min,S]),
-
-	%% compose response size
-	RespSize = size(LD#log.resp_body),
-
-	%% compose ReqLine
-	{Method, Req} = cowboy_req:method(Req),
-	{{HttpV0,HttpV1}, Req} = cowboy_req:version(Req),
-	{Path, Req} = cowboy_req:path(Req),
-	Query =
-		case cowboy_req:qs(Req) of
-			{<<>>, Req} -> <<>>;
-			{QS, Req} -> "?" ++ QS
-		end,
-	ReqLine = io_lib:format("~s ~s~s HTTP/~p.~p",[Method, Path, Query, HttpV0, HttpV1]),
-
-	%% compose user-agent
-	{UserAgent, Req} = cowboy_req:header(<<"user-agent">>, Req, "-"),
-
-	%% final apache like log line
-	io_lib:format("~s - - [~s] \"~s\" ~p ~p ~p ~p~n",
-		[ClientIP, LogTime, ReqLine, LD#log.resp_code, RespSize, "-", UserAgent]).
