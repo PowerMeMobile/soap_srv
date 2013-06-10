@@ -139,7 +139,7 @@ code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
 
 %% ===================================================================
-%% Sent steps
+%% Send steps
 %% ===================================================================
 
 send(authenticate, Req) ->
@@ -226,7 +226,7 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orels
 	Customer = Req#send_req.customer,
 	NoRetry = Customer#k1api_auth_response_dto.no_retry,
 	DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
-	DC = list_to_integer(binary_to_list(Req#send_req.data_coding)),
+	_DC = list_to_integer(binary_to_list(Req#send_req.data_coding)),
 	ESMClass = list_to_integer(binary_to_list(Req#send_req.esm_class)),
 	ProtocolID = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
 	Params = lists:flatten([
