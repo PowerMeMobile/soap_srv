@@ -11,6 +11,8 @@
 
 -behaviour(cowboy_http_handler).
 
+-ignore_xref([{update_dispatch_rules, 0}]).
+
 %% API
 -export([
 	init/0,

@@ -9,7 +9,10 @@ get-deps:
 update-deps:
 	@./rebar update-deps
 
-compile: get-deps
+compile: get-deps compile-src
+	@./rebar skip_deps=true xref
+
+compile-src:
 	@./rebar compile
 
 generate: compile

@@ -6,7 +6,7 @@
 %% API
 -export([
 	init_mnesia/0,
-	next_id/1, next_id/2
+	next_id/2
 ]).
 
 -type customer_id() 	:: binary().
@@ -19,10 +19,6 @@
 %% ===================================================================
 %% API
 %% ===================================================================
-
--spec next_id(customer_id()) -> {ok, [integer()]}.
-next_id(CustomerID) ->
-	next_id(CustomerID, 1).
 
 -spec next_id(customer_id(), NumberOfIDs :: integer()) -> {ok, [integer()]}.
 next_id(CustomerID, NumberOfIDs) ->

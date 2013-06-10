@@ -2,6 +2,8 @@
 
 -behaviour(gen_server).
 
+-ignore_xref([{start_link, 0}]).
+
 %% API
 -export([
 	start_link/0,
@@ -47,7 +49,6 @@ init([]) ->
 	{ok, #st{}, ?checkInterval}.
 
 handle_call({defer, ReqID, TimeStamp, Req}, _From, St) ->
-	lager:info("got defer req: ts - ~p; req - ~p", [TimeStamp, Req]),
 	ok = dets:insert(?MODULE, {ReqID, TimeStamp, Req}),
 	{reply, ok, St, ?checkInterval};
 handle_call(_Request, _From, St) ->

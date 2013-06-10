@@ -5,12 +5,14 @@
 
 -behaviour(gen_server).
 
+-ignore_xref([{start_link, 0}]).
+
 %% API exports
 -export([
 	start_link/0,
 	store/4,
-	fetch/3,
-	delete/1
+	fetch/3
+	%% delete/1
 ]).
 
 %% gen_server exports
@@ -52,9 +54,9 @@ fetch(CustomerID, UserID, Password) ->
 	},
     gen_server:call(?MODULE, {fetch, Key}, infinity).
 
--spec delete(any()) -> ok.
-delete(Key) ->
-    gen_server:call(?MODULE, {delete, Key}, infinity).
+%% -spec delete(any()) -> ok.
+%% delete(Key) ->
+%%     gen_server:call(?MODULE, {delete, Key}, infinity).
 
 %% ===================================================================
 %% GenServer Callback
