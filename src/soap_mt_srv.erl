@@ -266,11 +266,12 @@ send(build_dto, Req) ->
 	{ok, NumberOfParts} = get_message_parts(NumberOfSymbols, Encoding),
 	Customer = Req#send_req.customer,
 	CustomerID = Customer#k1api_auth_response_dto.uuid,
+	UserID = Req#send_req.user_name,
 	ReqID = uuid:unparse(uuid:generate_time()),
 	Destinations = Req#send_req.recipients,
 	NumberOfDests = length(Destinations),
 	GtwID = get_suitable_gtw(Req#send_req.customer, NumberOfDests),
-	MessageIDs = get_ids(CustomerID, NumberOfDests, NumberOfParts),
+	MessageIDs = get_ids(CustomerID, UserID, NumberOfDests, NumberOfParts),
 	DTO = #just_sms_request_dto{
 		id = ReqID,
 		gateway_id = GtwID,
@@ -364,8 +365,8 @@ get_suitable_gtw(DefaultProviderID, _Networks, Providers, _NumberOfDests) ->
 		end, Providers),
 	Provider#provider_dto.gateway.
 
-get_ids(CustomerID, NumberOfDests, Parts) ->
-	{ok, IDs} = soap_db:next_id(CustomerID, NumberOfDests * Parts),
+get_ids(CustomerID, UserID, NumberOfDests, Parts) ->
+	{ok, IDs} = soap_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
 	{DTOIDs, []} =
 		lists:foldl(
 		  fun	(ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->

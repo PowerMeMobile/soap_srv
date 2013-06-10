@@ -1,33 +1,33 @@
 -module(soap_db).
 
-%% TODO
-%% next_id(CustomerID, UserID).
-
 %% API
 -export([
 	init_mnesia/0,
-	next_id/2
+	next_id/3
 ]).
 
--type customer_id() 	:: binary().
+-type customer_id()	:: binary().
+-type user_id() 	:: binary().
+-type key() 		:: {customer_id(), user_id()}.
 
 -record(customer_next_message_id, {
-	customer_id 		:: customer_id(),
-	next_id 			:: integer()
+	cust_user_id	:: key(),
+	next_seq_id		:: integer()
 }).
 
 %% ===================================================================
 %% API
 %% ===================================================================
 
--spec next_id(customer_id(), NumberOfIDs :: integer()) -> {ok, [integer()]}.
-next_id(CustomerID, NumberOfIDs) ->
+-spec next_id(customer_id(), user_id(), integer()) -> {ok, [integer()]}.
+next_id(CustomerID, UserID, NumberOfIDs) ->
+	Key = {CustomerID, UserID},
 	{atomic, IDs} = mnesia:transaction(fun() ->
-		case mnesia:read(customer_next_message_id, CustomerID, write) of
+		case mnesia:read(customer_next_message_id, Key, write) of
 			[] ->
-				update_counter(1, NumberOfIDs, CustomerID);
-			[#customer_next_message_id{next_id = NextID}] ->
-				update_counter(NextID, NumberOfIDs, CustomerID)
+				update_counter(1, NumberOfIDs, Key);
+			[#customer_next_message_id{next_seq_id = NextID}] ->
+				update_counter(NextID, NumberOfIDs, Key)
 		end
 	end),
 	{ok, IDs}.
@@ -35,7 +35,6 @@ next_id(CustomerID, NumberOfIDs) ->
 -spec init_mnesia() -> ok.
 init_mnesia() ->
 	Nodes = [node()],
-	%% mnesia:set_debug_level(verbose),
 	mnesia:stop(),
 	lager:info("db: creating mnesia schema on: ~p...", [Nodes]),
 	ok = case mnesia:create_schema(Nodes) of
@@ -65,7 +64,7 @@ init_mnesia() ->
 %% Local Functions
 %% ===================================================================
 
-update_counter(NextID, NumberOfIDs, CustomerID) ->
+update_counter(NextID, NumberOfIDs, Key) ->
 	Max = 999999999,
 	{From, To, NewNextID} =
 	case (NextID + NumberOfIDs - 1) > Max of
@@ -73,7 +72,7 @@ update_counter(NextID, NumberOfIDs, CustomerID) ->
 		false -> {NextID, NextID + NumberOfIDs - 1, NextID + NumberOfIDs}
 	end,
 	IDs = lists:seq(From, To),
-	mnesia:write(#customer_next_message_id{customer_id = CustomerID, next_id = NewNextID}),
+	mnesia:write(#customer_next_message_id{cust_user_id = Key, next_seq_id = NewNextID}),
 	IDs.
 
 ensure_table(TableName, RecordInfo) ->
