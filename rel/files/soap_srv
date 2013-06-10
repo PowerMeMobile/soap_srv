@@ -239,7 +239,7 @@ case "$1" in
                 ;;
             develop)
                 BOOTFILE=develop
-                DEV_HOOK="-run soap_srv_app set_debug_level" ;;
+                DEV_HOOK="-environment develop" ;;
         esac
         # Setup beam-required vars
         ROOTDIR=$RUNNER_BASE_DIR

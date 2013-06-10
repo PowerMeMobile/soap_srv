@@ -1,25 +1,25 @@
 -module(soap_srv_app).
 
-%% TODO
-%% Move all start functions to sup with gen_server to make
-%% start order obvious
-
 -behaviour(application).
 
 %% Application callbacks
 -export([start/2, stop/1]).
 
 %% API
--export([set_debug_level/0]).
+-export([
+	get_env/0
+]).
 
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+	set_lager_loglevel(),
 	soap_db:init_mnesia(),
     {ok, SupervisorPid} = soap_srv_sup:start_link(),
 	soap_srv_protocol:init(),
+	soap_srv_test_echo_handler:init(),
 	{ok, SupervisorPid}.
 
 stop(_State) ->
@@ -29,5 +29,21 @@ stop(_State) ->
 %% API
 %% ===================================================================
 
-set_debug_level() ->
-	lager:set_loglevel(lager_console_backend, debug).
+% uses erl -environment develop for dev mode
+% see soap_srv start scrip
+-spec get_env() -> production | develop.
+get_env() ->
+	case init:get_argument(environment) of
+		{ok, [["develop"]]} -> develop;
+		_ -> production
+	end.
+
+%% ===================================================================
+%% Internals
+%% ===================================================================
+
+set_lager_loglevel() ->
+	case get_env() of
+		develop -> lager:set_loglevel(lager_console_backend, debug);
+		_ -> ok
+	end.

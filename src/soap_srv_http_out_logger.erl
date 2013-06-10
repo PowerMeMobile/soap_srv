@@ -95,7 +95,7 @@ get_io_list_now() ->
 			RespBody :: string() ) -> ok.
 log(RequestURL, HTTPVer, StatusCode, ReasonPhrase, RespHeaders, RespBody) ->
 	LogTime = get_io_list_now(),
-	Msg = io_lib:format("[~s] ~s ->~n~s ~s ~s~n~p~n~p~n",
+	Msg = io_lib:format("[~s] ~s ->~n~s ~p ~s~n~p~n~p~n",
 			[LogTime, RequestURL, HTTPVer, StatusCode, ReasonPhrase, RespHeaders, RespBody]),
 	gen_server:call(?MODULE, {log, Msg}),
 	ok.
