@@ -1,4 +1,4 @@
--module(soap_mt_srv).
+-module(soap_srv_mt).
 
 %% TODO
 %% Disable receipts in Kelly
@@ -148,7 +148,7 @@ send(authenticate, Req) ->
 	CustID = Req#send_req.customer_id,
 	UserName = Req#send_req.user_name,
 	Pass = Req#send_req.password,
-	case soap_auth_srv:authenticate(CustID, UserName, Pass) of
+	case soap_srv_auth:authenticate(CustID, UserName, Pass) of
 		{ok, Customer} ->
 			Req2 = Req#send_req{customer = Customer},
 			send(perform_src_addr, Req2);
@@ -158,7 +158,7 @@ send(authenticate, Req) ->
 
 send(perform_src_addr, Req) ->
 	Customer = Req#send_req.customer,
-	Originator = soap_utils:addr_to_dto(Req#send_req.originator),
+	Originator = soap_srv_utils:addr_to_dto(Req#send_req.originator),
 	AllowedSources = Customer#k1api_auth_response_dto.allowed_sources,
 	case lists:member(Originator, AllowedSources) of
 		true ->
@@ -366,7 +366,7 @@ get_suitable_gtw(DefaultProviderID, _Networks, Providers, _NumberOfDests) ->
 	Provider#provider_dto.gateway.
 
 get_ids(CustomerID, UserID, NumberOfDests, Parts) ->
-	{ok, IDs} = soap_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
+	{ok, IDs} = soap_srv_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
 	{DTOIDs, []} =
 		lists:foldl(
 		  fun	(ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->
@@ -419,7 +419,7 @@ get_allowed_destinations([], _Networks, Allowed, Rejected) ->
 get_allowed_destinations([Addr | Rest], Networks, Allowed, Rejected) ->
 	case is_addr_allowed(Addr, Networks) of
 		true ->
-			AddrDTO = soap_utils:addr_to_dto(Addr),
+			AddrDTO = soap_srv_utils:addr_to_dto(Addr),
 			get_allowed_destinations(Rest, Networks, [AddrDTO | Allowed], Rejected);
 		false -> get_allowed_destinations(Rest, Networks, Allowed, [Addr | Rejected])
 	end.

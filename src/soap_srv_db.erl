@@ -1,4 +1,4 @@
--module(soap_db).
+-module(soap_srv_db).
 
 %% API
 -export([

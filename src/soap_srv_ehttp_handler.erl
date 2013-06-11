@@ -1,4 +1,4 @@
--module(soap_ehttp_handler).
+-module(soap_srv_ehttp_handler).
 
 -behaviour(cowboy_http_handler).
 

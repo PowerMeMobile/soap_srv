@@ -127,7 +127,7 @@ dispatch_rules() ->
 	DispatchRaw =
 		[{'_', [
 			{?PATH ++ "/[...]",	?MODULE, []},
-			{'_', soap_ehttp_handler, []}]
+			{'_', soap_srv_ehttp_handler, []}]
 		}],
 	cowboy_router:compile(DispatchRaw).
 

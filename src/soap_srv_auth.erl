@@ -1,4 +1,4 @@
--module(soap_auth_srv).
+-module(soap_srv_auth).
 
 %% TODO
 %% Remove from cache RPC call to make cache consistent
@@ -76,10 +76,10 @@ handle_call({get_response, MesID}, From, St = #st{}) ->
 	Worker = #pworker{
 				id = MesID,
 				from = From,
-				timestamp = soap_utils:get_now()
+				timestamp = soap_srv_utils:get_now()
 			},
 	{ok, NRList, NWList} =
-		soap_utils:process_worker_request(Worker, RList, WList),
+		soap_srv_utils:process_worker_request(Worker, RList, WList),
 	{noreply, St#st{pending_workers = NWList, pending_responses = NRList}};
 
 handle_call(_Request, _From, St) ->
@@ -99,11 +99,11 @@ handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
 			lager:debug("AuthResponse was sucessfully decoded [id: ~p]", [CorrelationID]),
 			Response = #presponse{
 							id = CorrelationID,
-							timestamp = soap_utils:get_now(),
+							timestamp = soap_srv_utils:get_now(),
 							response = AuthResp
 						},
 			{ok, NRList, NWList} =
-				soap_utils:process_response(Response, ResponsesList, WorkersList),
+				soap_srv_utils:process_response(Response, ResponsesList, WorkersList),
 			{noreply, St#st{
 							pending_workers = NWList,
 							pending_responses = NRList}};
@@ -127,7 +127,7 @@ code_change(_OldVsn, St, _Extra) ->
 
 authenticate(check_cache, User) ->
 	{CustomerID, UserID, Password} = User,
-	case soap_auth_cache:fetch(CustomerID, UserID, Password) of
+	case soap_srv_auth_cache:fetch(CustomerID, UserID, Password) of
 		{ok, Customer} ->
 			{ok, Customer};
 		not_found ->
@@ -139,7 +139,7 @@ authenticate(request_backend, User) ->
 	{ok, RequestID} = request_backend_auth(CustomerID, UserID, Password),
 	try get_auth_response(RequestID) of
 		{ok, Customer} ->
-			ok = soap_auth_cache:store(CustomerID, UserID, Password, Customer),
+			ok = soap_srv_auth_cache:store(CustomerID, UserID, Password, Customer),
 			{ok, Customer}
 	catch
 		_:{timeout, _} -> {error, timeout}

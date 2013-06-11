@@ -80,5 +80,5 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 
 send({ID,_, Req}) ->
-	ok = soap_mt_srv:publish(Req),
+	ok = soap_srv_mt:publish(Req),
 	ok = dets:delete(?MODULE, ID).

@@ -1,4 +1,4 @@
--module(soap_utils).
+-module(soap_srv_utils).
 
 -export([
 	addr_to_dto/1,

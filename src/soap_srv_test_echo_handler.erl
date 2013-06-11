@@ -55,10 +55,10 @@ init({tcp, http}, Req, []) ->
 
 -spec handle(cowboy_req:req(), undefined) ->
 	{ok, cowboy_req:req(), undefined}.
-handle(Req, _State) ->
+handle(Req, State) ->
 	{ok, Req2} =
 		cowboy_req:reply(200, [], <<"OK">>, Req),
-	{ok, Req2}.
+	{ok, Req2, State}.
 
 -spec terminate(term(), cowboy_req:req(), undefined) -> ok.
 terminate(_Reason, _Req, _St) ->

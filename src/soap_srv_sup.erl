@@ -33,15 +33,15 @@ init([]) ->
 
 		?CHILD(soap_srv_http_out_logger, worker),
 
-		?CHILD(soap_auth_cache, worker),
+		?CHILD(soap_srv_auth_cache, worker),
 
-		?CHILD(soap_auth_srv, worker),
+		?CHILD(soap_srv_auth, worker),
 
-		?CHILD(soap_mt_srv, worker),
+		?CHILD(soap_srv_mt, worker),
 
 		?CHILD(soap_srv_defer, worker),
 
-		?CHILD(soap_mo_srv, worker)
+		?CHILD(soap_srv_mo, worker)
 
 	]} }.
 

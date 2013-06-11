@@ -1,7 +1,4 @@
--module(soap_auth_cache).
-
-%% TODO
-%% ttl?
+-module(soap_srv_auth_cache).
 
 -behaviour(gen_server).
 

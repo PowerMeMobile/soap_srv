@@ -22,7 +22,7 @@ handle(Req = #'SendSms'{}) ->
 		def_date =  Req#'SendSms'.defDate,
 		flash = Req#'SendSms'.flash
 	},
-	{ok, Result} = soap_mt_srv:send(Req2),
+	{ok, Result} = soap_srv_mt:send(Req2),
 	send_result(Result);
 
 handle(Req = #'HTTP_SendSms'{}) ->
@@ -38,7 +38,7 @@ handle(Req = #'HTTP_SendSms'{}) ->
 		def_date =  Req#'HTTP_SendSms'.defDate,
 		flash = Req#'HTTP_SendSms'.flash
 	},
-	{ok, Result} = soap_mt_srv:send(Req2),
+	{ok, Result} = soap_srv_mt:send(Req2),
 	send_result(Result);
 
 handle(Req = #'SendSms2'{}) ->
@@ -55,7 +55,7 @@ handle(Req = #'SendSms2'{}) ->
 		def_date =  Req#'SendSms2'.defDate,
 		flash = Req#'SendSms2'.flash
 	},
-	{ok, Result} = soap_mt_srv:send(Req2),
+	{ok, Result} = soap_srv_mt:send(Req2),
 	send_result(Result);
 
 handle(Req = #'SendServiceSms'{}) ->
@@ -72,7 +72,7 @@ handle(Req = #'SendServiceSms'{}) ->
 		def_date =  Req#'SendServiceSms'.defDate,
 		flash = Req#'SendServiceSms'.flash
 	},
-	{ok, Result} = soap_mt_srv:send(Req2),
+	{ok, Result} = soap_srv_mt:send(Req2),
 	send_result(Result);
 
 handle(Req = #'SendBinarySms'{}) ->
@@ -90,7 +90,7 @@ handle(Req = #'SendBinarySms'{}) ->
 		esm_class = Req#'SendBinarySms'.esm_class,
 		protocol_id = Req#'SendBinarySms'.'PID'
 	},
-	{ok, Result} = soap_mt_srv:send(Req2),
+	{ok, Result} = soap_srv_mt:send(Req2),
 	send_result(Result);
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
@@ -107,7 +107,7 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
 		esm_class = Req#'HTTP_SendBinarySms'.esm_class,
 		protocol_id = Req#'HTTP_SendBinarySms'.'PID'
 	},
-	{ok, Result} = soap_mt_srv:send(Req2),
+	{ok, Result} = soap_srv_mt:send(Req2),
 	send_result(Result);
 
 handle(Req = #'KeepAlive'{}) ->
@@ -150,7 +150,7 @@ send_result(Result) when is_list(Result) ->
 			'NetPoints' = <<"POSTPAID">> }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
-	case soap_auth_srv:authenticate(CustomerID, UserName, Password) of
+	case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
 		{ok, Customer} ->
 			Originators =
 				[Addr#addr.addr ||
@@ -168,7 +168,7 @@ handle_authenticate(CustomerID, UserName, Password) ->
 	end.
 
 handle_keep_alive(CustomerID, UserName, Password) ->
-	case soap_auth_srv:authenticate(CustomerID, UserName, Password) of
+	case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
 		{ok, _Customer} ->
 			{ok, #'CommonResult'{'Result' = <<"OK">>}};
 		{error, timeout} ->

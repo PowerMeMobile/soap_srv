@@ -1,4 +1,4 @@
--module(soap_mo_srv).
+-module(soap_srv_mo).
 
 -behaviour(gen_server).
 
