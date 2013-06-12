@@ -127,7 +127,7 @@ dispatch_rules() ->
 	DispatchRaw =
 		[{'_', [
 			{?PATH ++ "/[...]",	?MODULE, []},
-			{'_', soap_srv_ehttp_handler, []}]
+			{'_', ?MODULE, error}]
 		}],
 	cowboy_router:compile(DispatchRaw).
 
@@ -177,11 +177,19 @@ clean_body() -> put(req_body, undefined).
 %% Cowboy callbacks
 %% ===================================================================
 
--spec init({tcp, http}, cowboy_req:req(), []) -> {ok, cowboy_req:req(), #st{}}.
+-spec init({tcp, http}, cowboy_req:req(), [] | error) ->
+	{ok, cowboy_req:req(), #st{} | error}.
 init({tcp, http}, Req, []) ->
-	{ok, Req, #st{}}.
+	{ok, Req, #st{}};
+init({tcp, http}, Req, error) ->
+	{ok, Req, error}.
 
--spec handle(cowboy_req:req(), #st{}) -> {ok, cowboy_req:req(), #st{}}.
+-spec handle(cowboy_req:req(), #st{} | error) ->
+	{ok, cowboy_req:req(), #st{} | error}.
+handle(Req, error) ->
+	Resp = <<"Not found: mistake in the host or path of the service URI">>,
+	{ok, Req2} = cowboy_req:reply(404, [], Resp, Req),
+	{ok, Req2, error};
 handle(Req, State) ->
 	step(get_http_method, Req, State).
 
