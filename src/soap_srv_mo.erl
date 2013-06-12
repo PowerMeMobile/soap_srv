@@ -25,7 +25,8 @@
 -define(IncomingQueue, <<"pmm.k1api.incoming">>).
 
 -record(state, {
-	chan :: pid()
+	chan 			:: pid(),
+	chan_mon_ref 	:: reference()
 }).
 
 -record(req, {
@@ -35,6 +36,13 @@
 	message_id :: binary(),
 	ct :: binary(),
 	dto :: #k1api_sms_notification_request_dto{}
+}).
+
+-record('DOWN',{
+	ref 			:: reference(),
+	type = process 	:: process,
+	object 			:: pid(),
+	info 			:: term() | noproc | noconnection
 }).
 
 %% ===================================================================
@@ -50,19 +58,29 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-	{ok, Connection} = rmql:connection_start(),
-	{ok, Chan} = rmql:channel_open(Connection),
-	link(Chan),
-	ok = rmql:queue_declare(Chan, ?IncomingQueue, []),
-	NoAck = true,
-	{ok, _ConsumerTag} = rmql:basic_consume(Chan, ?IncomingQueue, NoAck),
-	{ok, #state{chan = Chan}}.
+	process_flag(trap_exit, true),
+	case rmql:channel_open() of
+		{ok, Chan} ->
+			MonRef = erlang:monitor(process, Chan),
+			ok = rmql:queue_declare(Chan, ?IncomingQueue, []),
+			NoAck = true,
+			{ok, _ConsumerTag} = rmql:basic_consume(Chan, ?IncomingQueue, NoAck),
+			lager:info("mo_srv: started"),
+			{ok, #state{chan = Chan, chan_mon_ref = MonRef}};
+		unavailable ->
+			lager:info("mo_srv: initializing failed (amqp_unavailable). shutdown"),
+			{stop, amqp_unavailable}
+	end.
 
 handle_call(_Request, _From, State) ->
     {stop, unexpected_call, State}.
 
 handle_cast(_Msg, State) ->
     {stop, unexpected_cast, State}.
+
+handle_info(#'DOWN'{ref = Ref, info = Info}, St = #state{chan_mon_ref = Ref}) ->
+	lager:error("mo_srv: amqp channel down (~p)", [Info]),
+	{stop, amqp_unavailable, St};
 
 handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
 	#'P_basic'{
@@ -83,8 +101,9 @@ handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
 handle_info(_Info, State) ->
     {stop, unexpected_info, State}.
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(Reason, St) ->
+	catch(amqp_channel:close(St#state.chan)),
+	lager:info("mo_srv: terminate (~p)", [Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

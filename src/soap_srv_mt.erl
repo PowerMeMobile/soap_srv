@@ -43,14 +43,22 @@
 			{just_sms_request_param_dto, Name, {integer, Int}}
 	end, [Param])).
 
+-record('DOWN',{
+	ref 			:: reference(),
+	type = process 	:: process,
+	object 			:: pid(),
+	info 			:: term() | noproc | noconnection
+}).
+
 -record(unconfirmed, {
 	id		:: integer(),
 	from	:: term()
 }).
 
 -record(st, {
-	chan 		:: pid(),
-	next_id = 1 :: integer()
+	chan 			:: pid(),
+	chan_mon_ref 	:: reference(),
+	next_id = 1 	:: integer()
 }).
 
 -type payload() :: binary().
@@ -82,14 +90,16 @@ publish(Req) ->
 %% ===================================================================
 
 init([]) ->
-	{ok, Connection} = rmql:connection_start(),
-	{ok, Channel} = rmql:channel_open(Connection),
-	link(Channel),
-	amqp_channel:register_confirm_handler(Channel, self()),
-    #'confirm.select_ok'{} = amqp_channel:call(Channel, #'confirm.select'{}),
-	ok = rmql:queue_declare(Channel, ?SmsRequestQueue, []),
+	process_flag(trap_exit, true),
 	?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
-	{ok, #st{chan = Channel}}.
+	case setup_chan(#st{}) of
+		{ok, St} ->
+			lager:info("mt_srv: started"),
+			{ok, St};
+		unavailable ->
+			lager:error("mt_srv: initializing failed (amqp_unavailable). shutdown"),
+			{stop, amqp_unavailable}
+	end.
 
 handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
 									Action =:= publish orelse
@@ -126,6 +136,10 @@ handle_call(_Request, _From, St) ->
 handle_cast(Req, St) ->
     {stop, {unexpected_cast, Req}, St}.
 
+handle_info(#'DOWN'{ref = Ref, info = Info}, St = #st{chan_mon_ref = Ref}) ->
+	lager:error("mt_srv: amqp channel down (~p)", [Info]),
+	{stop, amqp_unavailable, St};
+
 handle_info(Confirm, St) when is_record(Confirm, 'basic.ack');
                               is_record(Confirm, 'basic.nack') ->
 	handle_confirm(Confirm),
@@ -134,8 +148,9 @@ handle_info(Confirm, St) when is_record(Confirm, 'basic.ack');
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
 
-terminate(_Reason, _St) ->
-    ok.
+terminate(Reason, St) ->
+	catch(amqp_channel:close(St#st.chan)),
+	lager:info("mt_srv: terminate (~p)", [Reason]).
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
@@ -289,7 +304,7 @@ send(build_dto, Req) ->
 	{ok, Payload} = adto:encode(DTO),
 	case is_deffered(Req#send_req.def_date) of
 		{true, Timestamp} ->
-			lager:info("defDate: ~p, timestamp: ~p", [Req#send_req.def_date, Timestamp]),
+			lager:info("mt_srv: defDate -> ~p, timestamp -> ~p", [Req#send_req.def_date, Timestamp]),
 			soap_srv_defer:defer(ReqID, Timestamp, {publish_just, Payload, ReqID, GtwID}),
 			ok = publish({publish_kelly, Payload, ReqID, GtwID}),
 			soap_srv_pdu_logger:log(DTO),
@@ -342,6 +357,17 @@ unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
 %% ===================================================================
 %% Local Functions Definitions
 %% ===================================================================
+
+setup_chan(St = #st{}) ->
+	case rmql:channel_open() of
+		{ok, Channel} ->
+			ChanMonRef = erlang:monitor(process, Channel),
+			amqp_channel:register_confirm_handler(Channel, self()),
+			#'confirm.select_ok'{} = amqp_channel:call(Channel, #'confirm.select'{}),
+			ok = rmql:queue_declare(Channel, ?SmsRequestQueue, []),
+			{ok, St#st{chan = Channel, chan_mon_ref = ChanMonRef}};
+		unavailable -> unavailable
+	end.
 
 flash(false, _) ->
 	[];
@@ -456,11 +482,11 @@ convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
 			ConvCP = [number_to_arabic(CP) || CP <- CodePoints],
 			unicode:characters_to_binary(ConvCP, utf8);
 		{error, CodePoints, RestData} ->
-			lager:error("Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
+			lager:error("mt_srv: Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
 					[Text, CodePoints, RestData]),
 			erlang:error("Illegal utf8 symbols");
 		{incomplete, CodePoints, IncompleteSeq} ->
-			lager:error("Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
+			lager:error("mt_srv: Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
 					[Text, CodePoints, IncompleteSeq]),
 			erlang:error("Incomplite utf8 sequence")
 	end;

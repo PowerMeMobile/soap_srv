@@ -31,8 +31,16 @@
 -define(AuthRequestQueue, <<"pmm.k1api.auth_request">>).
 -define(AuthResponseQueue, <<"pmm.k1api.auth_response">>).
 
+-record('DOWN',{
+	ref 			:: reference(),
+	type = process 	:: process,
+	object 			:: pid(),
+	info 			:: term() | noproc | noconnection
+}).
+
 -record(st, {
 	chan 					:: pid(),
+	chan_mon_ref 			:: reference(),
 	reply_to 				:: binary(),
 	pending_workers = [] 	:: [#pworker{}],
 	pending_responses = [] 	:: [#presponse{}]
@@ -58,14 +66,15 @@ authenticate(CustomerID, UserID, Password) ->
 %% ===================================================================
 
 init([]) ->
-	{ok, Connection} = rmql:connection_start(),
-	{ok, Chan} = rmql:channel_open(Connection),
-	link(Chan),
-	ok = rmql:queue_declare(Chan, ?AuthResponseQueue, []),
-	ok = rmql:queue_declare(Chan, ?AuthRequestQueue, []),
-	NoAck = true,
-	{ok, _ConsumerTag} = rmql:basic_consume(Chan, ?AuthResponseQueue, NoAck),
-	{ok, #st{chan = Chan}}.
+	process_flag(trap_exit, true),
+	case setup_chan(#st{}) of
+		{ok, St} ->
+			lager:info("auth_srv: started"),
+			{ok, St};
+		unavailable ->
+			lager:error("auth_srv: initializing failed (amqp_unavailable). shutdown"),
+			{stop, amqp_unavailable}
+	end.
 
 handle_call(get_channel, _From, St = #st{}) ->
 	{reply, {ok, St#st.chan}, St};
@@ -87,6 +96,10 @@ handle_call(_Request, _From, St) ->
 
 handle_cast(_Msg, St) ->
     {stop, unexpected_cast, St}.
+
+handle_info(#'DOWN'{ref = Ref, info = Info}, St = #st{chan_mon_ref = Ref}) ->
+	lager:error("auth_srv: amqp channel down (~p)", [Info]),
+	{stop, amqp_unavailable, St};
 
 handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
 	Content = AmqpMsg#amqp_msg.payload,
@@ -115,8 +128,9 @@ handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
 
-terminate(_Reason, _St) ->
-    ok.
+terminate(Reason, St) ->
+	catch(amqp_channel:close(St#st.chan)),
+	lager:info("auth_srv: terminate (~p)", [Reason]).
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
@@ -124,6 +138,18 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 %% Internal
 %% ===================================================================
+
+setup_chan(St = #st{}) ->
+	case rmql:channel_open() of
+		{ok, Channel} ->
+			MonRef = erlang:monitor(process, Channel),
+			ok = rmql:queue_declare(Channel, ?AuthResponseQueue, []),
+			ok = rmql:queue_declare(Channel, ?AuthRequestQueue, []),
+			NoAck = true,
+			{ok, _ConsumerTag} = rmql:basic_consume(Channel, ?AuthResponseQueue, NoAck),
+			{ok, St#st{chan = Channel, chan_mon_ref = MonRef}};
+		unavailable -> unavailable
+	end.
 
 authenticate(check_cache, User) ->
 	{CustomerID, UserID, Password} = User,
