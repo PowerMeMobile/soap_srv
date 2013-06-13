@@ -4,7 +4,6 @@
 
 %% TODO
 %% Add proper response msgs with codes
-%% {{badmatch,{error,socket_closed_remotely}} on large sendSmsReq (2000 recipients)
 %% soap:fault on 500 error
 %% check for undefined mandatory parameters
 %% Imlement independent soap_srv DTO messages
@@ -106,7 +105,6 @@ init() ->
 	{ok, Port} = application:get_env(http_port),
 	ProtocolOpts = [
 		{env, [{dispatch, dispatch_rules()}]},
-		{max_keepalive, 0}, %% to avoid socket_closed_remotely error
 		{onrequest, fun ?MODULE:onrequest_hook/1},
 		{onresponse, fun ?MODULE:onresponse_hook/4}
 	],
