@@ -22,7 +22,15 @@
 	terminate/2
 ]).
 
--record(st, {}).
+-define(SYNC_INTERVAL, (1000 * 60 * 5)).
+
+-record(sync,{
+	ref :: reference()
+}).
+
+-record(st, {
+	ref :: reference()
+}).
 
 %% ===================================================================
 %% API
@@ -39,7 +47,7 @@ store(CustomerID, UserID, Password, Customer) ->
 		UserID,
 		Password
 	},
-    gen_server:call(?MODULE, {store, Key, Customer}, infinity).
+    gen_server:call(?MODULE, {store, Key, Customer}).
 
 -spec fetch(binary(), binary(), binary()) ->
 	{ok, record()} | not_found.
@@ -49,7 +57,7 @@ fetch(CustomerID, UserID, Password) ->
 		UserID,
 		Password
 	},
-    gen_server:call(?MODULE, {fetch, Key}, infinity).
+    gen_server:call(?MODULE, {fetch, Key}).
 
 %% -spec delete(any()) -> ok.
 %% delete(Key) ->
@@ -61,9 +69,12 @@ fetch(CustomerID, UserID, Password) ->
 
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, ?MODULE} = dets:open_file(?MODULE, [{file, "data/auth_cache.dets"}]),
+	DetsOpts = [{ram_file, true},{file, "data/auth_cache.dets"}],
+    {ok, ?MODULE} = dets:open_file(?MODULE, DetsOpts),
+	Ref = erlang:make_ref(),
+	erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
 	lager:info("auth_cache: started", []),
-    {ok, #st{}}.
+    {ok, #st{ref = Ref}}.
 
 handle_call({store, Key, Value}, _From, St) ->
     ok = dets:insert(?MODULE, {Key, Value}),
@@ -87,6 +98,11 @@ handle_call(Request, _From, St) ->
 handle_cast(Request, St) ->
     {stop, {unexpected_cast, Request}, St}.
 
+handle_info(#sync{ref = Ref}, St = #st{ref = Ref}) ->
+	ok = dets:sync(?MODULE),
+	lager:info("auth_cache: sync"),
+	erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
+	{noreply, St};
 handle_info(Info, St) ->
     {stop, {unexpected_info, Info}, St}.
 
