@@ -120,6 +120,21 @@
 	'userPassword' :: binary()
 }).
 
+-record('HTTP_GetSmsStatus', {
+	'customerID' :: integer(),
+	'userName' :: binary(),
+	'userPassword' :: binary(),
+	'transactionID' :: binary(),
+	'detailed' :: boolean()
+}).
+
+-record('SmsStatus', {
+	'Result' :: binary(),
+	'Statistics' :: binary(),
+	'Details' :: binary(),
+	'NetPoints' :: binary()
+}).
+
 -record('Authenticate', {
 	user :: #user{}
 }).

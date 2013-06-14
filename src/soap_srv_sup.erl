@@ -41,7 +41,9 @@ init([]) ->
 
 		?CHILD(soap_srv_defer, worker),
 
-		?CHILD(soap_srv_mo, worker)
+		?CHILD(soap_srv_mo, worker),
+
+		?CHILD(soap_srv_delivery_status, worker)
 
 	]} }.
 

@@ -31,13 +31,6 @@
 -define(AuthRequestQueue, <<"pmm.k1api.auth_request">>).
 -define(AuthResponseQueue, <<"pmm.k1api.auth_response">>).
 
--record('DOWN',{
-	ref 			:: reference(),
-	type = process 	:: process,
-	object 			:: pid(),
-	info 			:: term() | noproc | noconnection
-}).
-
 -record(st, {
 	chan 					:: pid(),
 	chan_mon_ref 			:: reference(),
@@ -66,7 +59,6 @@ authenticate(CustomerID, UserID, Password) ->
 %% ===================================================================
 
 init([]) ->
-	process_flag(trap_exit, true),
 	case setup_chan(#st{}) of
 		{ok, St} ->
 			lager:info("auth_srv: started"),
@@ -99,7 +91,7 @@ handle_cast(_Msg, St) ->
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #st{chan_mon_ref = Ref}) ->
 	lager:error("auth_srv: amqp channel down (~p)", [Info]),
-	{stop, amqp_unavailable, St};
+	{stop, amqp_channel_down, St};
 
 handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
 	Content = AmqpMsg#amqp_msg.payload,
@@ -128,9 +120,8 @@ handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
 
-terminate(Reason, St) ->
-	catch(amqp_channel:close(St#st.chan)),
-	lager:info("auth_srv: terminate (~p)", [Reason]).
+terminate(_Reason, _St) ->
+	ok.
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.

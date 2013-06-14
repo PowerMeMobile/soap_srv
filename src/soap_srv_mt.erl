@@ -43,13 +43,6 @@
 			{just_sms_request_param_dto, Name, {integer, Int}}
 	end, [Param])).
 
--record('DOWN',{
-	ref 			:: reference(),
-	type = process 	:: process,
-	object 			:: pid(),
-	info 			:: term() | noproc | noconnection
-}).
-
 -record(unconfirmed, {
 	id		:: integer(),
 	from	:: term()
@@ -90,7 +83,6 @@ publish(Req) ->
 %% ===================================================================
 
 init([]) ->
-	process_flag(trap_exit, true),
 	?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
 	case setup_chan(#st{}) of
 		{ok, St} ->
@@ -138,7 +130,7 @@ handle_cast(Req, St) ->
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #st{chan_mon_ref = Ref}) ->
 	lager:error("mt_srv: amqp channel down (~p)", [Info]),
-	{stop, amqp_unavailable, St};
+	{stop, amqp_channel_down, St};
 
 handle_info(Confirm, St) when is_record(Confirm, 'basic.ack');
                               is_record(Confirm, 'basic.nack') ->
@@ -148,9 +140,8 @@ handle_info(Confirm, St) when is_record(Confirm, 'basic.ack');
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
 
-terminate(Reason, St) ->
-	catch(amqp_channel:close(St#st.chan)),
-	lager:info("mt_srv: terminate (~p)", [Reason]).
+terminate(_Reason, _St) ->
+	ok.
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.

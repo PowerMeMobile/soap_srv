@@ -136,11 +136,102 @@ handle(Req = #'Authenticate'{}) ->
 	Password = User#user.'Password',
 	handle_authenticate(CustomerID, UserName, Password);
 
+handle(Req = #'HTTP_GetSmsStatus'{}) ->
+	CustomerID = Req#'HTTP_GetSmsStatus'.customerID,
+	UserName = Req#'HTTP_GetSmsStatus'.userName,
+	Password = Req#'HTTP_GetSmsStatus'.userPassword,
+	{ok, Statuses} =
+	case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
+		{ok, Customer} ->
+			TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
+			CustomerUUID = Customer#k1api_auth_response_dto.uuid,
+			soap_srv_delivery_status:get(CustomerUUID, UserName, TransactionID);
+		{error, Error} ->
+			lager:error("handler: error on auth: ~p", [Error])
+	end,
+	{ok, Statistics} = build_statistics(Statuses),
+	case Req#'HTTP_GetSmsStatus'.detailed of
+		<<"true">> ->
+			{ok, Details} = build_details(Statuses),
+			{ok, #'SmsStatus'{
+				'Result' = <<"OK">>,
+				'Statistics' = Statistics,
+				'Details' = Details,
+				'NetPoints' = <<"POSTPAID">>
+			}};
+		<<"false">> ->
+			{ok, #'SmsStatus'{
+				'Result' = <<"OK">>,
+				'Statistics' = Statistics,
+				'NetPoints' = <<"POSTPAID">>
+			}}
+	end;
+
 handle(_) -> erlang:error(method_not_implemented).
 
 %% ===================================================================
 %% Internals
 %% ===================================================================
+
+build_details(Statuses) ->
+	Details = list_to_binary([detailed_status_tag(Status) || Status <- Statuses]),
+	{ok,
+	<<
+	"<details xmlns=\"\">",
+	Details/binary,
+	"</details>"
+	>>}.
+
+detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
+	StatusName = Status#k1api_sms_status_dto.status,
+	StatusU = list_to_binary([io_lib:format("~4.16.0B", [C]) || <<C>> <= StatusName]),
+	Number = Status#k1api_sms_status_dto.address,
+
+	Content =
+	<<
+	(content_tag('StatusU', StatusU))/binary,
+	(content_tag('number', Number#addr.addr))/binary
+	>>,
+
+	content_tag(StatusName, Content).
+
+build_statistics(Statuses) ->
+	Dict = dict:new(),
+	Agregated = aggregate_statistics(Statuses, Dict),
+	Statistics = list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]),
+	{ok,
+	<<
+	"<statistics xmlns=\"\">",
+	Statistics/binary,
+	"</statistics>"
+	>>}.
+
+status_tag(Status, Counter) ->
+	StatusU = list_to_binary([io_lib:format("~4.16.0B", [C]) || <<C>> <= Status]),
+	Content =
+	<<
+	(list_to_binary(integer_to_list(Counter)))/binary,
+	(content_tag('StatusU', StatusU))/binary
+	>>,
+	content_tag(Status, Content).
+
+
+content_tag(Name, Content) when is_atom(Name) ->
+	content_tag(atom_to_binary(Name, utf8), Content);
+content_tag(Name, Content) when is_integer(Content) ->
+	content_tag(Name, list_to_binary(integer_to_list(Content)));
+content_tag(Name, Content) ->
+	<<
+	"<", Name/binary, ">",
+	Content/binary,
+	"</", Name/binary, ">"
+	>>.
+
+aggregate_statistics([], Dict) ->
+	dict:to_list(Dict);
+aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
+	Dict1 = dict:update_counter(Status, 1, Dict),
+	aggregate_statistics(Rest, Dict1).
 
 send_result(Result) when is_list(Result) ->
 	{ok, #'SendResult'{

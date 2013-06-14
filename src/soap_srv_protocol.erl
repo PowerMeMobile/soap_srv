@@ -62,7 +62,9 @@
 	'user',
 	'SendResult',
 	'CommonResult',
-	'AuthResult'
+	'AuthResult',
+	'HTTP_GetSmsStatus',
+	'SmsStatus'
 ]).
 
 -type action() ::
@@ -349,6 +351,9 @@ step(is_transport_allowed, Req, St = #st{}) ->
 	]},
 	{'HTTP_SendBinarySms', [
 		{transport, [soap11, soap12, http_get, http_post]}
+	]},
+	{'HTTP_GetSmsStatus', [
+		{transport, [soap11, soap12, http_get, http_post]}
 	]}
 	],
 	ActionSpec = proplists:get_value(St#st.action, Spec),
@@ -566,4 +571,5 @@ action("KeepAlive") -> 'KeepAlive';
 action("HTTP_KeepAlive") -> 'HTTP_KeepAlive';
 action("Authenticate") -> 'Authenticate';
 action("HTTP_Authenticate") -> 'HTTP_Authenticate';
+action("HTTP_GetSmsStatus") -> 'HTTP_GetSmsStatus';
 action(_) -> undefined.

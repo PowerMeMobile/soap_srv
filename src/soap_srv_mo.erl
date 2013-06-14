@@ -21,6 +21,7 @@
 
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include("soap_srv.hrl").
 
 -define(IncomingQueue, <<"pmm.k1api.incoming">>).
 
@@ -38,13 +39,6 @@
 	dto :: #k1api_sms_notification_request_dto{}
 }).
 
--record('DOWN',{
-	ref 			:: reference(),
-	type = process 	:: process,
-	object 			:: pid(),
-	info 			:: term() | noproc | noconnection
-}).
-
 %% ===================================================================
 %% API Functions
 %% ===================================================================
@@ -58,7 +52,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-	process_flag(trap_exit, true),
 	case rmql:channel_open() of
 		{ok, Chan} ->
 			MonRef = erlang:monitor(process, Chan),
@@ -80,7 +73,7 @@ handle_cast(_Msg, State) ->
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #state{chan_mon_ref = Ref}) ->
 	lager:error("mo_srv: amqp channel down (~p)", [Info]),
-	{stop, amqp_unavailable, St};
+	{stop, amqp_channel_down, St};
 
 handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
 	#'P_basic'{
@@ -101,9 +94,8 @@ handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
 handle_info(_Info, State) ->
     {stop, unexpected_info, State}.
 
-terminate(Reason, St) ->
-	catch(amqp_channel:close(St#state.chan)),
-	lager:info("mo_srv: terminate (~p)", [Reason]).
+terminate(_Reason, _St) ->
+	ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

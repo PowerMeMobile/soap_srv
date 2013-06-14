@@ -50,4 +50,11 @@
 	response	:: term()
 }).
 
+-record('DOWN',{
+	ref 			:: reference(),
+	type = process 	:: process,
+	object 			:: pid(),
+	info 			:: term() | noproc | noconnection
+}).
+
 -endif. % soap_srv.hrl
