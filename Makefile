@@ -9,13 +9,13 @@ get-deps:
 update-deps:
 	@./rebar update-deps
 
-xref:
+xref: compile
 	@./rebar xref skip_deps=true
 
-compile: get-deps xref
+compile: get-deps
 	@./rebar compile
 
-generate: compile
+generate: compile xref
 	@rm -rf ./rel/${NAME}
 	@./rebar generate
 

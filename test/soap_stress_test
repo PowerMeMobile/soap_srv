@@ -3,8 +3,8 @@
 -define(proc_num, 1).
 -define(req_num, 1).
 -define(batch_size, 2).
--define(req_delay, 100).
--define(start_phone_num, 96597163329).
+-define(req_delay, 0).
+-define(start_phone_num, 375259770000).
 -define(host, "127.0.0.1").
 -define(port, "8888").
 -define(soap_uri, "http://" ++ ?host ++ ":" ++ ?port ++ "/bmsgw/soap/messenger.asmx").
