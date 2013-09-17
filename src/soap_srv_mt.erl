@@ -110,15 +110,15 @@ handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
             publish_just ->
                 {[], GtwQueue}
         end,
-    Basic = #'P_basic'{
-        content_type = <<"k1apiSmsRequest">>,
-        delivery_mode = 2,
-        priority = 1,
-        message_id = ReqID,
-        headers = Headers
-    },
+    Props = [
+        {content_type, <<"k1apiSmsRequest">>},
+        {delivery_mode, 2},
+        {priority, 1},
+        {message_id, ReqID},
+        {headers, Headers}
+    ],
     Channel = St#st.chan,
-    ok = rmql:basic_publish(Channel, RoutinKey, Payload, Basic),
+    ok = rmql:basic_publish(Channel, RoutinKey, Payload, Props),
     true = ets:insert(?MODULE, #unconfirmed{id = St#st.next_id, from = From}),
     {noreply, St#st{next_id = St#st.next_id + 1}};
 
@@ -190,7 +190,7 @@ send(process_msg_type, Req) when    Req#send_req.text =:= undefined andalso
                                     Req#send_req.action =:= 'SendServiceSms' ->
     Text =
         <<"<%SERVICEMESSAGE:",
-        (Req#send_req.s_name)/binary,   ";",
+        (Req#send_req.s_name)/binary, ";",
         (Req#send_req.s_url)/binary, "%>">>,
     send(process_msg_type, Req#send_req{text = Text});
 

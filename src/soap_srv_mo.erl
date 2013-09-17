@@ -163,17 +163,16 @@ process(ack, Req) ->
     ReqMsgID = ReqDTO#k1api_sms_notification_request_dto.message_id,
     DTO = #funnel_ack_dto{id = ReqMsgID},
     {ok, Encoded} = adto:encode(DTO),
-    RespProps = #'P_basic'{
-        content_type   = <<"BatchAck">>,
-        correlation_id = Req#req.message_id,
-        message_id     = uuid:unparse(uuid:generate_time())
-    },
-    rmql:basic_publish(Req#req.chan, Req#req.reply_to, Encoded, RespProps).
+    Props = [
+        {content_type, <<"BatchAck">>},
+        {correlation_id, Req#req.message_id},
+        {message_id, uuid:unparse(uuid:generate_time())}
+    ],
+    rmql:basic_publish(Req#req.chan, Req#req.reply_to, Encoded, Props).
 
 query_string([Head|Tail]) ->
     "?" ++ [make_query(Head) | [["&", make_query(Elem)] || Elem <- Tail]];
 query_string([]) -> [].
-
 
 make_query({Key, Value}) ->
     [url_encode(Key), "=", url_encode(Value)].
