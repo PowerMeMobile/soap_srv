@@ -31,5 +31,8 @@ develop:
 run-tests:
 	@./rebar eunit skip_deps=true
 
+api-test:
+	@./test/test
+
 tags:
 	@find . -name "*.[e,h]rl" -print | etags -

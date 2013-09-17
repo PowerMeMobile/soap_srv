@@ -1,18 +1,23 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
 
--mode(native).
-
 -define(gv(Key, PropList), proplists:get_value(Key, PropList)).
 -define(gv(Key, PropList, Default), proplists:get_value(Key, PropList, Default)).
 
 main(Args) ->
 	process_flag(trap_exit, true),
-	io:format("[debug] pwd: ~p~n", [file:get_cwd()]),
+	{ok, CWD} = file:get_cwd(),
+	io:format("[debug] pwd: ~p~n", [CWD]),
 	io:format("Start inets~n", []),
 	ok = inets:start(),
 	io:format("Read config~n", []),
-	{ok, [Config]} = file:consult("soap_test.config"),
+	{ok, [Config]} =
+		case lists:suffix("test", CWD) of
+			true ->
+				file:consult(filename:join(CWD, "soap_test.config"));
+			false ->
+				file:consult(filename:join(CWD, "test/soap_test.config"))
+			end,
 	Props = ?gv(props, Config),
 
 	TestsToRun =
