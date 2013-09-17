@@ -88,7 +88,7 @@ Create subscription in kelly for existing user. Type in kelly console:
     customer_id = <<"a3ddc34a-1793-11e2-9602-00269e42f7a5">>,
     user_id = <<"undefined">>,
     priority = 1,
-    queue_name = <<"pmm.k1api.incoming">>,
+    queue_name = <<"pmm.soap.incoming">>,
     dest_addr = {addr, <<"375296660003">>,1,1,undefined},
     notify_url = <<"http://localhost:4444/test">>,
     callback_data = <<>>}.
