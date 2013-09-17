@@ -27,3 +27,9 @@ console:
 
 develop:
 	@./rel/$(NAME)/bin/$(NAME) develop
+
+run-tests:
+	@./rebar skip_deps=true eunit
+
+tags:
+	@find . -name "*.[e,h]rl" -print | etags -
