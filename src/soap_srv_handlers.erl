@@ -184,12 +184,10 @@ build_details(Statuses) ->
 
 detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
 	StatusName = Status#k1api_sms_status_dto.status,
-	StatusU = list_to_binary([io_lib:format("~4.16.0B", [C]) || <<C>> <= StatusName]),
 	Number = Status#k1api_sms_status_dto.address,
 
 	Content =
 	<<
-	(content_tag('StatusU', StatusU))/binary,
 	(content_tag('number', Number#addr.addr))/binary
 	>>,
 
@@ -206,14 +204,11 @@ build_statistics(Statuses) ->
 	>>}.
 
 status_tag(Status, Counter) ->
-	StatusU = list_to_binary([io_lib:format("~4.16.0B", [C]) || <<C>> <= Status]),
 	Content =
 	<<
-	(list_to_binary(integer_to_list(Counter)))/binary,
-	(content_tag('StatusU', StatusU))/binary
+	(list_to_binary(integer_to_list(Counter)))/binary
 	>>,
 	content_tag(Status, Content).
-
 
 content_tag(Name, Content) when is_atom(Name) ->
 	content_tag(atom_to_binary(Name, utf8), Content);
