@@ -66,10 +66,10 @@ init([]) ->
 handle_call(get_channel, _From, State = #state{chan = Chan}) ->
 	{reply, {ok, Chan}, State};
 
-handle_call({get_response, MesID}, From,
-					State = #state{
-								pending_workers = WList,
-								pending_responses = RList}) ->
+handle_call({get_response, MesID}, From, State = #state{
+	pending_workers = WList,
+	pending_responses = RList
+}) ->
 	Worker = #pworker{id = MesID, from = From, timestamp = soap_srv_utils:get_now()},
 	{ok, NRList, NWList} = soap_srv_utils:process_worker_request(Worker, RList, WList),
 	{noreply, State#state{pending_workers = NWList, pending_responses = NRList}};
@@ -84,16 +84,21 @@ handle_info(#'DOWN'{ref = Ref, info = Info}, St = #state{ref = Ref}) ->
 	lager:error("mt_srv: amqp channel down (~p)", [Info]),
 	{stop, amqp_channel_down, St};
 
-handle_info({#'basic.deliver'{}, #amqp_msg{payload = Content}},
-			 State = #state{
-			 	pending_responses = ResponsesList,
-				pending_workers = WorkersList}) ->
+handle_info({#'basic.deliver'{}, #amqp_msg{payload = Content}}, State = #state{
+	pending_responses = ResponsesList,
+	pending_workers = WorkersList
+}) ->
 	lager:debug("Got sms delivery status response", []),
 	case adto:decode(#k1api_sms_delivery_status_response_dto{}, Content) of
 		{ok, Response = #k1api_sms_delivery_status_response_dto{
-				id = CorrelationID }} ->
+			id = CorrelationID
+		}} ->
 			lager:debug("Response was sucessfully decoded [id: ~p]", [CorrelationID]),
-			NewPendingResponse = #presponse{id = CorrelationID, timestamp = soap_srv_utils:get_now(), response = Response},
+			NewPendingResponse = #presponse{
+				id = CorrelationID,
+				timestamp = soap_srv_utils:get_now(),
+				response = Response
+			},
 			{ok, NRList, NWList} = soap_srv_utils:process_response(NewPendingResponse, ResponsesList, WorkersList),
 			{noreply, State#state{pending_workers = NWList, pending_responses = NRList}};
 		{error, Error} ->

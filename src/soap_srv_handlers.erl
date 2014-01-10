@@ -196,8 +196,7 @@ detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
 	content_tag(StatusName, Content).
 
 build_statistics(Statuses) ->
-	Dict = dict:new(),
-	Agregated = aggregate_statistics(Statuses, Dict),
+	Agregated = aggregate_statistics(Statuses),
 	Statistics = list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]),
 	{ok,
 	<<
@@ -226,6 +225,9 @@ content_tag(Name, Content) ->
 	Content/binary,
 	"</", Name/binary, ">"
 	>>.
+
+aggregate_statistics(Statuses) ->
+	aggregate_statistics(Statuses, dict:new()).
 
 aggregate_statistics([], Dict) ->
 	dict:to_list(Dict);
