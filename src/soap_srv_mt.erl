@@ -216,7 +216,7 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendServiceSms' ->
 	NoRetry = Customer#k1api_auth_response_dto.no_retry,
 	DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
 	Params = lists:flatten([
-			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"registered_delivery">>, true),
 			?just_sms_request_param(<<"service_type">>, <<>>),
 			?just_sms_request_param(<<"no_retry">>, NoRetry),
 			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
@@ -238,7 +238,7 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orels
 	ESMClass = list_to_integer(binary_to_list(Req#send_req.esm_class)),
 	ProtocolID = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
 	Params = lists:flatten([
-			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"registered_delivery">>, true),
 			?just_sms_request_param(<<"service_type">>, <<>>),
 			?just_sms_request_param(<<"no_retry">>, NoRetry),
 			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
@@ -255,7 +255,7 @@ send(define_smpp_params, Req) ->
 	NoRetry = Customer#k1api_auth_response_dto.no_retry,
 	DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
 	Params = lists:flatten([
-			?just_sms_request_param(<<"registered_delivery">>, false),
+			?just_sms_request_param(<<"registered_delivery">>, true),
 			?just_sms_request_param(<<"service_type">>, <<>>),
 			?just_sms_request_param(<<"no_retry">>, NoRetry),
 			?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
