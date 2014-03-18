@@ -6,30 +6,30 @@
 
 %% API exports
 -export([
-	start_link/0,
-	store/4,
-	fetch/3
-	%% delete/1
+    start_link/0,
+    store/4,
+    fetch/3
+    %% delete/1
 ]).
 
 %% gen_server exports
 -export([
-	init/1,
-	handle_call/3,
-	handle_cast/2,
-	handle_info/2,
-	code_change/3,
-	terminate/2
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    code_change/3,
+    terminate/2
 ]).
 
 -define(SYNC_INTERVAL, (1000 * 60 * 5)).
 
 -record(sync,{
-	ref :: reference()
+    ref :: reference()
 }).
 
 -record(st, {
-	ref :: reference()
+    ref :: reference()
 }).
 
 %% ===================================================================
@@ -42,21 +42,21 @@ start_link() ->
 
 -spec store(binary(), binary(), binary(), tuple()) -> ok.
 store(CustomerID, UserID, Password, Customer) ->
-	Key = {
-		CustomerID,
-		UserID,
-		Password
-	},
+    Key = {
+        CustomerID,
+        UserID,
+        Password
+    },
     gen_server:call(?MODULE, {store, Key, Customer}).
 
 -spec fetch(binary(), binary(), binary()) ->
-	{ok, record()} | not_found.
+    {ok, record()} | not_found.
 fetch(CustomerID, UserID, Password) ->
-	Key = {
-		CustomerID,
-		UserID,
-		Password
-	},
+    Key = {
+        CustomerID,
+        UserID,
+        Password
+    },
     gen_server:call(?MODULE, {fetch, Key}).
 
 %% -spec delete(any()) -> ok.
@@ -69,11 +69,11 @@ fetch(CustomerID, UserID, Password) ->
 
 init([]) ->
     process_flag(trap_exit, true),
-	DetsOpts = [{ram_file, true},{file, "data/auth_cache.dets"}],
+    DetsOpts = [{ram_file, true},{file, "data/auth_cache.dets"}],
     {ok, ?MODULE} = dets:open_file(?MODULE, DetsOpts),
-	Ref = erlang:make_ref(),
-	erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
-	lager:info("auth_cache: started", []),
+    Ref = erlang:make_ref(),
+    erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
+    lager:info("auth_cache: started", []),
     {ok, #st{ref = Ref}}.
 
 handle_call({store, Key, Value}, _From, St) ->
@@ -99,10 +99,10 @@ handle_cast(Request, St) ->
     {stop, {unexpected_cast, Request}, St}.
 
 handle_info(#sync{ref = Ref}, St = #st{ref = Ref}) ->
-	ok = dets:sync(?MODULE),
-	lager:info("auth_cache: sync"),
-	erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
-	{noreply, St};
+    ok = dets:sync(?MODULE),
+    lager:info("auth_cache: sync"),
+    erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
+    {noreply, St};
 handle_info(Info, St) ->
     {stop, {unexpected_info, Info}, St}.
 

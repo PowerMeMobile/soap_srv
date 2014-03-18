@@ -1,19 +1,19 @@
 {application, soap_srv,[
-	{description, "Replacement solution of MMWL lite server soap interface"},
-	{vsn, "0.0.1"},
-	{registered, []},
-	{applications, [
-		kernel,
-		stdlib,
-		lager,
-		rmql,
-		alley_dto,
-		gsm0338,
-		cowboy,
-		libuuid,
-		gproc,
-		inets
-	]},
-	{mod, {soap_srv_app, []}},
-	{env, []}
+    {description, "Replacement solution of MMWL lite server soap interface"},
+    {vsn, "0.0.1"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        lager,
+        rmql,
+        alley_dto,
+        gsm0338,
+        cowboy,
+        libuuid,
+        gproc,
+        inets
+    ]},
+    {mod, {soap_srv_app, []}},
+    {env, []}
 ]}.

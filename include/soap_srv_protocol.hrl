@@ -6,146 +6,146 @@
 %% SOAP methods
 
 -record(user, {
-	'CustomerID' :: integer(),
-	'Name' :: binary(),
-	'Language' :: binary(),
-	'Password' :: binary()
+    'CustomerID' :: integer(),
+    'Name' :: binary(),
+    'Language' :: binary(),
+    'Password' :: binary()
 }).
 -type user() :: #user{}.
 
 -type messageType() ::
-	'Latin' |
-	'ArabicWithArabicNumbers' |
-	'ArabicWithLatinNumbers'.
+    'Latin' |
+    'ArabicWithArabicNumbers' |
+    'ArabicWithLatinNumbers'.
 
 -record('SendSms', {
-	'user' :: user(),
-	'originator' :: binary(),
-	'smsText' :: binary(),
-	'recipientPhone' :: binary(),
-	'messageType' :: messageType(),
-	'defDate' :: binary(),
-	'blink' :: boolean(),
-	'flash' :: boolean(),
-	'Private' :: boolean()
+    'user' :: user(),
+    'originator' :: binary(),
+    'smsText' :: binary(),
+    'recipientPhone' :: binary(),
+    'messageType' :: messageType(),
+    'defDate' :: binary(),
+    'blink' :: boolean(),
+    'flash' :: boolean(),
+    'Private' :: boolean()
 }).
 
 -record('SendSms2', {
-	'user' :: user(),
-	'originator' :: binary(),
-	'smsText' :: binary(),
-	'recipientPhonesFile' :: binary(),
-	'messageType' :: messageType(),
-	'defDate' :: binary(),
-	'flash' :: boolean()
+    'user' :: user(),
+    'originator' :: binary(),
+    'smsText' :: binary(),
+    'recipientPhonesFile' :: binary(),
+    'messageType' :: messageType(),
+    'defDate' :: binary(),
+    'flash' :: boolean()
 }).
 
 -record('SendServiceSms', {
-	'customerID' :: integer(),
-	'userName' :: binary(),
-	'userPassword' :: binary(),
-	'originator' :: binary(),
-	'serviceName' :: binary(),
-	'serviceUrl' :: binary(),
-	'recipientPhone' :: binary(),
-	'messageType' :: messageType(),
-	'defDate' :: binary(),
-	'blink' :: boolean(),
-	'flash' :: boolean(),
-	'Private' :: boolean()
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary(),
+    'originator' :: binary(),
+    'serviceName' :: binary(),
+    'serviceUrl' :: binary(),
+    'recipientPhone' :: binary(),
+    'messageType' :: messageType(),
+    'defDate' :: binary(),
+    'blink' :: boolean(),
+    'flash' :: boolean(),
+    'Private' :: boolean()
 }).
 
 -record('SendBinarySms', {
-	'user' :: user(),
-	'originator' :: binary(),
-	'binaryBody' :: binary(),
-	'recipientPhone' :: binary(),
-	'defDate' :: binary(),
-	'data_coding' :: binary(),
-	'esm_class' :: binary(),
-	'PID' :: binary()
+    'user' :: user(),
+    'originator' :: binary(),
+    'binaryBody' :: binary(),
+    'recipientPhone' :: binary(),
+    'defDate' :: binary(),
+    'data_coding' :: binary(),
+    'esm_class' :: binary(),
+    'PID' :: binary()
 }).
 
 -record('KeepAlive', {
-	'user' :: user()
+    'user' :: user()
 }).
 
 -record('CommonResult', {
-	'Result' :: binary()
+    'Result' :: binary()
 }).
 
 -record('HTTP_SendSms', {
-	'customerID' :: integer(),
-	'userName' :: binary(),
-	'userPassword' :: binary(),
-	'originator' :: binary(),
-	'smsText' :: binary(),
-	'recipientPhone' :: binary(),
-	'messageType' :: messageType(),
-	'defDate' :: binary(),
-	'blink' :: boolean(),
-	'flash' :: boolean(),
-	'Private' :: boolean()
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary(),
+    'originator' :: binary(),
+    'smsText' :: binary(),
+    'recipientPhone' :: binary(),
+    'messageType' :: messageType(),
+    'defDate' :: binary(),
+    'blink' :: boolean(),
+    'flash' :: boolean(),
+    'Private' :: boolean()
 }).
 
 -record('SendResult', {
-	'Result' :: binary(),
-   	'RejectedNumbers' :: [binary()],
-	'TransactionID' :: binary(),
-	'NetPoints' :: binary()
+    'Result' :: binary(),
+    'RejectedNumbers' :: [binary()],
+    'TransactionID' :: binary(),
+    'NetPoints' :: binary()
 }).
 
 -record('HTTP_SendBinarySms', {
-	'customerID' :: integer(),
-	'userName' :: binary(),
-	'userPassword' :: binary(),
-	'originator' :: binary(),
-	'binaryBody' :: binary(),
-	'recipientPhone' :: binary(),
-	'defDate' :: binary(),
-	'data_coding' :: binary(),
-	'esm_class' :: binary(),
-	'PID' :: binary()
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary(),
+    'originator' :: binary(),
+    'binaryBody' :: binary(),
+    'recipientPhone' :: binary(),
+    'defDate' :: binary(),
+    'data_coding' :: binary(),
+    'esm_class' :: binary(),
+    'PID' :: binary()
 }).
 
 -record('HTTP_KeepAlive', {
-	'customerID' :: integer(),
-	'userName' :: binary(),
-	'userPassword' :: binary()
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary()
 }).
 
 -record('HTTP_Authenticate', {
-	'customerID' :: integer(),
-	'userName' :: binary(),
-	'userPassword' :: binary()
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary()
 }).
 
 -record('HTTP_GetSmsStatus', {
-	'customerID' :: integer(),
-	'userName' :: binary(),
-	'userPassword' :: binary(),
-	'transactionID' :: binary(),
-	'detailed' :: boolean()
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary(),
+    'transactionID' :: binary(),
+    'detailed' :: boolean()
 }).
 
 -record('SmsStatus', {
-	'Result' :: binary(),
-	'Statistics' :: binary(),
-	'Details' :: binary(),
-	'NetPoints' :: binary()
+    'Result' :: binary(),
+    'Statistics' :: binary(),
+    'Details' :: binary(),
+    'NetPoints' :: binary()
 }).
 
 -record('Authenticate', {
-	user :: #user{}
+    user :: #user{}
 }).
 
 -record('AuthResult', {
-	'Result' :: binary(),
-	'NetPoints' :: binary(),
-	'Originators' = [] :: [binary()],
-	'CustomerID' :: integer(),
-	'CreditSMS' :: binary(),
-	'CreditMMS' :: binary()
+    'Result' :: binary(),
+    'NetPoints' :: binary(),
+    'Originators' = [] :: [binary()],
+    'CustomerID' :: integer(),
+    'CreditSMS' :: binary(),
+    'CreditMMS' :: binary()
 }).
 
 -endif. % soap_srv_protocol.hrl

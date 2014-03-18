@@ -6,17 +6,17 @@
 
 %% API
 -export([
-	start_link/0
+    start_link/0
 ]).
 
 %% GenServer Callback Exports
 -export([
-	init/1,
-	handle_cast/2,
-	handle_call/3,
-	handle_info/2,
-	code_change/3,
-	terminate/2
+    init/1,
+    handle_cast/2,
+    handle_call/3,
+    handle_info/2,
+    code_change/3,
+    terminate/2
 ]).
 
 -include_lib("alley_dto/include/adto.hrl").
@@ -26,17 +26,17 @@
 -define(IncomingQueue, <<"pmm.k1api.incoming">>).
 
 -record(state, {
-	chan 			:: pid(),
-	chan_mon_ref 	:: reference()
+    chan            :: pid(),
+    chan_mon_ref    :: reference()
 }).
 
 -record(req, {
-	chan :: pid(),
-	payload :: binary(),
-	reply_to :: binary(),
-	message_id :: binary(),
-	ct :: binary(),
-	dto :: #k1api_sms_notification_request_dto{}
+    chan :: pid(),
+    payload :: binary(),
+    reply_to :: binary(),
+    message_id :: binary(),
+    ct :: binary(),
+    dto :: #k1api_sms_notification_request_dto{}
 }).
 
 %% ===================================================================
@@ -45,25 +45,25 @@
 
 -spec start_link() -> {ok, pid()}.
 start_link() ->
-	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %% ===================================================================
 %% GenServer Callback Functions
 %% ===================================================================
 
 init([]) ->
-	case rmql:channel_open() of
-		{ok, Chan} ->
-			MonRef = erlang:monitor(process, Chan),
-			ok = rmql:queue_declare(Chan, ?IncomingQueue, []),
-			NoAck = true,
-			{ok, _ConsumerTag} = rmql:basic_consume(Chan, ?IncomingQueue, NoAck),
-			lager:info("mo_srv: started"),
-			{ok, #state{chan = Chan, chan_mon_ref = MonRef}};
-		unavailable ->
-			lager:info("mo_srv: initializing failed (amqp_unavailable). shutdown"),
-			{stop, amqp_unavailable}
-	end.
+    case rmql:channel_open() of
+        {ok, Chan} ->
+            MonRef = erlang:monitor(process, Chan),
+            ok = rmql:queue_declare(Chan, ?IncomingQueue, []),
+            NoAck = true,
+            {ok, _ConsumerTag} = rmql:basic_consume(Chan, ?IncomingQueue, NoAck),
+            lager:info("mo_srv: started"),
+            {ok, #state{chan = Chan, chan_mon_ref = MonRef}};
+        unavailable ->
+            lager:info("mo_srv: initializing failed (amqp_unavailable). shutdown"),
+            {stop, amqp_unavailable}
+    end.
 
 handle_call(_Request, _From, State) ->
     {stop, unexpected_call, State}.
@@ -72,30 +72,30 @@ handle_cast(_Msg, State) ->
     {stop, unexpected_cast, State}.
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #state{chan_mon_ref = Ref}) ->
-	lager:error("mo_srv: amqp channel down (~p)", [Info]),
-	{stop, amqp_channel_down, St};
+    lager:error("mo_srv: amqp channel down (~p)", [Info]),
+    {stop, amqp_channel_down, St};
 
 handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
-	#'P_basic'{
-		reply_to = ReplyTo,
-		message_id = MsgID,
-		content_type = ContentType
-	} = AMQPMsg#amqp_msg.props,
-	Req = #req{
-		reply_to = ReplyTo,
-		message_id = MsgID,
-		ct = ContentType,
-		payload = AMQPMsg#amqp_msg.payload,
-		chan = St#state.chan
-	},
-	process(decode, Req),
-	{noreply, St};
+    #'P_basic'{
+        reply_to = ReplyTo,
+        message_id = MsgID,
+        content_type = ContentType
+    } = AMQPMsg#amqp_msg.props,
+    Req = #req{
+        reply_to = ReplyTo,
+        message_id = MsgID,
+        ct = ContentType,
+        payload = AMQPMsg#amqp_msg.payload,
+        chan = St#state.chan
+    },
+    process(decode, Req),
+    {noreply, St};
 
 handle_info(_Info, State) ->
     {stop, unexpected_info, State}.
 
 terminate(_Reason, _St) ->
-	ok.
+    ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -105,64 +105,64 @@ code_change(_OldVsn, State, _Extra) ->
 %% ===================================================================
 
 process(decode, Req = #req{ct = <<"OutgoingBatch">>}) ->
-	case adto:decode(#k1api_sms_notification_request_dto{}, Req#req.payload) of
-		{ok, DTO} ->
-			process(deliver, Req#req{dto = DTO});
-		Error ->
-			lager:warning("payload ~p unpack error ~p", [Req#req.payload, Error])
-	end;
+    case adto:decode(#k1api_sms_notification_request_dto{}, Req#req.payload) of
+        {ok, DTO} ->
+            process(deliver, Req#req{dto = DTO});
+        Error ->
+            lager:warning("payload ~p unpack error ~p", [Req#req.payload, Error])
+    end;
 process(decode, Req) ->
-	lager:warning("Got unexpected ct: ~p", [Req#req.ct]);
+    lager:warning("Got unexpected ct: ~p", [Req#req.ct]);
 
 process(deliver, Req) ->
-	DTO = Req#req.dto,
-	lager:info("Got InboundSms: ~p", [DTO]),
-	#k1api_sms_notification_request_dto{
-		dest_addr = DestAddr,
-		message = Message,
-		sender_addr = SenderAddr,
-		notify_url  = Url
-	} = DTO,
+    DTO = Req#req.dto,
+    lager:info("Got InboundSms: ~p", [DTO]),
+    #k1api_sms_notification_request_dto{
+        dest_addr = DestAddr,
+        message = Message,
+        sender_addr = SenderAddr,
+        notify_url  = Url
+    } = DTO,
 
-	Queries = [
-		{'Sender', SenderAddr#addr.addr},
-		{'Destination', DestAddr#addr.addr},
-		{'MessageType', 1},
-		{'MessageText', Message},
-		{'MessageTextRaw', bin_to_hex(Message)},
-		{'CurrentPart', 0},
-		{'NumberOfParts', 0}
-	],
+    Queries = [
+        {'Sender', SenderAddr#addr.addr},
+        {'Destination', DestAddr#addr.addr},
+        {'MessageType', 1},
+        {'MessageText', Message},
+        {'MessageTextRaw', bin_to_hex(Message)},
+        {'CurrentPart', 0},
+        {'NumberOfParts', 0}
+    ],
     FullUrl = binary_to_list(Url) ++  query_string(Queries),
-	FlatReqURL = lists:flatten(FullUrl),
+    FlatReqURL = lists:flatten(FullUrl),
     case httpc:request(get, {FullUrl, []}, [{timeout, 10000}], []) of
         {ok, {{HTTPVer, 200, ReasonPhrase}, RespHeaders, RespBody}} ->
-			lager:debug("Delivered: ~p", [FlatReqURL]),
-			soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, 200, ReasonPhrase, RespHeaders, RespBody),
-			process(ack, Req);
-		{ok, {{HTTPVer, RespCode, ReasonPhrase}, RespHeaders, RespBody}} ->
-			lager:debug("Srv respond ~p ~p", [RespCode, ReasonPhrase]),
-			soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, RespCode, ReasonPhrase, RespHeaders, RespBody),
-			ok;
-		{error, {connect_failed, Reason}} ->
-			lager:debug("Connect failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
-			soap_srv_http_out_logger:log(FlatReqURL, connect_failed, Reason),
-			ok;
-		{error, {send_failed, Reason}} ->
-			lager:debug("Send failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
-			soap_srv_http_out_logger:log(FlatReqURL, send_failed, Reason),
-			ok;
-		{error, Reason} ->
-			lager:debug("Unexpected error:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
-			soap_srv_http_out_logger:log(FlatReqURL, unexpected, Reason)
+            lager:debug("Delivered: ~p", [FlatReqURL]),
+            soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, 200, ReasonPhrase, RespHeaders, RespBody),
+            process(ack, Req);
+        {ok, {{HTTPVer, RespCode, ReasonPhrase}, RespHeaders, RespBody}} ->
+            lager:debug("Srv respond ~p ~p", [RespCode, ReasonPhrase]),
+            soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, RespCode, ReasonPhrase, RespHeaders, RespBody),
+            ok;
+        {error, {connect_failed, Reason}} ->
+            lager:debug("Connect failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+            soap_srv_http_out_logger:log(FlatReqURL, connect_failed, Reason),
+            ok;
+        {error, {send_failed, Reason}} ->
+            lager:debug("Send failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+            soap_srv_http_out_logger:log(FlatReqURL, send_failed, Reason),
+            ok;
+        {error, Reason} ->
+            lager:debug("Unexpected error:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+            soap_srv_http_out_logger:log(FlatReqURL, unexpected, Reason)
     end;
 
 process(ack, Req) ->
-	lager:info("ack"),
-	ReqDTO = Req#req.dto,
-	ReqMsgID = ReqDTO#k1api_sms_notification_request_dto.message_id,
-	DTO = #funnel_ack_dto{id = ReqMsgID},
-    {ok, Encoded} =	adto:encode(DTO),
+    lager:info("ack"),
+    ReqDTO = Req#req.dto,
+    ReqMsgID = ReqDTO#k1api_sms_notification_request_dto.message_id,
+    DTO = #funnel_ack_dto{id = ReqMsgID},
+    {ok, Encoded} = adto:encode(DTO),
     RespProps = #'P_basic'{
         content_type   = <<"BatchAck">>,
         correlation_id = Req#req.message_id,
@@ -179,7 +179,7 @@ make_query({Key, Value}) ->
     [url_encode(Key), "=", url_encode(Value)].
 
 url_encode(Value) when is_atom(Value) ->
-	url_encode(atom_to_list(Value));
+    url_encode(atom_to_list(Value));
 url_encode(Value) when is_list(Value) ->
     http_uri:encode(Value);
 url_encode(Value) when is_binary(Value) ->

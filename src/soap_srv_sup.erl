@@ -9,7 +9,7 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(I, Timeout, Type), {I, {I, start_link, []}, permanent, Timeout, Type, [I]}).
 
 %% ===================================================================
 %% API functions
@@ -23,27 +23,14 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [
-
-		{soap_srv_plogger_sup,
-			{soap_srv_plogger_sup, start_link, []},
-			permanent, infinity, supervisor, [soap_srv_plogger_sup]},
-
-		?CHILD(soap_srv_http_in_logger, worker),
-
-		?CHILD(soap_srv_http_out_logger, worker),
-
-		?CHILD(soap_srv_auth_cache, worker),
-
-		?CHILD(soap_srv_auth, worker),
-
-		?CHILD(soap_srv_mt, worker),
-
-		?CHILD(soap_srv_defer, worker),
-
-		?CHILD(soap_srv_mo, worker),
-
-		?CHILD(soap_srv_delivery_status, worker)
-
-	]} }.
-
+    {ok, {{one_for_one, 5, 10}, [
+        ?CHILD(soap_srv_plogger_sup, infinity, supervisor),
+		?CHILD(soap_srv_http_in_logger, 5000, worker),
+		?CHILD(soap_srv_http_out_logger, 5000, worker),
+		?CHILD(soap_srv_auth_cache, 5000, worker),
+		?CHILD(soap_srv_auth, 5000, worker),
+		?CHILD(soap_srv_mt, 5000, worker),
+		?CHILD(soap_srv_defer, 5000, worker),
+		?CHILD(soap_srv_mo, 5000, worker),
+		?CHILD(soap_srv_delivery_status, 5000, worker)
+	]}}.
