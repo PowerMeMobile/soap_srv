@@ -32,7 +32,7 @@
     protocol_id :: undefined | binary()
 }).
 
--define(authError, <<"Access denied. Check your account settiongs">>).
+-define(authError, <<"Access denied. Check your account settings">>).
 -define(originatorNotAllowedError, <<"Specified originator is not allowed.">>).
 -define(noAnyDestAddrError, <<"None recipient is specified or available due to your permissions">>).
 -define(invalidDefDateFormatError,

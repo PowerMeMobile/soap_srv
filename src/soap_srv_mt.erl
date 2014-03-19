@@ -155,9 +155,11 @@ send(authenticate, Req) ->
     UserName = Req#send_req.user_name,
     Pass = Req#send_req.password,
     case soap_srv_auth:authenticate(CustID, UserName, Pass) of
-        {ok, Customer} ->
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Req2 = Req#send_req{customer = Customer},
             send(perform_src_addr, Req2);
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            {ok, [{result, Error}]};
         {error, timeout} ->
             {ok, [{result, ?authError}]}
     end;
@@ -165,7 +167,7 @@ send(authenticate, Req) ->
 send(perform_src_addr, Req) ->
     Customer = Req#send_req.customer,
     Originator = soap_srv_utils:addr_to_dto(Req#send_req.originator),
-    AllowedSources = Customer#k1api_auth_response_dto.allowed_sources,
+    AllowedSources = Customer#k1api_auth_response_customer_dto.allowed_sources,
     case lists:member(Originator, AllowedSources) of
         true ->
             send(perform_dest_addr, Req#send_req{originator = Originator});
@@ -175,7 +177,7 @@ send(perform_src_addr, Req) ->
 
 send(perform_dest_addr, Req = #send_req{}) ->
     Customer = Req#send_req.customer,
-    Networks = Customer#k1api_auth_response_dto.networks,
+    Networks = Customer#k1api_auth_response_customer_dto.networks,
     BlobRecipients = Req#send_req.recipients,
     RawRecipients = binary:split(BlobRecipients, <<",">>, [trim, global]),
     case get_allowed_destinations(RawRecipients, Networks) of
@@ -213,8 +215,8 @@ send(define_text_encoding, Req) ->
 
 send(define_smpp_params, Req) when Req#send_req.action =:= 'SendServiceSms' ->
     Customer = Req#send_req.customer,
-    NoRetry = Customer#k1api_auth_response_dto.no_retry,
-    DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
+    NoRetry = Customer#k1api_auth_response_customer_dto.no_retry,
+    DefaultValidity = Customer#k1api_auth_response_customer_dto.default_validity,
     Params = lists:flatten([
             ?just_sms_request_param(<<"registered_delivery">>, true),
             ?just_sms_request_param(<<"service_type">>, <<>>),
@@ -232,8 +234,8 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendServiceSms' ->
 send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orelse
                                     Req#send_req.action =:= 'HTTP_SendBinarySms' ->
     Customer = Req#send_req.customer,
-    NoRetry = Customer#k1api_auth_response_dto.no_retry,
-    DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
+    NoRetry = Customer#k1api_auth_response_customer_dto.no_retry,
+    DefaultValidity = Customer#k1api_auth_response_customer_dto.default_validity,
     _DC = list_to_integer(binary_to_list(Req#send_req.data_coding)),
     ESMClass = list_to_integer(binary_to_list(Req#send_req.esm_class)),
     ProtocolID = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
@@ -252,8 +254,8 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orels
 send(define_smpp_params, Req) ->
     Encoding = Req#send_req.encoding,
     Customer = Req#send_req.customer,
-    NoRetry = Customer#k1api_auth_response_dto.no_retry,
-    DefaultValidity = Customer#k1api_auth_response_dto.default_validity,
+    NoRetry = Customer#k1api_auth_response_customer_dto.no_retry,
+    DefaultValidity = Customer#k1api_auth_response_customer_dto.default_validity,
     Params = lists:flatten([
             ?just_sms_request_param(<<"registered_delivery">>, true),
             ?just_sms_request_param(<<"service_type">>, <<>>),
@@ -271,7 +273,7 @@ send(build_dto, Req) ->
     NumberOfSymbols = size(Encoded),
     {ok, NumberOfParts} = get_message_parts(NumberOfSymbols, Encoding),
     Customer = Req#send_req.customer,
-    CustomerID = Customer#k1api_auth_response_dto.uuid,
+    CustomerID = Customer#k1api_auth_response_customer_dto.uuid,
     UserID = Req#send_req.user_name,
     ReqID = uuid:unparse(uuid:generate_time()),
     Destinations = Req#send_req.recipients,
@@ -368,7 +370,7 @@ flash(true, ucs2) ->
     [?just_sms_request_param(<<"data_coding">>, 248)].
 
 get_suitable_gtw(Customer, NumberOfDests) ->
-    #k1api_auth_response_dto{
+    #k1api_auth_response_customer_dto{
         default_provider_id = DefaultProviderID,
         providers = Providers,
         networks = Networks

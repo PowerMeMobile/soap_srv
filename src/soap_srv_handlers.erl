@@ -140,33 +140,35 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
     CustomerID = Req#'HTTP_GetSmsStatus'.customerID,
     UserName = Req#'HTTP_GetSmsStatus'.userName,
     Password = Req#'HTTP_GetSmsStatus'.userPassword,
-    {ok, Statuses} =
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
-        {ok, Customer} ->
-            TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
-            CustomerUUID = Customer#k1api_auth_response_dto.uuid,
-            soap_srv_delivery_status:get(CustomerUUID, UserName, TransactionID);
-        {error, Error} ->
-            lager:error("handler: error on auth: ~p", [Error])
-    end,
-    {ok, Statistics} = build_statistics(Statuses),
-    case Req#'HTTP_GetSmsStatus'.detailed of
-        <<"true">> ->
-            {ok, Details} = build_details(Statuses),
-            {ok, #'SmsStatus'{
-                'Result' = <<"OK">>,
-                'Statistics' = Statistics,
-                'Details' = Details,
-                'NetPoints' = <<"POSTPAID">>
-            }};
-        <<"false">> ->
-            {ok, #'SmsStatus'{
-                'Result' = <<"OK">>,
-                'Statistics' = Statistics,
-                'NetPoints' = <<"POSTPAID">>
-            }}
-    end;
 
+    case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
+            CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
+            {ok, Statuses} =soap_srv_delivery_status:get(CustomerUUID, UserName, TransactionID),
+            {ok, Statistics} = build_statistics(Statuses),
+            case Req#'HTTP_GetSmsStatus'.detailed of
+                <<"true">> ->
+                    {ok, Details} = build_details(Statuses),
+                    {ok, #'SmsStatus'{
+                        'Result' = <<"OK">>,
+                        'Statistics' = Statistics,
+                        'Details' = Details,
+                        'NetPoints' = <<"POSTPAID">>
+                    }};
+                <<"false">> ->
+                    {ok, #'SmsStatus'{
+                        'Result' = <<"OK">>,
+                        'Statistics' = Statistics,
+                        'NetPoints' = <<"POSTPAID">>
+                    }}
+            end;
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            {ok, #'AuthResult'{'Result' = Error}};
+        {error, Error} ->
+            lager:error("handler: error on auth: ~p", [Error]),
+            {ok, #'AuthResult'{'Result' = ?authError}}
+    end;
 handle(_) -> erlang:error(method_not_implemented).
 
 %% ===================================================================
@@ -239,10 +241,10 @@ send_result(Result) when is_list(Result) ->
 
 handle_authenticate(CustomerID, UserName, Password) ->
     case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
-        {ok, Customer} ->
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Originators =
                 [Addr#addr.addr ||
-                    Addr <- Customer#k1api_auth_response_dto.allowed_sources],
+                    Addr <- Customer#k1api_auth_response_customer_dto.allowed_sources],
             {ok, #'AuthResult'{
                     'Result' = <<"OK">>,
                     'NetPoints' = <<"POSTPAID">>,
@@ -250,9 +252,10 @@ handle_authenticate(CustomerID, UserName, Password) ->
                     'CustomerID' = CustomerID,
                     'CreditSMS' = <<"POSTPAID">>
                     }};
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            {ok, #'AuthResult'{'Result' = Error}};
         {error, timeout} ->
-            {ok, #'AuthResult'{
-                    'Result' = ?authError}}
+            {ok, #'AuthResult'{'Result' = ?authError}}
     end.
 
 handle_keep_alive(CustomerID, UserName, Password) ->
