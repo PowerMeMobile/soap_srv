@@ -24,7 +24,7 @@ start_link() ->
 
 init([]) ->
     {ok, {{one_for_one, 5, 10}, [
-        ?CHILD(soap_srv_plogger_sup, infinity, supervisor),
+        ?CHILD(soap_srv_pdu_logger_sup, infinity, supervisor),
 		?CHILD(soap_srv_http_in_logger, 5000, worker),
 		?CHILD(soap_srv_http_out_logger, 5000, worker),
 		?CHILD(soap_srv_auth_cache, 5000, worker),

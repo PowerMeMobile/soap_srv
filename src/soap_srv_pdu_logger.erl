@@ -79,7 +79,7 @@ log(SmsReq) ->
     {ok, LoggerPid} =
     case gproc:lookup_local_name({CustomerID, UserID}) of
         undefined ->
-            catch(supervisor:start_child(soap_srv_plogger_sup, [CustomerID, UserID])),
+            catch(supervisor:start_child(soap_srv_pdu_logger_sup, [CustomerID, UserID])),
             {Pid, _} = gproc:await({n,l,{CustomerID, UserID}}, 5000),
             {ok, Pid};
         Pid -> {ok, Pid}

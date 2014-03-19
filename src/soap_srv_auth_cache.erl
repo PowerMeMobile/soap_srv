@@ -69,7 +69,7 @@ fetch(CustomerID, UserID, Password) ->
 
 init([]) ->
     process_flag(trap_exit, true),
-    DetsOpts = [{ram_file, true},{file, "data/auth_cache.dets"}],
+    DetsOpts = [{ram_file, true}, {file, "data/auth_cache.dets"}],
     {ok, ?MODULE} = dets:open_file(?MODULE, DetsOpts),
     Ref = erlang:make_ref(),
     erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
