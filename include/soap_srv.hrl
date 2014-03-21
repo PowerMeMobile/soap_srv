@@ -33,7 +33,7 @@
 }).
 
 -define(authError, <<"Access denied. Check your account settings">>).
--define(originatorNotAllowedError, <<"Specified originator is not allowed.">>).
+-define(originatorNotAllowedError, <<"Specified originator is not allowed">>).
 -define(noAnyDestAddrError, <<"None recipient is specified or available due to your permissions">>).
 -define(invalidDefDateFormatError,
         <<"defDate is invalid. defDate format is MM/DD/YYYY HH:MM">>).

@@ -237,7 +237,8 @@ send_result(Result) when is_list(Result) ->
             'Result' = ?gv(result, Result, <<"OK">>),
             'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
             'TransactionID' = ?gv(id, Result),
-            'NetPoints' = <<"POSTPAID">> }}.
+            'NetPoints' = <<"POSTPAID">>
+    }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
     case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
@@ -251,7 +252,7 @@ handle_authenticate(CustomerID, UserName, Password) ->
                     'Originators' = Originators,
                     'CustomerID' = CustomerID,
                     'CreditSMS' = <<"POSTPAID">>
-                    }};
+            }};
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             {ok, #'AuthResult'{'Result' = Error}};
         {error, timeout} ->

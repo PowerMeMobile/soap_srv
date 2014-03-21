@@ -100,7 +100,7 @@ handle_cast(Request, St) ->
 
 handle_info(#sync{ref = Ref}, St = #st{ref = Ref}) ->
     ok = dets:sync(?MODULE),
-    lager:info("auth_cache: sync"),
+    %lager:info("auth_cache: sync"),
     erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
     {noreply, St};
 handle_info(Info, St) ->

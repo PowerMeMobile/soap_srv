@@ -512,7 +512,7 @@ is_deffered(DefDateList) when is_list(DefDateList) ->
     try [list_to_integer(binary_to_list(D)) || D <- DefDateList] of
         [Month, Day, Year, Hour, Min] ->
             DateTime = {{Year, Month, Day}, {Hour, Min, 0}},
-            {true, soap_srv_datetime:datetime_to_timestamp(DateTime)}
+            {true, ac_datetime:datetime_to_timestamp(DateTime)}
     catch
         _:_ -> {error, invalid}
     end;
