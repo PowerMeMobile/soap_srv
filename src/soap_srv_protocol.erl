@@ -156,13 +156,12 @@ onrequest_hook(Req) ->
     put(req_body, Body),
     Req2.
 
--spec onresponse_hook(  non_neg_integer(),
-                        list(), binary(), cowboy_req:req()) ->
-        cowboy_req:req().
+-spec onresponse_hook(non_neg_integer(),
+    list(), binary(), cowboy_req:req()) -> cowboy_req:req().
 onresponse_hook(RespCode, RespHeaders, RespBody, Req) ->
     ReqBody = get_body(),
-    soap_srv_http_in_logger:log(RespCode, RespHeaders, RespBody,
-                                Req, ReqBody),
+    soap_srv_http_in_logger:log(
+        RespCode, RespHeaders, RespBody, Req, ReqBody),
     {ok, Req2} =
         cowboy_req:reply(RespCode, RespHeaders, RespBody, Req),
     Req2.
@@ -222,7 +221,7 @@ step(get_content_type, Req, St) ->
             step(get_subpath, Req2, St#st{ct = <<"text/xml">>});
         [<<"application">>, <<"x-www-form-urlencoded">> | _] ->
             step(get_subpath, Req2, St#st{ct = <<"application/x-www-form-urlencoded">>});
-        _ -> erlang:error(unexpected_conten_type) %% @todo implement soap fault
+        _ -> erlang:error(unexpected_content_type) %% @todo implement soap fault
     end;
 
 step(get_subpath, Req, St) ->
@@ -277,15 +276,14 @@ step(get_soap_envelope, Req, St = #st{}) ->
         _ -> erlang:error(unexpected_xml_format) %% @todo implement soap fault
     end;
 
-
 step(get_soap_body, Req, St = #st{transport = soap11}) ->
     Body11 = "{http://schemas.xmlsoap.org/soap/envelope/}Body",
     case lists:keysearch(Body11, 1, St#st.envelope) of
         {value, {_, _, [{ActionNameNS, _, ActionBody}]}} ->
             step(get_action_name, Req, St#st{action_body = ActionBody,
-                                                action = ActionNameNS});
+                                             action = ActionNameNS});
         _ ->
-            erlang:error(sopa_body_not_found)
+            erlang:error(soap_body_not_found)
     end;
 
 step(get_soap_body, Req, St = #st{transport = soap12}) ->
@@ -293,9 +291,9 @@ step(get_soap_body, Req, St = #st{transport = soap12}) ->
     case lists:keysearch(Body12, 1, St#st.envelope) of
         {value, {_, _, [{ActionNameWithNS, _, ActionBody}]}} ->
             step(get_action_name, Req, St#st{action_body = ActionBody,
-                                                action = ActionNameWithNS});
+                                             action = ActionNameWithNS});
         _ ->
-            erlang:error(sopa_body_not_found) %% @todo implement soap fault
+            erlang:error(soap_body_not_found) %% @todo implement soap fault
     end;
 
 step(get_action_name, Req, St = #st{transport = Transport}) when
@@ -520,8 +518,7 @@ get_method_values(Transport, _, Keys, Req) when
                 Transport =:= http_post orelse
                 Transport =:= http_get ->
     {QsVals, Req2} = get_qs_vals(Req),
-    Fun =
-    fun(AtomKey) ->
+    Fun = fun(AtomKey) ->
         Key = cowboy_bstr:to_lower(atom_to_binary(AtomKey, utf8)),
         Value = ?gv(Key, QsVals),
         {AtomKey, Value}
@@ -531,11 +528,9 @@ get_method_values(Transport, _, Keys, Req) when
 get_method_values(Transport, Body, Keys, Req) when
                 Transport =:= soap11 orelse
                 Transport =:= soap12 ->
-    Fun =
-    fun(AtomKey) ->
+    Fun = fun(AtomKey) ->
         Key = atom_to_list(AtomKey),
-        Value =
-        case lists:keysearch("{" ++ ?NS ++ "}" ++ Key, 1, Body) of
+        Value = case lists:keysearch("{" ++ ?NS ++ "}" ++ Key, 1, Body) of
             {value, {_, _, [V]}} -> V;
             {value, {_, _, []}} -> undefined;
             {value, {_, _, List}} ->
@@ -549,8 +544,7 @@ get_method_values(Transport, Body, Keys, Req) when
     {lists:map(Fun, Keys), Req}.
 
 get_qs_vals(Req) ->
-    {QsVals, Req3} =
-    case cowboy_req:method(Req) of
+    {QsVals, Req3} = case cowboy_req:method(Req) of
         {<<"GET">>, Req2} ->
             cowboy_req:qs_vals(Req2);
         {<<"POST">>, Req2} ->
