@@ -13,7 +13,7 @@ main(Args) ->
 	io:format("Start inets~n", []),
 	ok = inets:start(),
 	io:format("Read config~n", []),
-	{ok, [Config]} = file:consult("soap_test.conf"),
+	{ok, [Config]} = file:consult("soap_test.confing"),
 	Props = ?gv(props, Config),
 
 	TestsToRun =
