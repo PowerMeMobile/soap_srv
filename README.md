@@ -82,20 +82,18 @@ Name of tests you can find at ./test/soap_test.config.
 
 Create subscription in kelly for existing user. Type in kelly console:
 
-<pre>
-rr("lib/k_mailbox-1/include/application.hrl").
-Sub = #k_mb_k1api_incoming_sms_sub{
-    id = <<"1">>,
-    customer_id = <<"a3ddc34a-1793-11e2-9602-00269e42f7a5">>,
-    user_id = <<"undefined">>,
-    priority = 1,
-    queue_name = <<"pmm.soap.incoming">>,
-    dest_addr = {addr, <<"375296660003">>,1,1,undefined},
-    notify_url = <<"http://localhost:4444/test">>,
-    callback_data = <<>>
-}.
-k_mailbox:register_subscription(Sub).
-</pre>
+    rr("lib/k_mailbox-1/include/application.hrl").
+    Sub = #k_mb_k1api_incoming_sms_sub{
+        id = <<"1">>,
+        customer_id = <<"a3ddc34a-1793-11e2-9602-00269e42f7a5">>,
+        user_id = <<"undefined">>,
+        priority = 1,
+        queue_name = <<"pmm.soap.incoming">>,
+        dest_addr = {addr, <<"375296660003">>,1,1,undefined},
+        notify_url = <<"http://localhost:4444/test">>,
+        callback_data = <<>>
+    }.
+    k_mailbox:register_subscription(Sub).
 
 Start soap_srv in development mode, to start echo mo srv:
 
