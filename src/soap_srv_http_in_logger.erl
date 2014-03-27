@@ -233,7 +233,7 @@ fmt_data(LD = #log{}, info) ->
 fmt_apache_log(LD = #log{}) ->
     Req = LD#log.req,
     %% compose client ip addr
-    {{IP0,IP1,IP2,IP3}, Req} = cowboy_req:peer_addr(Req),
+    {{{IP0,IP1,IP2,IP3}, _Port}, Req} = cowboy_req:peer(Req),
     ClientIP = io_lib:format("~p.~p.~p.~p",[IP0,IP1,IP2,IP3]),
 
     %% compose log time
@@ -246,14 +246,14 @@ fmt_apache_log(LD = #log{}) ->
 
     %% compose ReqLine
     {Method, Req} = cowboy_req:method(Req),
-    {{HttpV0,HttpV1}, Req} = cowboy_req:version(Req),
+    {HttpVer, Req} = cowboy_req:version(Req),
     {Path, Req} = cowboy_req:path(Req),
     Query =
         case cowboy_req:qs(Req) of
             {<<>>, Req} -> <<>>;
             {QS, Req} -> "?" ++ QS
         end,
-    ReqLine = io_lib:format("~s ~s~s HTTP/~p.~p",[Method, Path, Query, HttpV0, HttpV1]),
+    ReqLine = io_lib:format("~s ~s~s ~s",[Method, Path, Query, HttpVer]),
 
     %% compose user-agent
     {UserAgent, Req} = cowboy_req:header(<<"user-agent">>, Req, "-"),

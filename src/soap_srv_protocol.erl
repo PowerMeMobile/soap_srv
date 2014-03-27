@@ -548,8 +548,8 @@ get_qs_vals(Req) ->
         {<<"GET">>, Req2} ->
             cowboy_req:qs_vals(Req2);
         {<<"POST">>, Req2} ->
-            BodyQS = cowboy_http:x_www_form_urlencoded(get_body()),
-            {BodyQS, Req2}
+            BodyQs = cow_qs:parse_qs(get_body()),
+            {BodyQs, Req2}
     end,
     QsValsLowerCase =
         [{cowboy_bstr:to_lower(K), V} || {K, V} <- QsVals],
