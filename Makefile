@@ -9,10 +9,10 @@ get-deps:
 update-deps:
 	@./rebar update-deps
 
-compile: get-deps compile-src
-	@./rebar skip_deps=true xref
+xref:
+	@./rebar xref skip_deps=true
 
-compile-src:
+compile: get-deps xref
 	@./rebar compile
 
 generate: compile
@@ -29,7 +29,7 @@ develop:
 	@./rel/$(NAME)/bin/$(NAME) develop
 
 run-tests:
-	@./rebar skip_deps=true eunit
+	@./rebar eunit skip_deps=true
 
 tags:
 	@find . -name "*.[e,h]rl" -print | etags -
