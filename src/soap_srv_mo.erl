@@ -23,7 +23,7 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include("soap_srv.hrl").
 
--define(IncomingQueue, <<"pmm.k1api.incoming">>).
+-define(IncomingQueue, <<"pmm.soap.incoming">>).
 
 -record(state, {
     chan            :: pid(),
