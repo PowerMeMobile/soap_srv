@@ -112,7 +112,7 @@ init() ->
     ],
     {ok, _Pid} =
         cowboy:start_http(?MODULE, 100, [{port, Port}], ProtocolOpts),
-    lager:info("http_handler: started [0.0.0.0:~p]~n", [Port]),
+    lager:info("http server listening to 0.0.0.0:~p~n", [Port]),
     ok.
 
 -spec update_dispatch_rules() -> ok.
