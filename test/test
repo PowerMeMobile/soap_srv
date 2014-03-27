@@ -7,13 +7,12 @@
 -define(gv(Key, PropList, Default), proplists:get_value(Key, PropList, Default)).
 
 main(Args) ->
-	StartTime = now(),
 	process_flag(trap_exit, true),
 	io:format("[debug] pwd: ~p~n", [file:get_cwd()]),
 	io:format("Start inets~n", []),
 	ok = inets:start(),
 	io:format("Read config~n", []),
-	{ok, [Config]} = file:consult("soap_test.confing"),
+	{ok, [Config]} = file:consult("soap_test.config"),
 	Props = ?gv(props, Config),
 
 	TestsToRun =
