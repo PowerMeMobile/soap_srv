@@ -285,7 +285,7 @@ send(build_dto, Req) ->
         gateway_id = GtwID,
         customer_id = CustomerID,
         user_id = Req#send_req.user_name,
-        client_type = k1api,
+        client_type = soap,
         type = regular,
         message = Req#send_req.text,
         encoding = Encoding,
