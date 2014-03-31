@@ -75,13 +75,16 @@ handle_call({get_response, MesID}, From, St = #st{}) ->
     WList = St#st.pending_workers,
     RList = St#st.pending_responses,
     Worker = #pworker{
-                id = MesID,
-                from = From,
-                timestamp = soap_srv_utils:get_now()
-            },
+        id = MesID,
+        from = From,
+        timestamp = soap_srv_utils:get_now()
+    },
     {ok, NRList, NWList} =
         soap_srv_utils:process_worker_request(Worker, RList, WList),
-    {noreply, St#st{pending_workers = NWList, pending_responses = NRList}};
+    {noreply, St#st{
+        pending_workers = NWList,
+        pending_responses = NRList
+    }};
 
 handle_call(_Request, _From, St) ->
     {stop, unexpected_call, St}.
@@ -103,15 +106,16 @@ handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
             CorrelationID = AuthResp#k1api_auth_response_dto.id,
             lager:debug("AuthResponse was sucessfully decoded [id: ~p]", [CorrelationID]),
             Response = #presponse{
-                            id = CorrelationID,
-                            timestamp = soap_srv_utils:get_now(),
-                            response = AuthResp
-                        },
+                id = CorrelationID,
+                timestamp = soap_srv_utils:get_now(),
+                response = AuthResp
+            },
             {ok, NRList, NWList} =
                 soap_srv_utils:process_response(Response, ResponsesList, WorkersList),
             {noreply, St#st{
-                            pending_workers = NWList,
-                            pending_responses = NRList}};
+                pending_workers = NWList,
+                pending_responses = NRList
+            }};
         {error, Error} ->
             lager:error("Failed To Decode Auth Response Due To ~p : ~p", [Error, Content]),
             {noreply, St}
