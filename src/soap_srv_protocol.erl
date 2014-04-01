@@ -31,9 +31,10 @@
     terminate/3
 ]).
 
--include_lib("alley_dto/include/adto.hrl").
--include("soap_srv_protocol.hrl").
 -include("soap_srv.hrl").
+-include("application.hrl").
+-include("soap_srv_protocol.hrl").
+-include_lib("alley_dto/include/adto.hrl").
 
 -define(Handler, soap_srv_handlers).
 
@@ -104,15 +105,20 @@
 
 -spec init() -> ok.
 init() ->
-    {ok, Port} = application:get_env(http_port),
+    {ok, Addr} = application:get_env(?APP, http_addr),
+    {ok, Port} = application:get_env(?APP, http_port),
+    {ok, AcceptorsNum} = application:get_env(?APP, http_acceptors_num),
+
+    TransOpts = [{ip, Addr}, {port, Port}],
     ProtocolOpts = [
         {env, [{dispatch, dispatch_rules()}]},
         {onrequest, fun ?MODULE:onrequest_hook/1},
         {onresponse, fun ?MODULE:onresponse_hook/4}
     ],
+
     {ok, _Pid} =
-        cowboy:start_http(?MODULE, 100, [{port, Port}], ProtocolOpts),
-    lager:info("http server listening to 0.0.0.0:~p~n", [Port]),
+        cowboy:start_http(?MODULE, AcceptorsNum, TransOpts, ProtocolOpts),
+    lager:info("http server is listening to ~p:~p", [Addr, Port]),
     ok.
 
 -spec update_dispatch_rules() -> ok.

@@ -25,6 +25,7 @@
     terminate/2
 ]).
 
+-include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("kernel/include/file.hrl").
 
@@ -92,8 +93,8 @@ log(SmsReq) ->
 
 init({CustomerID, UserID}) ->
     process_flag(trap_exit, true),
-    {ok, LogLevel} = application:get_env(pdu_log_level),
-    {ok, LogSize} = application:get_env(pdu_log_size),
+    {ok, LogLevel} = application:get_env(?APP, pdu_log_level),
+    {ok, LogSize} = application:get_env(?APP, pdu_log_size),
     ?MODULE:set_loglevel(self(), LogLevel),
     %% To ingore gproc exceptions and CRASH reports in log files
     %% on concurent gproc:add_local_name call

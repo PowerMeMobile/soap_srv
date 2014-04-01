@@ -25,6 +25,7 @@
     terminate/2
 ]).
 
+-include("application.hrl").
 -include_lib("kernel/include/file.hrl").
 
 -define(fileOpts, [write, raw]).
@@ -108,8 +109,8 @@ log(RequestURL, HTTPVer, StatusCode, ReasonPhrase, RespHeaders, RespBody) ->
 
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, LogLevel} = application:get_env(http_log_level),
-    {ok, LogSize} = application:get_env(http_log_size),
+    {ok, LogLevel} = application:get_env(?APP, http_log_level),
+    {ok, LogSize} = application:get_env(?APP, http_log_size),
     ?MODULE:set_loglevel(LogLevel),
     lager:info("http_out_logger: started"),
     {ok, #st{log_level = none, max_size = LogSize}}.

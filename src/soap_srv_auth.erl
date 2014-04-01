@@ -24,12 +24,12 @@
     terminate/2
 ]).
 
--include_lib("amqp_client/include/amqp_client.hrl").
--include_lib("alley_dto/include/adto.hrl").
 -include("soap_srv.hrl").
-
 -define(AuthRequestQueue, <<"pmm.k1api.auth_request">>).
 -define(AuthResponseQueue, <<"pmm.k1api.auth_response">>).
+-include("application.hrl").
+-include_lib("alley_dto/include/adto.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -record(st, {
     chan                    :: pid(),
