@@ -46,7 +46,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 -spec authenticate(binary(), binary(), binary()) ->
-    {ok, Customer :: #k1api_auth_response_dto{}} |
+    {ok, #k1api_auth_response_dto{}} |
     {error, timeout}.
 authenticate(CustomerID, UserID, Password) ->
     User = {CustomerID, UserID, Password},
