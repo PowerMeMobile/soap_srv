@@ -96,7 +96,7 @@ handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
         Action =:= publish orelse
         Action =:= publish_kelly orelse
         Action =:= publish_just ->
-    {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_sms_queue),
+    {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_queue),
     {ok, SmsGtwQueueFmt} = application:get_env(?APP, sms_gtw_queue_fmt),
     GtwQueue = binary:replace(SmsGtwQueueFmt, <<"%id%">>, GtwID),
 
