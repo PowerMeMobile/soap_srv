@@ -51,7 +51,7 @@ start_link() ->
     {error, timeout}.
 authenticate(CustomerID, UserID, Password) ->
     User = {CustomerID, UserID, Password},
-    authenticate(check_cache, User).
+    authenticate(request_backend, User).
 
 %% ===================================================================
 %% GenServer Callbacks
