@@ -20,12 +20,10 @@
     terminate/2
 ]).
 
--include_lib("amqp_client/include/amqp_client.hrl").
--include_lib("alley_dto/include/adto.hrl").
 -include("soap_srv.hrl").
-
--define(deliveryStatusRequestQueue, <<"pmm.k1api.delivery_status_request">>).
--define(deliveryStatusResponseQueue, <<"pmm.k1api.delivery_status_response">>).
+-include("application.hrl").
+-include_lib("alley_dto/include/adto.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -record(state, {
     chan                    :: pid(),
@@ -55,12 +53,14 @@ get(CustomerUUID, UserID, SendSmsRequestId) ->
 %% ===================================================================
 
 init([]) ->
+    {ok, DlrStatusReqQueue} = application:get_env(?APP, dlr_status_req_queue),
+    {ok, DlrStatusRespQueue} = application:get_env(?APP, dlr_status_resp_queue),
     {ok, Chan} = rmql:channel_open(),
     Ref = erlang:monitor(process, Chan),
-    ok = rmql:queue_declare(Chan, ?deliveryStatusResponseQueue, []),
-    ok = rmql:queue_declare(Chan, ?deliveryStatusRequestQueue, []),
+    ok = rmql:queue_declare(Chan, DlrStatusReqQueue, []),
+    ok = rmql:queue_declare(Chan, DlrStatusRespQueue, []),
     NoAck = true,
-    {ok, _ConsumerTag} = rmql:basic_consume(Chan, ?deliveryStatusResponseQueue, NoAck),
+    {ok, _ConsumerTag} = rmql:basic_consume(Chan, DlrStatusRespQueue, NoAck),
     {ok, #state{chan = Chan, ref = Ref}}.
 
 handle_call(get_channel, _From, State = #state{chan = Chan}) ->
@@ -128,14 +128,17 @@ get_response(RequestUUID) ->
 request_backend(CustomerUUID, UserID, SendSmsRequestId) ->
     {ok, Channel} = get_channel(),
     RequestUUID = uuid:unparse(uuid:generate_time()),
-    DeliveryStatusReqDTO = #k1api_sms_delivery_status_request_dto{
+    DeliveryStatusReq = #k1api_sms_delivery_status_request_dto{
         id = RequestUUID,
         customer_id = CustomerUUID,
         user_id = UserID,
         sms_request_id = SendSmsRequestId,
         address = soap_srv_utils:addr_to_dto(<<>>)
     },
-    lager:debug("DeliveryStatusReqDTO: ~p", [DeliveryStatusReqDTO]),
-    {ok, Payload} = adto:encode(DeliveryStatusReqDTO),
-    ok = rmql:basic_publish(Channel, ?deliveryStatusRequestQueue, Payload, #'P_basic'{}),
+    lager:debug("DeliveryStatusReq: ~p", [DeliveryStatusReq]),
+    {ok, DlrStatusReqQueue} = application:get_env(?APP, dlr_status_req_queue),
+    {ok, DlrStatusRespQueue} = application:get_env(?APP, dlr_status_resp_queue),
+    {ok, Payload} = adto:encode(DeliveryStatusReq),
+    Props = #'P_basic'{reply_to = DlrStatusRespQueue},
+    ok = rmql:basic_publish(Channel, DlrStatusReqQueue, Payload, Props),
     {ok, RequestUUID}.

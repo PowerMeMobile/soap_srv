@@ -19,11 +19,10 @@
     terminate/2
 ]).
 
+-include("soap_srv.hrl").
+-include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
--include("soap_srv.hrl").
-
--define(IncomingQueue, <<"pmm.soap.incoming">>).
 
 -record(state, {
     chan            :: pid(),
@@ -52,12 +51,13 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
+    {ok, IncomingQueue} = application:get_env(?APP, incoming_sms_queue),
     case rmql:channel_open() of
         {ok, Chan} ->
             MonRef = erlang:monitor(process, Chan),
-            ok = rmql:queue_declare(Chan, ?IncomingQueue, []),
+            ok = rmql:queue_declare(Chan, IncomingQueue, []),
             NoAck = true,
-            {ok, _ConsumerTag} = rmql:basic_consume(Chan, ?IncomingQueue, NoAck),
+            {ok, _ConsumerTag} = rmql:basic_consume(Chan, IncomingQueue, NoAck),
             lager:info("mo_srv: started"),
             {ok, #state{chan = Chan, chan_mon_ref = MonRef}};
         unavailable ->

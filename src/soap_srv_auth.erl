@@ -25,8 +25,6 @@
 ]).
 
 -include("soap_srv.hrl").
--define(AuthRequestQueue, <<"pmm.k1api.auth_request">>).
--define(AuthResponseQueue, <<"pmm.k1api.auth_response">>).
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
@@ -135,13 +133,15 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 
 setup_chan(St = #st{}) ->
+    {ok, AuthReqQueue} = application:get_env(?APP, auth_req_queue),
+    {ok, AuthRespQueue} = application:get_env(?APP, auth_resp_queue),
     case rmql:channel_open() of
         {ok, Channel} ->
             MonRef = erlang:monitor(process, Channel),
-            ok = rmql:queue_declare(Channel, ?AuthResponseQueue, []),
-            ok = rmql:queue_declare(Channel, ?AuthRequestQueue, []),
+            ok = rmql:queue_declare(Channel, AuthReqQueue, []),
+            ok = rmql:queue_declare(Channel, AuthRespQueue, []),
             NoAck = true,
-            {ok, _ConsumerTag} = rmql:basic_consume(Channel, ?AuthResponseQueue, NoAck),
+            {ok, _ConsumerTag} = rmql:basic_consume(Channel, AuthRespQueue, NoAck),
             {ok, St#st{chan = Channel, chan_mon_ref = MonRef}};
         unavailable -> unavailable
     end.
@@ -181,7 +181,9 @@ request_backend_auth(CustomerID, UserID, Password) ->
         user_id = UserID,
         password = Password
     },
+    {ok, AuthReqQueue} = application:get_env(?APP, auth_req_queue),
+    {ok, AuthRespQueue} = application:get_env(?APP, auth_resp_queue),
     {ok, Payload} = adto:encode(AuthRequest),
-    Props = #'P_basic'{},
-    ok = rmql:basic_publish(Channel, ?AuthRequestQueue, Payload, Props),
+    Props = #'P_basic'{reply_to = AuthRespQueue},
+    ok = rmql:basic_publish(Channel, AuthReqQueue, Payload, Props),
     {ok, RequestUUID}.

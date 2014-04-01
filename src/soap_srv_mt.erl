@@ -25,11 +25,10 @@
     terminate/2
 ]).
 
--include_lib("amqp_client/include/amqp_client.hrl").
--include_lib("alley_dto/include/adto.hrl").
 -include("soap_srv.hrl").
-
--define(SmsRequestQueue, <<"pmm.k1api.sms_request">>).
+-include("application.hrl").
+-include_lib("alley_dto/include/adto.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(just_sms_request_param(Name, Param),
     apply(fun
@@ -97,16 +96,18 @@ handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
         Action =:= publish orelse
         Action =:= publish_kelly orelse
         Action =:= publish_just ->
-    GtwQueue = binary:replace(<<"pmm.just.gateway.%id%">>, <<"%id%">>, GtwID),
+    {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_sms_queue),
+    {ok, SmsGtwQueueFmt} = application:get_env(?APP, sms_gtw_queue_fmt),
+    GtwQueue = binary:replace(SmsGtwQueueFmt, <<"%id%">>, GtwID),
 
     %% use rabbitMQ 'CC' extention to avoid double publish confirm per 1 request
     {Headers, RoutinKey} =
         case Action of
             publish ->
                 CC = {<<"CC">>, array, [{longstr, GtwQueue}]},
-                {[CC], ?SmsRequestQueue};
+                {[CC], SmsRequestQueue};
             publish_kelly ->
-                {[], ?SmsRequestQueue};
+                {[], SmsRequestQueue};
             publish_just ->
                 {[], GtwQueue}
         end,
@@ -352,12 +353,13 @@ unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
 %% ===================================================================
 
 setup_chan(St = #st{}) ->
+    {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_queue),
     case rmql:channel_open() of
         {ok, Channel} ->
             ChanMonRef = erlang:monitor(process, Channel),
             amqp_channel:register_confirm_handler(Channel, self()),
             #'confirm.select_ok'{} = amqp_channel:call(Channel, #'confirm.select'{}),
-            ok = rmql:queue_declare(Channel, ?SmsRequestQueue, []),
+            ok = rmql:queue_declare(Channel, SmsRequestQueue, []),
             {ok, St#st{chan = Channel, chan_mon_ref = ChanMonRef}};
         unavailable -> unavailable
     end.
