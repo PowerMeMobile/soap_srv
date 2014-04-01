@@ -24,6 +24,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
@@ -59,10 +60,10 @@ authenticate(CustomerID, UserID, Password) ->
 init([]) ->
     case setup_chan(#st{}) of
         {ok, St} ->
-            lager:info("auth_srv: started"),
+            ?log_info("auth_srv: started", []),
             {ok, St};
         unavailable ->
-            lager:error("auth_srv: initializing failed (amqp_unavailable). shutdown"),
+            ?log_error("auth_srv: initializing failed (amqp_unavailable). shutdown", []),
             {stop, amqp_unavailable}
     end.
 
@@ -91,18 +92,17 @@ handle_cast(_Msg, St) ->
     {stop, unexpected_cast, St}.
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #st{chan_mon_ref = Ref}) ->
-    lager:error("auth_srv: amqp channel down (~p)", [Info]),
+    ?log_error("auth_srv: amqp channel down (~p)", [Info]),
     {stop, amqp_channel_down, St};
 
 handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
     Content = AmqpMsg#amqp_msg.payload,
     ResponsesList = St#st.pending_responses,
     WorkersList = St#st.pending_workers,
-    lager:debug("Got auth response", []),
     case adto:decode(#k1api_auth_response_dto{}, Content) of
         {ok, AuthResp = #k1api_auth_response_dto{}} ->
             CorrelationID = AuthResp#k1api_auth_response_dto.id,
-            lager:debug("AuthResponse was sucessfully decoded [id: ~p]", [CorrelationID]),
+            ?log_debug("Got auth response: ~p", [AuthResp]),
             Response = #presponse{
                 id = CorrelationID,
                 timestamp = soap_srv_utils:get_now(),
@@ -115,7 +115,7 @@ handle_info({#'basic.deliver'{}, AmqpMsg = #amqp_msg{}}, St = #st{}) ->
                 pending_responses = NRList
             }};
         {error, Error} ->
-            lager:error("Failed To Decode Auth Response Due To ~p : ~p", [Error, Content]),
+            ?log_error("Failed To Decode Auth Response Due To ~p : ~p", [Error, Content]),
             {noreply, St}
     end;
 
@@ -163,7 +163,8 @@ authenticate(request_backend, User) ->
             ok = soap_srv_auth_cache:store(CustomerID, UserID, Password, Customer),
             {ok, Customer}
     catch
-        _:{timeout, _} -> {error, timeout}
+        _:{timeout, _} ->
+            {error, timeout}
     end.
 
 get_channel() ->
@@ -181,6 +182,7 @@ request_backend_auth(CustomerID, UserID, Password) ->
         user_id = UserID,
         password = Password
     },
+    ?log_debug("Sending auth request: ~p", [AuthRequest]),
     {ok, AuthReqQueue} = application:get_env(?APP, auth_req_queue),
     {ok, AuthRespQueue} = application:get_env(?APP, auth_resp_queue),
     {ok, Payload} = adto:encode(AuthRequest),

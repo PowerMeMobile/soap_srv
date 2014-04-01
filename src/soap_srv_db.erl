@@ -6,6 +6,8 @@
     next_id/3
 ]).
 
+-include("logging.hrl").
+
 -type customer_id()     :: binary().
 -type user_id()     :: binary().
 -type key()         :: {customer_id(), user_id()}.
@@ -36,19 +38,19 @@ next_id(CustomerID, UserID, NumberOfIDs) ->
 init_mnesia() ->
     Nodes = [node()],
     mnesia:stop(),
-    lager:info("db: creating mnesia schema on: ~p...", [Nodes]),
+    ?log_info("db: creating mnesia schema on: ~p...", [Nodes]),
     ok = case mnesia:create_schema(Nodes) of
         ok ->
-            lager:info("db: schema was created", []),
+            ?log_info("db: schema was created", []),
             ok;
         {error, {MnesiaNode, {already_exists, MnesiaNode}}} ->
             MnesiaNodes = mnesia:system_info(db_nodes),
             case lists:member(MnesiaNode, MnesiaNodes) of
                 true ->
-                    lager:info("db: mnesia schema already exists on: ~p", [MnesiaNode]),
+                    ?log_info("db: mnesia schema already exists on: ~p", [MnesiaNode]),
                     ok;
                 false ->
-                    lager:error("Mnesia schema already exists on: ~p, but it's not in existing list: ~p"
+                    ?log_error("Mnesia schema already exists on: ~p, but it's not in existing list: ~p"
                         " Did you rename the node?",
                         [MnesiaNode, MnesiaNodes]),
                     erlang:error(schema_already_exists_created_on_different_node)

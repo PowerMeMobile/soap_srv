@@ -25,6 +25,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include("application.hrl").
 -include_lib("kernel/include/file.hrl").
 
@@ -85,7 +86,6 @@ get_io_list_now() ->
     Month = httpd_util:month(M),
     io_lib:format("~2..0w/~s/~w:~2..0w:~2..0w:~2..0w", [D,Month,Y,H,Min,S]).
 
-
 -type http_header_field() :: string().
 -type http_header_value() :: string().
 -type http_header() :: {http_header_field(), http_header_value()}.
@@ -112,7 +112,7 @@ init([]) ->
     {ok, LogLevel} = application:get_env(?APP, http_log_level),
     {ok, LogSize} = application:get_env(?APP, http_log_size),
     ?MODULE:set_loglevel(LogLevel),
-    lager:info("http_out_logger: started"),
+    ?log_info("http_out_logger: started", []),
     {ok, #st{log_level = none, max_size = LogSize}}.
 
 %% logging callbacks
@@ -137,7 +137,7 @@ handle_cast({set_loglevel, LogLevel}, #st{log_level = LogLevel} = St) ->
 handle_cast({set_loglevel, none}, St) ->
     close_and_rename_prev_file(St),
     erlang:cancel_timer(St#st.tref),
-    lager:info("http_out_logger: set loglevel to none"),
+    ?log_info("http_out_logger: set loglevel to none", []),
     {noreply, St#st{log_level = none,
                     tref = undefined,
                     fd = undefined,
@@ -149,7 +149,7 @@ handle_cast({set_loglevel, none}, St) ->
 handle_cast({set_loglevel, LogLevel}, #st{log_level = none} = St) ->
     TRef = erlang:start_timer(?midnightCheckInterval, self(), midnight_check),
     St2 = open_log_file(St#st{tref = TRef, log_level = LogLevel}),
-    lager:info("http_out_logger: set loglevel to ~p", [LogLevel]),
+    ?log_info("http_out_logger: set loglevel to ~p", [LogLevel]),
     {noreply, St2};
 %%% change loglevel
 handle_cast({set_loglevel, LogLevel}, St) ->
@@ -178,7 +178,7 @@ terminate(Reason, St) ->
         none -> ok;
         _    -> close_and_rename_prev_file(St)
     end,
-    lager:info("http_out_logger: terminated (~p)", [Reason]).
+    ?log_info("http_out_logger: terminated (~p)", [Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -203,7 +203,7 @@ ensure_actual_date(St) ->
     case St#st.date of
         Date -> St;
         _ ->
-            lager:info("http_out_logger: date changed"),
+            ?log_info("http_out_logger: date changed", []),
             close_and_rename_prev_file(St),
             open_log_file(St)
     end.

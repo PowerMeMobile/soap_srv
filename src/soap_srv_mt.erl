@@ -1,3 +1,4 @@
+
 -module(soap_srv_mt).
 
 %% TODO
@@ -25,6 +26,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
@@ -85,10 +87,10 @@ init([]) ->
     ?MODULE = ets:new(?MODULE, [named_table, ordered_set, {keypos, 2}]),
     case setup_chan(#st{}) of
         {ok, St} ->
-            lager:info("mt_srv: started"),
+            ?log_info("mt_srv: started", []),
             {ok, St};
         unavailable ->
-            lager:error("mt_srv: initializing failed (amqp_unavailable). shutdown"),
+            ?log_error("mt_srv: initializing failed (amqp_unavailable). shutdown", []),
             {stop, amqp_unavailable}
     end.
 
@@ -130,7 +132,7 @@ handle_cast(Req, St) ->
     {stop, {unexpected_cast, Req}, St}.
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #st{chan_mon_ref = Ref}) ->
-    lager:error("mt_srv: amqp channel down (~p)", [Info]),
+    ?log_error("mt_srv: amqp channel down (~p)", [Info]),
     {stop, amqp_channel_down, St};
 
 handle_info(Confirm, St) when is_record(Confirm, 'basic.ack');
@@ -152,10 +154,10 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 
 send(authenticate, Req) ->
-    CustID = Req#send_req.customer_id,
+    CustomerID = Req#send_req.customer_id,
     UserName = Req#send_req.user_name,
     Pass = Req#send_req.password,
-    case soap_srv_auth:authenticate(CustID, UserName, Pass) of
+    case soap_srv_auth:authenticate(CustomerID, UserName, Pass) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Req2 = Req#send_req{customer = Customer},
             send(perform_src_addr, Req2);
@@ -295,10 +297,11 @@ send(build_dto, Req) ->
         dest_addrs = {regular, Destinations},
         message_ids = MessageIDs
     },
+    ?log_debug("Sending submit request: ~p", [DTO]),
     {ok, Payload} = adto:encode(DTO),
-    case is_deffered(Req#send_req.def_date) of
+    case is_deferred(Req#send_req.def_date) of
         {true, Timestamp} ->
-            lager:info("mt_srv: defDate -> ~p, timestamp -> ~p", [Req#send_req.def_date, Timestamp]),
+            ?log_info("mt_srv: defDate -> ~p, timestamp -> ~p", [Req#send_req.def_date, Timestamp]),
             soap_srv_defer:defer(ReqID, Timestamp, {publish_just, Payload, ReqID, GtwID}),
             ok = publish({publish_kelly, Payload, ReqID, GtwID}),
             soap_srv_pdu_logger:log(DTO),
@@ -339,6 +342,7 @@ unconfirmed_ids_up_to(UpToID) ->
         FirstID ->
             unconfirmed_ids_up_to(UpToID, [], FirstID)
     end.
+
 unconfirmed_ids_up_to(UpToID, Acc, LastID) when LastID =< UpToID ->
     case ets:next(?MODULE, LastID) of
         '$end_of_table' -> [LastID | Acc];
@@ -477,11 +481,11 @@ convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
             ConvCP = [number_to_arabic(CP) || CP <- CodePoints],
             unicode:characters_to_binary(ConvCP, utf8);
         {error, CodePoints, RestData} ->
-            lager:error("mt_srv: Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
+            ?log_error("mt_srv: Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
                     [Text, CodePoints, RestData]),
             erlang:error("Illegal utf8 symbols");
         {incomplete, CodePoints, IncompleteSeq} ->
-            lager:error("mt_srv: Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
+            ?log_error("mt_srv: Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
                     [Text, CodePoints, IncompleteSeq]),
             erlang:error("Incomplite utf8 sequence")
     end;
@@ -508,9 +512,9 @@ hexstr_to_bin([X,Y|T], Acc) ->
   {ok, [V], []} = io_lib:fread("~16u", [X,Y]),
   hexstr_to_bin(T, [V | Acc]).
 
-is_deffered(<<>>) -> false;
-is_deffered(undefined) -> false;
-is_deffered(DefDateList) when is_list(DefDateList) ->
+is_deferred(<<>>) -> false;
+is_deferred(undefined) -> false;
+is_deferred(DefDateList) when is_list(DefDateList) ->
     try [list_to_integer(binary_to_list(D)) || D <- DefDateList] of
         [Month, Day, Year, Hour, Min] ->
             DateTime = {{Year, Month, Day}, {Hour, Min, 0}},
@@ -518,9 +522,9 @@ is_deffered(DefDateList) when is_list(DefDateList) ->
     catch
         _:_ -> {error, invalid}
     end;
-is_deffered(DefDate) when is_binary(DefDate) ->
+is_deferred(DefDate) when is_binary(DefDate) ->
     case binary:split(DefDate, [<<"/">>, <<" ">>, <<":">>], [global]) of
         [_M, _D, _Y, _H, _Min] = DefDateList ->
-            is_deffered(DefDateList);
+            is_deferred(DefDateList);
         _ -> {error, invalid}
     end.

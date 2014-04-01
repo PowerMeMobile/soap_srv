@@ -2,6 +2,7 @@
 
 -include("soap_srv_protocol.hrl").
 -include("soap_srv.hrl").
+-include("logging.hrl").
 
 -export([handle/1]).
 
@@ -166,7 +167,7 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             {ok, #'AuthResult'{'Result' = Error}};
         {error, Error} ->
-            lager:error("handler: error on auth: ~p", [Error]),
+            ?log_error("handler: error on auth: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?authError}}
     end;
 handle(_) -> erlang:error(method_not_implemented).

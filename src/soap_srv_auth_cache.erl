@@ -22,6 +22,8 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
+
 -define(SYNC_INTERVAL, (1000 * 60 * 5)).
 
 -record(sync,{
@@ -73,7 +75,7 @@ init([]) ->
     {ok, ?MODULE} = dets:open_file(?MODULE, DetsOpts),
     Ref = erlang:make_ref(),
     erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
-    lager:info("auth_cache: started", []),
+    ?log_info("auth_cache: started", []),
     {ok, #st{ref = Ref}}.
 
 handle_call({store, Key, Value}, _From, St) ->
@@ -100,7 +102,7 @@ handle_cast(Request, St) ->
 
 handle_info(#sync{ref = Ref}, St = #st{ref = Ref}) ->
     ok = dets:sync(?MODULE),
-    %lager:info("auth_cache: sync"),
+    %?log_info("auth_cache: sync", []),
     erlang:send_after(?SYNC_INTERVAL, self(), #sync{ref = Ref}),
     {noreply, St};
 handle_info(Info, St) ->
@@ -111,4 +113,4 @@ code_change(_OldVsn, St, _Extra) ->
 
 terminate(Reason, _St) ->
     dets:close(?MODULE),
-    lager:info("auth_cache: terminated (~p)", [Reason]).
+    ?log_info("auth_cache: terminated (~p)", [Reason]).

@@ -20,6 +20,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 -record(st, {
@@ -45,7 +46,7 @@ defer(ReqID, TimeStamp, Req) ->
 init([]) ->
     process_flag(trap_exit, true),
     {ok, ?MODULE} = dets:open_file(?MODULE, [{file, "data/defered_requests.dets"}]),
-    lager:info("def_srv: started"),
+    ?log_info("def_srv: started", []),
     {ok, #st{}, ?checkInterval}.
 
 handle_call({defer, ReqID, TimeStamp, Req}, _From, St) ->
@@ -70,7 +71,7 @@ handle_info(_Info, St) ->
 
 terminate(Reason, _St) ->
     dets:close(?MODULE),
-    lager:info("def_srv: terminated (~p)", [Reason]).
+    ?log_info("def_srv: terminated (~p)", [Reason]).
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.

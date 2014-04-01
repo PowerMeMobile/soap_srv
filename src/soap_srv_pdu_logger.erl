@@ -25,6 +25,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("kernel/include/file.hrl").
@@ -100,7 +101,7 @@ init({CustomerID, UserID}) ->
     %% on concurent gproc:add_local_name call
     try gproc:add_local_name({CustomerID, UserID}) of
         true ->
-            lager:info("pdu_logger: started (~s:~s)", [CustomerID, UserID]),
+            ?log_info("pdu_logger: started (~s:~s)", [CustomerID, UserID]),
             {ok, #st{customer_id = CustomerID,
                     user_id = UserID,
                     log_level = none,
@@ -127,7 +128,7 @@ handle_cast({set_loglevel, LogLevel}, #st{log_level = LogLevel} = St) ->
 handle_cast({set_loglevel, none}, St = #st{}) ->
     close_and_rename_prev_file(St),
     erlang:cancel_timer(St#st.tref),
-    lager:info("pdu_logger: set loglevel to none (~s:~s)",
+    ?log_info("pdu_logger: set loglevel to none (~s:~s)",
         [St#st.customer_id, St#st.user_id]),
     {noreply, St#st{log_level = none,
                     tref = undefined,
@@ -140,7 +141,7 @@ handle_cast({set_loglevel, none}, St = #st{}) ->
 handle_cast({set_loglevel, LogLevel}, #st{log_level = none} = St) ->
     TRef = erlang:start_timer(?midnightCheckInterval, self(), midnight_check),
     St2 = open_log_file(St#st{tref = TRef, log_level = LogLevel}),
-    lager:info("pdu_logger: set loglevel to ~p (~s:~s)",
+    ?log_info("pdu_logger: set loglevel to ~p (~s:~s)",
         [LogLevel, St#st.customer_id, St#st.user_id]),
     {noreply, St2};
 %%% change loglevel
@@ -171,7 +172,7 @@ terminate(Reason, St = #st{}) ->
         _    -> close_and_rename_prev_file(St)
     end,
     catch(gproc:goodbye()),
-    lager:info("pdu_logger: terminated (~s:~s) (~p)",
+    ?log_info("pdu_logger: terminated (~s:~s) (~p)",
         [St#st.customer_id, St#st.user_id, Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
@@ -197,7 +198,7 @@ ensure_actual_date(St) ->
     case St#st.date of
         Date -> St;
         _ ->
-            lager:info("pdu_logger: date changed (~s:~s)",
+            ?log_info("pdu_logger: date changed (~s:~s)",
                 [St#st.customer_id, St#st.user_id]),
             close_and_rename_prev_file(St),
             open_log_file(St)

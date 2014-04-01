@@ -14,6 +14,8 @@
     terminate/3
 ]).
 
+-include("logging.hrl").
+
 %% ===================================================================
 %% API
 %% ===================================================================
@@ -28,9 +30,9 @@ init() ->
             Port  = 4444,
             {ok, _Pid} =
             cowboy:start_http(?MODULE, 1, [{port, Port}], ProtocolOpts),
-            lager:info("test_echo_handler: started [0.0.0.0:~p]", [Port]);
+            ?log_info("test_echo_handler: started [0.0.0.0:~p]", [Port]);
         _ ->
-            lager:info("test_echo_handler: not started", [])
+            ?log_info("test_echo_handler: not started", [])
     end.
 
 %% ===================================================================

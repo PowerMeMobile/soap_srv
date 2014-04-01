@@ -31,6 +31,7 @@
     terminate/3
 ]).
 
+-include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include("soap_srv_protocol.hrl").
@@ -118,7 +119,7 @@ init() ->
 
     {ok, _Pid} =
         cowboy:start_http(?MODULE, AcceptorsNum, TransOpts, ProtocolOpts),
-    lager:info("http server is listening to ~p:~p", [Addr, Port]),
+    ?log_info("http server is listening to ~p:~p", [Addr, Port]),
     ok.
 
 -spec update_dispatch_rules() -> ok.
@@ -275,7 +276,7 @@ step(get_soap_envelope, Req, St = #st{}) ->
         {SOAP12, _, Envelope} when St#st.transport =:= soap12 ->
             step(get_soap_body, Req, St#st{envelope = Envelope});
         {error, Error} -> %% @todo implement soap fault
-            lager:error("Xml parse error: ~p", [Error]),
+            ?log_error("Xml parse error: ~p", [Error]),
             Resp = <<"Invalid soap message format">>,
             {ok, Req3} = cowboy_req:reply(400, [], Resp, Req),
             {ok, Req3, undefined};
@@ -379,7 +380,7 @@ step(handle, Req, St = #st{}) ->
             step(compose_response, Req, St#st{result = Result})
     catch
         Class:Error -> %% @todo implement soap fault
-            lager:error("~p:~p", [Class, Error]),
+            ?log_error("~p:~p", [Class, Error]),
             Explanation = list_to_binary(io_lib:format("~p", [Error])),
             #'CommonResult'{'Result' = Explanation}
     end;

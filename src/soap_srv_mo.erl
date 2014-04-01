@@ -19,6 +19,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
@@ -58,10 +59,10 @@ init([]) ->
             ok = rmql:queue_declare(Chan, IncomingQueue, []),
             NoAck = true,
             {ok, _ConsumerTag} = rmql:basic_consume(Chan, IncomingQueue, NoAck),
-            lager:info("mo_srv: started"),
+            ?log_info("mo_srv: started", []),
             {ok, #state{chan = Chan, chan_mon_ref = MonRef}};
         unavailable ->
-            lager:info("mo_srv: initializing failed (amqp_unavailable). shutdown"),
+            ?log_info("mo_srv: initializing failed (amqp_unavailable). shutdown", []),
             {stop, amqp_unavailable}
     end.
 
@@ -72,7 +73,7 @@ handle_cast(_Msg, State) ->
     {stop, unexpected_cast, State}.
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #state{chan_mon_ref = Ref}) ->
-    lager:error("mo_srv: amqp channel down (~p)", [Info]),
+    ?log_error("mo_srv: amqp channel down (~p)", [Info]),
     {stop, amqp_channel_down, St};
 
 handle_info({#'basic.deliver'{}, AMQPMsg = #amqp_msg{}}, St = #state{}) ->
@@ -109,14 +110,14 @@ process(decode, Req = #req{ct = <<"OutgoingBatch">>}) ->
         {ok, DTO} ->
             process(deliver, Req#req{dto = DTO});
         Error ->
-            lager:warning("payload ~p unpack error ~p", [Req#req.payload, Error])
+            ?log_error("payload ~p unpack error ~p", [Req#req.payload, Error])
     end;
 process(decode, Req) ->
-    lager:warning("Got unexpected ct: ~p", [Req#req.ct]);
+    ?log_error("Got unexpected ct: ~p", [Req#req.ct]);
 
 process(deliver, Req) ->
     DTO = Req#req.dto,
-    lager:info("Got InboundSms: ~p", [DTO]),
+    ?log_info("Got InboundSms: ~p", [DTO]),
     #k1api_sms_notification_request_dto{
         dest_addr = DestAddr,
         message = Message,
@@ -137,28 +138,28 @@ process(deliver, Req) ->
     FlatReqURL = lists:flatten(FullUrl),
     case httpc:request(get, {FullUrl, []}, [{timeout, 10000}], []) of
         {ok, {{HTTPVer, 200, ReasonPhrase}, RespHeaders, RespBody}} ->
-            lager:debug("Delivered: ~p", [FlatReqURL]),
+            ?log_debug("Delivered: ~p", [FlatReqURL]),
             soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, 200, ReasonPhrase, RespHeaders, RespBody),
             process(ack, Req);
         {ok, {{HTTPVer, RespCode, ReasonPhrase}, RespHeaders, RespBody}} ->
-            lager:debug("Srv respond ~p ~p", [RespCode, ReasonPhrase]),
+            ?log_debug("Srv respond ~p ~p", [RespCode, ReasonPhrase]),
             soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, RespCode, ReasonPhrase, RespHeaders, RespBody),
             ok;
         {error, {connect_failed, Reason}} ->
-            lager:debug("Connect failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+            ?log_debug("Connect failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
             soap_srv_http_out_logger:log(FlatReqURL, connect_failed, Reason),
             ok;
         {error, {send_failed, Reason}} ->
-            lager:debug("Send failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+            ?log_debug("Send failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
             soap_srv_http_out_logger:log(FlatReqURL, send_failed, Reason),
             ok;
         {error, Reason} ->
-            lager:debug("Unexpected error:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
+            ?log_debug("Unexpected error:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
             soap_srv_http_out_logger:log(FlatReqURL, unexpected, Reason)
     end;
 
 process(ack, Req) ->
-    lager:info("ack"),
+    ?log_info("ack", []),
     ReqDTO = Req#req.dto,
     ReqMsgID = ReqDTO#k1api_sms_notification_request_dto.message_id,
     DTO = #funnel_ack_dto{id = ReqMsgID},

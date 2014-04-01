@@ -20,6 +20,7 @@
     terminate/2
 ]).
 
+-include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
@@ -44,7 +45,6 @@ start_link() ->
 -spec get(binary(), binary(), binary()) -> {ok, [#k1api_sms_status_dto{}]}.
 get(CustomerUUID, UserID, SendSmsRequestId) ->
     {ok, RequestID} = request_backend(CustomerUUID, UserID, SendSmsRequestId),
-    lager:debug("Successfully sent request [~p] to backend", [RequestID]),
     {ok, Response} = get_response(RequestID),
     {ok, Response#k1api_sms_delivery_status_response_dto.statuses}.
 
@@ -81,19 +81,18 @@ handle_cast(_Msg, State) ->
     {stop, unexpected_cast, State}.
 
 handle_info(#'DOWN'{ref = Ref, info = Info}, St = #state{ref = Ref}) ->
-    lager:error("mt_srv: amqp channel down (~p)", [Info]),
+    ?log_error("mt_srv: amqp channel down (~p)", [Info]),
     {stop, amqp_channel_down, St};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{payload = Content}}, State = #state{
     pending_responses = ResponsesList,
     pending_workers = WorkersList
 }) ->
-    lager:debug("Got sms delivery status response", []),
     case adto:decode(#k1api_sms_delivery_status_response_dto{}, Content) of
         {ok, Response = #k1api_sms_delivery_status_response_dto{
             id = CorrelationID
         }} ->
-            lager:debug("Response was sucessfully decoded [id: ~p]", [CorrelationID]),
+            ?log_debug("Got delivery status response: ~p", [Response]),
             NewPendingResponse = #presponse{
                 id = CorrelationID,
                 timestamp = soap_srv_utils:get_now(),
@@ -102,7 +101,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{payload = Content}}, State = #state{
             {ok, NRList, NWList} = soap_srv_utils:process_response(NewPendingResponse, ResponsesList, WorkersList),
             {noreply, State#state{pending_workers = NWList, pending_responses = NRList}};
         {error, Error} ->
-            lager:error("Failed To Decode Response Due To ~p : ~p", [Error, Content]),
+            ?log_error("Failed To Decode Response Due To ~p : ~p", [Error, Content]),
             {noreply, State}
     end;
 
@@ -135,7 +134,7 @@ request_backend(CustomerUUID, UserID, SendSmsRequestId) ->
         sms_request_id = SendSmsRequestId,
         address = soap_srv_utils:addr_to_dto(<<>>)
     },
-    lager:debug("DeliveryStatusReq: ~p", [DeliveryStatusReq]),
+    ?log_debug("Sending delivery status request: ~p", [DeliveryStatusReq]),
     {ok, DeliveryStatusReqQueue} = application:get_env(?APP, delivery_status_req_queue),
     {ok, DeliveryStatusRespQueue} = application:get_env(?APP, delivery_status_resp_queue),
     {ok, Payload} = adto:encode(DeliveryStatusReq),
