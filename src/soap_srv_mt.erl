@@ -97,8 +97,8 @@ handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
         Action =:= publish_kelly orelse
         Action =:= publish_just ->
     {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_queue),
-    {ok, SmsGtwQueueFmt} = application:get_env(?APP, sms_gtw_queue_fmt),
-    GtwQueue = binary:replace(SmsGtwQueueFmt, <<"%id%">>, GtwID),
+    {ok, GtwQueueFmt} = application:get_env(?APP, just_gateway_queue_fmt),
+    GtwQueue = binary:replace(GtwQueueFmt, <<"%id%">>, GtwID),
 
     %% use rabbitMQ 'CC' extention to avoid double publish confirm per 1 request
     {Headers, RoutinKey} =
