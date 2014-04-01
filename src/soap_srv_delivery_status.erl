@@ -53,14 +53,14 @@ get(CustomerUUID, UserID, SendSmsRequestId) ->
 %% ===================================================================
 
 init([]) ->
-    {ok, DlrStatusReqQueue} = application:get_env(?APP, dlr_status_req_queue),
-    {ok, DlrStatusRespQueue} = application:get_env(?APP, dlr_status_resp_queue),
+    {ok, DeliveryStatusReqQueue} = application:get_env(?APP, delivery_status_req_queue),
+    {ok, DeliveryStatusRespQueue} = application:get_env(?APP, delivery_status_resp_queue),
     {ok, Chan} = rmql:channel_open(),
     Ref = erlang:monitor(process, Chan),
-    ok = rmql:queue_declare(Chan, DlrStatusReqQueue, []),
-    ok = rmql:queue_declare(Chan, DlrStatusRespQueue, []),
+    ok = rmql:queue_declare(Chan, DeliveryStatusReqQueue, []),
+    ok = rmql:queue_declare(Chan, DeliveryStatusRespQueue, []),
     NoAck = true,
-    {ok, _ConsumerTag} = rmql:basic_consume(Chan, DlrStatusRespQueue, NoAck),
+    {ok, _ConsumerTag} = rmql:basic_consume(Chan, DeliveryStatusRespQueue, NoAck),
     {ok, #state{chan = Chan, ref = Ref}}.
 
 handle_call(get_channel, _From, State = #state{chan = Chan}) ->
@@ -136,9 +136,9 @@ request_backend(CustomerUUID, UserID, SendSmsRequestId) ->
         address = soap_srv_utils:addr_to_dto(<<>>)
     },
     lager:debug("DeliveryStatusReq: ~p", [DeliveryStatusReq]),
-    {ok, DlrStatusReqQueue} = application:get_env(?APP, dlr_status_req_queue),
-    {ok, DlrStatusRespQueue} = application:get_env(?APP, dlr_status_resp_queue),
+    {ok, DeliveryStatusReqQueue} = application:get_env(?APP, delivery_status_req_queue),
+    {ok, DeliveryStatusRespQueue} = application:get_env(?APP, delivery_status_resp_queue),
     {ok, Payload} = adto:encode(DeliveryStatusReq),
-    Props = #'P_basic'{reply_to = DlrStatusRespQueue},
-    ok = rmql:basic_publish(Channel, DlrStatusReqQueue, Payload, Props),
+    Props = #'P_basic'{reply_to = DeliveryStatusRespQueue},
+    ok = rmql:basic_publish(Channel, DeliveryStatusReqQueue, Payload, Props),
     {ok, RequestUUID}.
