@@ -24,6 +24,7 @@ handle(Req = #'SendSms'{}) ->
         flash = Req#'SendSms'.flash
     },
     {ok, Result} = soap_srv_mt:send(Req2),
+    ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'HTTP_SendSms'{}) ->
@@ -40,6 +41,7 @@ handle(Req = #'HTTP_SendSms'{}) ->
         flash = Req#'HTTP_SendSms'.flash
     },
     {ok, Result} = soap_srv_mt:send(Req2),
+    ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'SendSms2'{}) ->
@@ -57,6 +59,7 @@ handle(Req = #'SendSms2'{}) ->
         flash = Req#'SendSms2'.flash
     },
     {ok, Result} = soap_srv_mt:send(Req2),
+    ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'SendServiceSms'{}) ->
@@ -74,6 +77,7 @@ handle(Req = #'SendServiceSms'{}) ->
         flash = Req#'SendServiceSms'.flash
     },
     {ok, Result} = soap_srv_mt:send(Req2),
+    ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'SendBinarySms'{}) ->
@@ -92,6 +96,7 @@ handle(Req = #'SendBinarySms'{}) ->
         protocol_id = Req#'SendBinarySms'.'PID'
     },
     {ok, Result} = soap_srv_mt:send(Req2),
+    ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
@@ -109,6 +114,7 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
         protocol_id = Req#'HTTP_SendBinarySms'.'PID'
     },
     {ok, Result} = soap_srv_mt:send(Req2),
+    ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'KeepAlive'{}) ->
@@ -146,7 +152,7 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
             CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
-            {ok, Statuses} =soap_srv_delivery_status:get(CustomerUUID, UserName, TransactionID),
+            {ok, Statuses} = soap_srv_delivery_status:get(CustomerUUID, UserName, TransactionID),
             {ok, Statistics} = build_statistics(Statuses),
             case Req#'HTTP_GetSmsStatus'.detailed of
                 <<"true">> ->
