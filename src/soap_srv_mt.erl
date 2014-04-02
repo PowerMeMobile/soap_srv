@@ -114,7 +114,7 @@ handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
                 {[], GtwQueue}
         end,
     Props = [
-        {content_type, <<"k1apiSmsRequest">>},
+        {content_type, <<"OneAPISmsRequest">>},
         {delivery_mode, 2},
         {priority, 1},
         {message_id, ReqID},

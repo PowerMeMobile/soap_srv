@@ -180,7 +180,8 @@ request_backend_auth(CustomerID, UserID, Password) ->
         id = RequestUUID,
         customer_id = CustomerID,
         user_id = UserID,
-        password = Password
+        password = Password,
+        connection_type = soap
     },
     ?log_debug("Sending auth request: ~p", [AuthRequest]),
     {ok, AuthReqQueue} = application:get_env(?APP, auth_req_queue),
