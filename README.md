@@ -85,11 +85,11 @@ Create subscription in kelly for existing user. Type in kelly console:
     rr("lib/k_mailbox-1/include/application.hrl").
     Sub = #k_mb_k1api_incoming_sms_sub{
         id = <<"1">>,
-        customer_id = <<"a3ddc34a-1793-11e2-9602-00269e42f7a5">>,
+        customer_id = <<"c173786e-63ce-11e2-8740-001d0947ec73">>,
         user_id = <<"undefined">>,
         priority = 1,
         queue_name = <<"pmm.alley.soap.incoming.sms">>,
-        dest_addr = {addr, <<"375296660003">>,1,1,undefined},
+        dest_addr = {addr, <<"375296660005">>,1,1,undefined},
         notify_url = <<"http://localhost:4444/test">>,
         callback_data = <<>>
     }.
@@ -104,7 +104,7 @@ make develop
 Send MO message (from kelly dir):
 
 <pre>
-./rel/files/send_mo_msgs -c 1 -b 'HelloPMM!' -d 375296660003
+./rel/files/send_mo_msgs -c 1 -b 'HelloPMM!' -d 375296660005
 </pre>
 
 Check for result in kelly console:
