@@ -11,7 +11,7 @@ It is a SOAP interface for [OpenAlley] smpp gateway.
 
 Install, configure and run the next apps using this [guide]:
 
-1. Erlang r15b01
+1. Erlang R15B03-1
 2. RabbitMQ
 3. MongoDB
 4. [Kelly] OpenAlley SMPP middleware
@@ -35,7 +35,7 @@ Type in another shell to send sms:
 If all is OK, you'll see `Message sucessfully sent` in the soap_srv console window.
 
 #### WSDL ####
-Browse at http://127.0.0.1:8888/bmsgw/soap/messenger.asmx?wsdl
+Browse at http://127.0.0.1:8088/bmsgw/soap/messenger.asmx?wsdl
 #### Settings ####
 
 Edit ./rel/soap_srv/releases/1/sys.conf to configure:
