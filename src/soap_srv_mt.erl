@@ -71,7 +71,7 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--spec send(#send_req{}) -> {ok, [{K :: atom(), V :: any()}]}.
+-spec send(#send_req{}) -> {ok, [{K::atom(), V::any()}]}.
 send(Req) ->
     send(authenticate, Req).
 
@@ -189,18 +189,17 @@ send(perform_dest_addr, Req = #send_req{}) ->
             send(process_msg_type, Req#send_req{recipients = Recipients, rejected = Rejected})
     end;
 
-send(process_msg_type, Req) when    Req#send_req.text =:= undefined andalso
-                                    Req#send_req.action =:= 'SendServiceSms' ->
+send(process_msg_type, Req) when Req#send_req.text =:= undefined andalso
+                                 Req#send_req.action =:= 'SendServiceSms' ->
     Text =
         <<"<%SERVICEMESSAGE:",
         (Req#send_req.s_name)/binary, ";",
         (Req#send_req.s_url)/binary, "%>">>,
     send(process_msg_type, Req#send_req{text = Text});
 
-send(process_msg_type, Req) when    Req#send_req.text =:= undefined andalso (
-                                    Req#send_req.action =:= 'SendBinarySms' orelse
-                                    Req#send_req.action =:= 'HTTP_SendBinarySms') ->
-
+send(process_msg_type, Req) when Req#send_req.text =:= undefined andalso (
+                                 Req#send_req.action =:= 'SendBinarySms' orelse
+                                 Req#send_req.action =:= 'HTTP_SendBinarySms') ->
     Text = hexstr_to_bin(binary_to_list(Req#send_req.binary_body)),
     send(define_smpp_params, Req#send_req{text = Text, encoding = default, encoded = <<" ">>});
 
@@ -221,17 +220,17 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendServiceSms' ->
     NoRetry = Customer#k1api_auth_response_customer_dto.no_retry,
     DefaultValidity = Customer#k1api_auth_response_customer_dto.default_validity,
     Params = lists:flatten([
-            ?just_sms_request_param(<<"registered_delivery">>, true),
-            ?just_sms_request_param(<<"service_type">>, <<>>),
-            ?just_sms_request_param(<<"no_retry">>, NoRetry),
-            ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
-            ?just_sms_request_param(<<"priority_flag">>, 0),
-            ?just_sms_request_param(<<"esm_class">>, 64),
-            ?just_sms_request_param(<<"protocol_id">>, 0),
-            ?just_sms_request_param(<<"data_coding">>, 245),
-            ?just_sms_request_param(<<"source_port">>, 9200),
-            ?just_sms_request_param(<<"destination_port">>, 2948)
-            ]),
+        ?just_sms_request_param(<<"registered_delivery">>, true),
+        ?just_sms_request_param(<<"service_type">>, <<>>),
+        ?just_sms_request_param(<<"no_retry">>, NoRetry),
+        ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+        ?just_sms_request_param(<<"priority_flag">>, 0),
+        ?just_sms_request_param(<<"esm_class">>, 64),
+        ?just_sms_request_param(<<"protocol_id">>, 0),
+        ?just_sms_request_param(<<"data_coding">>, 245),
+        ?just_sms_request_param(<<"source_port">>, 9200),
+        ?just_sms_request_param(<<"destination_port">>, 2948)
+    ]),
     send(build_dto, Req#send_req{smpp_params = Params});
 
 send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orelse
@@ -243,15 +242,15 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orels
     ESMClass = list_to_integer(binary_to_list(Req#send_req.esm_class)),
     ProtocolID = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
     Params = lists:flatten([
-            ?just_sms_request_param(<<"registered_delivery">>, true),
-            ?just_sms_request_param(<<"service_type">>, <<>>),
-            ?just_sms_request_param(<<"no_retry">>, NoRetry),
-            ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
-            ?just_sms_request_param(<<"priority_flag">>, 0),
-            ?just_sms_request_param(<<"esm_class">>, ESMClass),
-            ?just_sms_request_param(<<"protocol_id">>, ProtocolID)
-            %% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
-            ]),
+        ?just_sms_request_param(<<"registered_delivery">>, true),
+        ?just_sms_request_param(<<"service_type">>, <<>>),
+        ?just_sms_request_param(<<"no_retry">>, NoRetry),
+        ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+        ?just_sms_request_param(<<"priority_flag">>, 0),
+        ?just_sms_request_param(<<"esm_class">>, ESMClass),
+        ?just_sms_request_param(<<"protocol_id">>, ProtocolID)
+        %% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
+     ]),
     send(build_dto, Req#send_req{smpp_params = Params});
 
 send(define_smpp_params, Req) ->
@@ -260,14 +259,14 @@ send(define_smpp_params, Req) ->
     NoRetry = Customer#k1api_auth_response_customer_dto.no_retry,
     DefaultValidity = Customer#k1api_auth_response_customer_dto.default_validity,
     Params = lists:flatten([
-            ?just_sms_request_param(<<"registered_delivery">>, true),
-            ?just_sms_request_param(<<"service_type">>, <<>>),
-            ?just_sms_request_param(<<"no_retry">>, NoRetry),
-            ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
-            ?just_sms_request_param(<<"priority_flag">>, 0),
-            ?just_sms_request_param(<<"esm_class">>, 3),
-            ?just_sms_request_param(<<"protocol_id">>, 0)
-            ]) ++ flash(get_boolean(Req#send_req.flash), Encoding),
+        ?just_sms_request_param(<<"registered_delivery">>, true),
+        ?just_sms_request_param(<<"service_type">>, <<>>),
+        ?just_sms_request_param(<<"no_retry">>, NoRetry),
+        ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
+        ?just_sms_request_param(<<"priority_flag">>, 0),
+        ?just_sms_request_param(<<"esm_class">>, 3),
+        ?just_sms_request_param(<<"protocol_id">>, 0)
+    ]) ++ flash(get_boolean(Req#send_req.flash), Encoding),
     send(build_dto, Req#send_req{smpp_params = Params});
 
 send(build_dto, Req) ->
@@ -394,12 +393,12 @@ get_ids(CustomerID, UserID, NumberOfDests, Parts) ->
     {ok, IDs} = soap_srv_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
     {DTOIDs, []} =
         lists:foldl(
-          fun   (ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->
-                    StrID = integer_to_list(ID),
-                    GroupIDs = list_to_binary(string:join(lists:reverse([StrID | Group]), ":")),
-                    {[GroupIDs | Acc], []};
-                (ID, {Acc, Group}) ->
-                    {Acc, [integer_to_list(ID) | Group]}
+          fun(ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->
+                  StrID = integer_to_list(ID),
+                  GroupIDs = list_to_binary(string:join(lists:reverse([StrID | Group]), ":")),
+                  {[GroupIDs | Acc], []};
+             (ID, {Acc, Group}) ->
+                  {Acc, [integer_to_list(ID) | Group]}
           end, {[], []}, IDs),
     DTOIDs.
 
@@ -435,7 +434,7 @@ fmt_validity(SecondsTotal) ->
     list_to_binary(StringValidity).
 
 -spec get_allowed_destinations([binary()], [#network_dto{}]) ->
-    {Allowed :: [#addr{}], Rejected :: [binary()]}.
+    {Allowed::[#addr{}], Rejected::[binary()]}.
 get_allowed_destinations(Destinations, Networks) ->
     get_allowed_destinations(Destinations, Networks, [], []).
 
@@ -504,6 +503,7 @@ number_to_arabic(16#0038) -> 16#0668;
 number_to_arabic(16#0039) -> 16#0669;
 number_to_arabic(Any) -> Any.
 
+%% replace with ac_hexdump:binary/1,2
 hexstr_to_bin(S) ->
   hexstr_to_bin(S, []).
 hexstr_to_bin([], Acc) ->
