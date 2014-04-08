@@ -453,10 +453,10 @@ is_addr_allowed(_Addr, []) ->
     false;
 is_addr_allowed(Addr, [Network | Rest]) ->
     CountryCode = Network#network_dto.country_code,
-    Length = Network#network_dto.numbers_len,
+    NumberLen = Network#network_dto.number_len,
     PrefixesWithCountryCode =
-    [<<CountryCode/binary, Prefix/binary>> || Prefix <- Network#network_dto.prefixes],
-    case is_addr_allowed(Addr, Length, PrefixesWithCountryCode) of
+        [<<CountryCode/binary, Prefix/binary>> || Prefix <- Network#network_dto.prefixes],
+    case is_addr_allowed(Addr, NumberLen, PrefixesWithCountryCode) of
         true -> true;
         false -> is_addr_allowed(Addr, Rest)
     end.
