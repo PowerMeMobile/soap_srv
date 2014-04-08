@@ -388,7 +388,7 @@ get_suitable_gtw(DefaultProviderID, _Networks, Providers, _NumberOfDests) ->
     [Provider] = lists:filter(fun(Provider) ->
         Provider#provider_dto.id == DefaultProviderID
         end, Providers),
-    Provider#provider_dto.gateway.
+    Provider#provider_dto.gateway_id.
 
 get_ids(CustomerID, UserID, NumberOfDests, Parts) ->
     {ok, IDs} = soap_srv_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
