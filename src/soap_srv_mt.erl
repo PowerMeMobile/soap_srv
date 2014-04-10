@@ -1,4 +1,3 @@
-
 -module(soap_srv_mt).
 
 %% TODO
