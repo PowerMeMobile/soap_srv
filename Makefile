@@ -32,7 +32,7 @@ run-tests:
 	@./rebar eunit skip_deps=true
 
 api-test:
-	@./test/test
+	@./test/test.escript
 
 tags:
 	@find . -name "*.[e,h]rl" -print | etags -

@@ -1,12 +1,14 @@
 #!/usr/bin/env escript
 
+-export([main/1]).
+
 -define(proc_num, 1).
 -define(req_num, 1).
 -define(batch_size, 2).
 -define(req_delay, 0).
 -define(start_phone_num, 375259770000).
 -define(host, "127.0.0.1").
--define(port, "8888").
+-define(port, "8088").
 -define(soap_uri, "http://" ++ ?host ++ ":" ++ ?port ++ "/bmsgw/soap/messenger.asmx").
 -define(urlencoded_uri, "http://" ++ ?host ++ ":" ++ ?port ++ "/bmsgw/soap/messenger.asmx/HTTP_SendSms").
 -define(customer, <<"soap-postpaid">>).
@@ -21,6 +23,7 @@
 %% supervisor section
 %% ===================================================================
 
+-spec main(list()) -> no_return().
 main(_) ->
     StartTime = now(),
     process_flag(trap_exit, true),

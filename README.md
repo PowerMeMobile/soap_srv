@@ -29,7 +29,7 @@ make && make console
 Type in another shell to send sms:
 
 <pre>
-./test/soap_stress_test
+./test/soap_stress_test.escript
 </pre>
 
 If all is OK, you'll see `Message sucessfully sent` in the soap_srv console window.
@@ -52,7 +52,7 @@ Start soap_srv before any test.
 
 #### Load test ####
 
-Edit ./test/soap_stress_test macroses at the top of the file to change:
+Edit ./test/soap_stress_test.escript macroses at the top of the file to change:
 
 1. Request type: `req_type` macros (soap 1.1, soap 1.2, http get, http post)
 2. Number of parallel processes: `proc_num` macros
@@ -66,14 +66,14 @@ To run all test:
 
 <pre>
 cd ./test
-./test
+./test.escript
 </pre>
 
 To run specified test:
 
 <pre>
 cd ./test
-./test *TestName*
+./test.escript *TestName*
 </pre>
 
 Name of tests you can find at ./test/soap_test.config.

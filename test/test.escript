@@ -1,9 +1,11 @@
 #!/usr/bin/env escript
-%% -*- erlang -*-
+
+-export([main/1]).
 
 -define(gv(Key, PropList), proplists:get_value(Key, PropList)).
 -define(gv(Key, PropList, Default), proplists:get_value(Key, PropList, Default)).
 
+-spec main(list()) -> no_return().
 main(Args) ->
     process_flag(trap_exit, true),
     {ok, CWD} = file:get_cwd(),
