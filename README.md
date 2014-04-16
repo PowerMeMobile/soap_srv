@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/PowerMeMobile/soap_srv.svg?branch=master)](https://travis-ci.org/PowerMeMobile/soap_srv)
+
 It is a SOAP interface for [OpenAlley] smpp gateway.
 
 ## Features ##
