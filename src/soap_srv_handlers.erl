@@ -152,7 +152,9 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
             CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
-            {ok, Statuses} = soap_srv_delivery_status:get(CustomerUUID, UserName, TransactionID),
+            {ok, Response} =
+                mm_srv_kelly_api:get_delivery_status(CustomerUUID, UserName, TransactionID),
+            Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,
             {ok, Statistics} = build_statistics(Statuses),
             case Req#'HTTP_GetSmsStatus'.detailed of
                 <<"true">> ->

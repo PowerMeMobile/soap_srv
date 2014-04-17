@@ -32,5 +32,5 @@ init([]) ->
         ?CHILD(soap_srv_mt, 5000, worker),
         ?CHILD(soap_srv_defer, 5000, worker),
         ?CHILD(soap_srv_mo, 5000, worker),
-        ?CHILD(soap_srv_delivery_status, 5000, worker)
+        ?CHILD(mm_srv_kelly_api, 5000, worker)
     ]}}.
