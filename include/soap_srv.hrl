@@ -38,18 +38,6 @@
 -define(invalidDefDateFormatError,
         <<"defDate is invalid. defDate format is MM/DD/YYYY HH:MM">>).
 
--record(pworker, {
-    id          :: term(),
-    timestamp   :: integer(),
-    from        :: {pid(), term()}
-}).
-
--record(presponse, {
-    id          :: term(),
-    timestamp   :: integer(),
-    response    :: term()
-}).
-
 -record('DOWN',{
     ref             :: reference(),
     type = process      :: process,
