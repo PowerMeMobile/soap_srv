@@ -97,7 +97,7 @@ handle_call({Action, Payload, ReqID, GtwID}, From, St = #st{}) when
         Action =:= publish orelse
         Action =:= publish_kelly orelse
         Action =:= publish_just ->
-    {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_queue),
+    {ok, SmsRequestQueue} = application:get_env(?APP, kelly_sms_request_queue),
     {ok, GtwQueueFmt} = application:get_env(?APP, just_gateway_queue_fmt),
     GtwQueue = binary:replace(GtwQueueFmt, <<"%id%">>, GtwID),
 
@@ -355,7 +355,7 @@ unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
 %% ===================================================================
 
 setup_chan(St = #st{}) ->
-    {ok, SmsRequestQueue} = application:get_env(?APP, sms_request_queue),
+    {ok, SmsRequestQueue} = application:get_env(?APP, kelly_sms_request_queue),
     case rmql:channel_open() of
         {ok, Channel} ->
             ChanMonRef = erlang:monitor(process, Channel),
