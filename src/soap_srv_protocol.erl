@@ -110,7 +110,7 @@ init() ->
     {ok, Port} = application:get_env(?APP, http_port),
     {ok, AcceptorsNum} = application:get_env(?APP, http_acceptors_num),
 
-    TransOpts = [{ip, Addr}, {port, Port}],
+    TransportOpts = [{ip, Addr}, {port, Port}],
     ProtocolOpts = [
         {env, [{dispatch, dispatch_rules()}]},
         {onrequest, fun ?MODULE:onrequest_hook/1},
@@ -118,7 +118,7 @@ init() ->
     ],
 
     {ok, _Pid} =
-        cowboy:start_http(?MODULE, AcceptorsNum, TransOpts, ProtocolOpts),
+        cowboy:start_http(?MODULE, AcceptorsNum, TransportOpts, ProtocolOpts),
     ?log_info("http server is listening to ~p:~p", [Addr, Port]),
     ok.
 
