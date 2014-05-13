@@ -457,8 +457,10 @@ is_addr_allowed(Addr, [Network | Rest]) ->
     PrefixesWithCountryCode =
         [<<CountryCode/binary, Prefix/binary>> || Prefix <- Network#network_dto.prefixes],
     case is_addr_allowed(Addr, NumberLen, PrefixesWithCountryCode) of
-        true -> true;
-        false -> is_addr_allowed(Addr, Rest)
+        true ->
+            true;
+        false ->
+            is_addr_allowed(Addr, Rest)
     end.
 
 is_addr_allowed(_Addr, _Length, []) ->
@@ -466,8 +468,10 @@ is_addr_allowed(_Addr, _Length, []) ->
 is_addr_allowed(Addr, Length, [FullPrefix | Rest]) when
                 size(Addr) =:= Length ->
     case binary:match(Addr, FullPrefix) of
-        {0, _} -> true;
-        _ -> is_addr_allowed(Addr, Length, Rest)
+        {0, _} ->
+            true;
+        _ ->
+            is_addr_allowed(Addr, Length, Rest)
     end;
 is_addr_allowed(_Addr, _Length, _FullPrefixes) ->
     false.
