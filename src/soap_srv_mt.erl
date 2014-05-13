@@ -466,7 +466,7 @@ is_addr_allowed(Addr, [Network | Rest]) ->
 is_addr_allowed(_Addr, _Length, []) ->
     false;
 is_addr_allowed(Addr, Length, [FullPrefix | Rest]) when
-                size(Addr) =:= Length ->
+        Length =:= 0 orelse size(Addr) =:= Length ->
     case binary:match(Addr, FullPrefix) of
         {0, _} ->
             true;
