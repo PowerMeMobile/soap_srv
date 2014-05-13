@@ -444,7 +444,9 @@ get_allowed_destinations([Addr | Rest], Networks, Allowed, Rejected) ->
         true ->
             AddrDTO = soap_srv_utils:addr_to_dto(Addr),
             get_allowed_destinations(Rest, Networks, [AddrDTO | Allowed], Rejected);
-        false -> get_allowed_destinations(Rest, Networks, Allowed, [Addr | Rejected])
+        false ->
+            AddrDTO = soap_srv_utils:addr_to_dto(Addr),
+            get_allowed_destinations(Rest, Networks, Allowed, [AddrDTO | Rejected])
     end.
 
 is_addr_allowed(_Addr, []) ->
