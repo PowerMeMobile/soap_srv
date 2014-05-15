@@ -3,7 +3,9 @@
 
 -include_lib("alley_dto/include/adto.hrl").
 
--type auth_resp() :: #k1api_auth_response_dto{}.
+-type auth_resp()   :: #k1api_auth_response_dto{}.
+-type provider_id() :: binary().
+-type gateway_id()  :: binary().
 
 -record(send_req, {
     action       :: atom(),
@@ -20,7 +22,10 @@
     smpp_params  :: undefined | term(),
     encoding     :: undefined | default | ucs2,
     encoded      :: undefined | binary(),
-    rejected     :: undefined | [binary()],
+    coverage_tab :: undefined | ets:tid(),
+    routable     :: undefined | [{provider_id() | gateway_id(), [#addr{}]}],
+    unroutable   :: undefined | [#addr{}],
+    req_dto_s    :: undefiend | [#just_sms_request_dto{}],
 
     %% SendServiceSms extention
     s_name       :: undefined | binary(),
