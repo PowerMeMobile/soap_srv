@@ -486,11 +486,11 @@ convert_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
             unicode:characters_to_binary(ConvCP, utf8);
         {error, CodePoints, RestData} ->
             ?log_error("mt_srv: Arabic numbers to hindi error. Original: ~w Codepoints: ~w Rest: ~w",
-                    [Text, CodePoints, RestData]),
+                [Text, CodePoints, RestData]),
             erlang:error("Illegal utf8 symbols");
         {incomplete, CodePoints, IncompleteSeq} ->
             ?log_error("mt_srv: Incomplete utf8 sequence. Original: ~w Codepoints: ~w IncompleteSeq: ~w",
-                    [Text, CodePoints, IncompleteSeq]),
+                [Text, CodePoints, IncompleteSeq]),
             erlang:error("Incomplite utf8 sequence")
     end;
 convert_numbers(Text, _) ->

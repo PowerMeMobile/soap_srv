@@ -60,10 +60,9 @@ handle_cast(Req, St) ->
 
 handle_info(timeout, St) ->
     TS = os:timestamp(),
-    Defered = qlc:e(
-        qlc:q([R || R <- dets:table(?MODULE),
-                element(2, R) < TS])
-    ),
+    Defered = qlc:e(qlc:q(
+        [R || R <- dets:table(?MODULE), element(2, R) < TS]
+    )),
     [send(Task) || Task <- Defered],
     {noreply, St, ?checkInterval};
 handle_info(_Info, St) ->
