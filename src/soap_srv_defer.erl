@@ -10,7 +10,7 @@
     defer/3
 ]).
 
-%% GenServer Callbacks
+%% gen_server callbacks
 -export([
     init/1,
     handle_cast/2,
@@ -23,10 +23,9 @@
 -include("logging.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
--record(st, {
-}).
+-record(st, {}).
 
--define(checkInterval, (1000 * 60 * 1)).
+-define(TIMEOUT, (1000 * 60 * 1)).
 
 %% ===================================================================
 %% API Functions
@@ -36,22 +35,23 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-defer(ReqID, TimeStamp, Req) ->
-    ok = gen_server:call(?MODULE, {defer, ReqID, TimeStamp, Req}).
+-spec defer(term(), os:timestamp(), term()) -> ok.
+defer(Id, Timestamp, Req) ->
+    gen_server:call(?MODULE, {defer, Id, Timestamp, Req}).
 
 %% ===================================================================
-%% GenServer Callback Functions Definitions
+%% gen_server callbacks
 %% ===================================================================
 
 init([]) ->
     process_flag(trap_exit, true),
     {ok, ?MODULE} = dets:open_file(?MODULE, [{file, "data/defered_requests.dets"}]),
     ?log_info("def_srv: started", []),
-    {ok, #st{}, ?checkInterval}.
+    {ok, #st{}, ?TIMEOUT}.
 
-handle_call({defer, ReqID, TimeStamp, Req}, _From, St) ->
-    ok = dets:insert(?MODULE, {ReqID, TimeStamp, Req}),
-    {reply, ok, St, ?checkInterval};
+handle_call({defer, Id, Timestamp, Req}, _From, St) ->
+    ok = dets:insert(?MODULE, {Id, Timestamp, Req}),
+    {reply, ok, St, ?TIMEOUT};
 handle_call(_Request, _From, St) ->
     {stop, unexpected_call, St}.
 
@@ -59,12 +59,12 @@ handle_cast(Req, St) ->
     {stop, {unexpected_cast, Req}, St}.
 
 handle_info(timeout, St) ->
-    TS = os:timestamp(),
-    Defered = qlc:e(qlc:q(
-        [R || R <- dets:table(?MODULE), element(2, R) < TS]
+    Ts = os:timestamp(),
+    DeferedTasks = qlc:e(qlc:q(
+        [R || R <- dets:table(?MODULE), element(2, R) < Ts]
     )),
-    [send(Task) || Task <- Defered],
-    {noreply, St, ?checkInterval};
+    [send(Task) || Task <- DeferedTasks],
+    {noreply, St, ?TIMEOUT};
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
 
@@ -76,9 +76,9 @@ code_change(_OldVsn, St, _Extra) ->
     {ok, St}.
 
 %% ===================================================================
-%% Internals
+%% Internal
 %% ===================================================================
 
-send({ID,_, Req}) ->
+send({Id, _Timestamp, Req}) ->
     ok = soap_srv_mt:publish(Req),
-    ok = dets:delete(?MODULE, ID).
+    ok = dets:delete(?MODULE, Id).
