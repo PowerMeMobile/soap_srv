@@ -384,7 +384,8 @@ step(handle, Req, St = #st{}) ->
             ?log_error("~p:~p", [Class, Error]),
             ?log_error("Stacktrace: ~p", [Stacktrace]),
             Explanation = list_to_binary(io_lib:format("~p", [Error])),
-            #'CommonResult'{'Result' = Explanation}
+            Result = #'CommonResult'{'Result' = Explanation},
+            step(compose_response, Req, St#st{result = Result})
     end;
 
 step(compose_response, Req, St = #st{}) ->
