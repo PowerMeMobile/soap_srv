@@ -380,7 +380,9 @@ step(handle, Req, St = #st{}) ->
             step(compose_response, Req, St#st{result = Result})
     catch
         Class:Error -> %% @todo implement soap fault
+            Stacktrace = erlang:get_stacktrace(),
             ?log_error("~p:~p", [Class, Error]),
+            ?log_error("Stacktrace: ~p", [Stacktrace]),
             Explanation = list_to_binary(io_lib:format("~p", [Error])),
             #'CommonResult'{'Result' = Explanation}
     end;
