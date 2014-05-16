@@ -148,7 +148,7 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
     UserName = Req#'HTTP_GetSmsStatus'.userName,
     Password = Req#'HTTP_GetSmsStatus'.userPassword,
 
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
+    case soap_srv_auth:authenticate(CustomerID, UserName, Password, soap) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
             CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
@@ -251,7 +251,7 @@ send_result(Result) when is_list(Result) ->
     }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
+    case soap_srv_auth:authenticate(CustomerID, UserName, Password, soap) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Originators =
                 [Addr#addr.addr ||
@@ -270,7 +270,7 @@ handle_authenticate(CustomerID, UserName, Password) ->
     end.
 
 handle_keep_alive(CustomerID, UserName, Password) ->
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password) of
+    case soap_srv_auth:authenticate(CustomerID, UserName, Password, soap) of
         {ok, _Customer} ->
             {ok, #'CommonResult'{'Result' = <<"OK">>}};
         {error, timeout} ->

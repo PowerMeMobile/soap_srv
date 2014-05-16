@@ -5,7 +5,7 @@
 %% API
 -export([
     start_link/0,
-    authenticate/3
+    authenticate/4
 ]).
 
 -include("logging.hrl").
@@ -21,32 +21,32 @@ start_link() ->
     {ok, QueueName} = application:get_env(?APP, kelly_auth_queue),
     rmql_rpc_client:start_link(?MODULE, QueueName).
 
--spec authenticate(binary(), binary(), binary()) ->
+-spec authenticate(binary(), binary(), binary(), atom()) ->
     {ok, #k1api_auth_response_dto{}} |
     {error, timeout}.
-authenticate(CustomerId, UserId, Password) ->
-    authenticate(check_cache, CustomerId, UserId, Password).
+authenticate(CustomerId, UserId, Password, ConnType) ->
+    authenticate(check_cache, CustomerId, UserId, Password, ConnType).
 
 %% ===================================================================
 %% Internal
 %% ===================================================================
 
-authenticate(check_cache, CustomerId, UserId, Password) ->
+authenticate(check_cache, CustomerId, UserId, Password, ConnType) ->
     case soap_srv_auth_cache:fetch(CustomerId, UserId) of
         {ok, AuthResp} ->
             {ok, AuthResp};
         not_found ->
-            authenticate(request_backend, CustomerId, UserId, Password)
+            authenticate(request_backend, CustomerId, UserId, Password, ConnType)
     end;
 
-authenticate(request_backend, CustomerId, UserId, Password) ->
+authenticate(request_backend, CustomerId, UserId, Password, ConnType) ->
     ReqId = uuid:unparse(uuid:generate_time()),
     AuthReq = #k1api_auth_request_dto{
         id = ReqId,
         customer_id = CustomerId,
         user_id = UserId,
         password = Password,
-        connection_type = soap
+        connection_type = ConnType
     },
     ?log_debug("Sending auth request: ~p", [AuthReq]),
     {ok, Payload} = adto:encode(AuthReq),
