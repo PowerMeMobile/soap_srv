@@ -20,33 +20,32 @@
 %% Addr to dto
 %% ===================================================================
 
--spec addr_to_dto(Addr :: binary()) -> #addr{}.
-addr_to_dto(AddrBin) when is_binary(AddrBin) ->
-    Addr = binary_to_list(AddrBin),
+-spec addr_to_dto(Addr::binary()) -> #addr{}.
+addr_to_dto(Addr) when is_binary(Addr) ->
     IsInteger =
-        try list_to_integer(Addr) of
+        try binary_to_integer(Addr) of
             _ -> true
         catch
             _:_ -> false
         end,
-    Length = length(Addr),
-    addr_to_dto(AddrBin, IsInteger, Length).
+    Length = size(Addr),
+    addr_to_dto(Addr, IsInteger, Length).
 
-addr_to_dto(AddrBin, true, Length) when Length < 7 -> % 1..6
+addr_to_dto(Addr, true, Length) when Length < 7 -> % 1..6
     #addr{
-        addr = AddrBin,
+        addr = Addr,
         ton = ?TON_ABBREVIATED,
         npi = ?NPI_UNKNOWN
     };
-addr_to_dto(AddrBin, true, _Length) -> % 7..
+addr_to_dto(Addr, true, _Length) -> % 7..
     #addr{
-        addr = AddrBin,
+        addr = Addr,
         ton = ?TON_INTERNATIONAL,
         npi = ?NPI_ISDN
     };
-addr_to_dto(AddrBin, false, _Length) ->
+addr_to_dto(Addr, false, _Length) ->
     #addr{
-        addr = AddrBin,
+        addr = Addr,
         ton = ?TON_ALPHANUMERIC,
         npi = ?NPI_UNKNOWN
     }.
