@@ -25,16 +25,16 @@ start_link() ->
     {ok, #k1api_auth_response_dto{}} |
     {error, timeout}.
 authenticate(CustomerId, UserId, Password) ->
-    authenticate(request_backend, CustomerId, UserId, Password).
+    authenticate(check_cache, CustomerId, UserId, Password).
 
 %% ===================================================================
 %% Internal
 %% ===================================================================
 
 authenticate(check_cache, CustomerId, UserId, Password) ->
-    case soap_srv_auth_cache:fetch(CustomerId, UserId, Password) of
-        {ok, Customer} ->
-            {ok, Customer};
+    case soap_srv_auth_cache:fetch(CustomerId, UserId) of
+        {ok, AuthResp} ->
+            {ok, AuthResp};
         not_found ->
             authenticate(request_backend, CustomerId, UserId, Password)
     end;
@@ -53,8 +53,14 @@ authenticate(request_backend, CustomerId, UserId, Password) ->
     case rmql_rpc_client:call(?MODULE, Payload, <<"OneAPIAuthReq">>) of
         {ok, Bin} ->
             case adto:decode(#k1api_auth_response_dto{}, Bin) of
-                {ok, AuthResp = #k1api_auth_response_dto{}} ->
+                {ok, AuthResp = #k1api_auth_response_dto{result = Result}} ->
                     ?log_debug("Got auth response: ~p", [AuthResp]),
+                    case Result of
+                        {customer, _} ->
+                            ok = soap_srv_auth_cache:store(CustomerId, UserId, AuthResp);
+                        {error, _} ->
+                            ok
+                    end,
                     {ok, AuthResp};
                 {error, Error} ->
                     ?log_error("Auth response decode error: ~p", [Error]),
