@@ -85,7 +85,8 @@ log(SmsReq) ->
             catch(supervisor:start_child(soap_srv_pdu_logger_sup, [CustomerID, UserID])),
             {Pid, _} = gproc:await({n,l,{CustomerID, UserID}}, 5000),
             {ok, Pid};
-        Pid -> {ok, Pid}
+        Pid ->
+            {ok, Pid}
     end,
     gen_server:call(LoggerPid, SmsReq).
 

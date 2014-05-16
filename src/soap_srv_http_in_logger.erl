@@ -114,13 +114,15 @@ handle_cast({set_loglevel, none}, St) ->
     close_and_rename_prev_file(St),
     erlang:cancel_timer(St#st.tref),
     ?log_info("http_in_logger: set loglevel to none", []),
-    {noreply, St#st{log_level = none,
-                    tref = undefined,
-                    fd = undefined,
-                    file_name = undefined,
-                    date = undefined,
-                    first_entry = undefined,
-                    last_entry = undefined }};
+    {noreply, St#st{
+        log_level = none,
+        tref = undefined,
+        fd = undefined,
+        file_name = undefined,
+        date = undefined,
+        first_entry = undefined,
+        last_entry = undefined
+    }};
 %%%% start logging
 handle_cast({set_loglevel, LogLevel}, #st{log_level = none} = St) ->
     TRef = erlang:start_timer(?midnightCheckInterval, self(), midnight_check),
@@ -168,11 +170,13 @@ open_log_file(St) ->
     Filename = new_file_name(Date, Time),
     file:make_dir(log_dir(Date)),
     {ok, Fd} = file:open(Filename, ?fileOpts),
-    St#st{  fd = Fd,
-            date = Date,
-            file_name = Filename,
-            first_entry = Time,
-            last_entry = Time}.
+    St#st{
+        fd = Fd,
+        date = Date,
+        file_name = Filename,
+        first_entry = Time,
+        last_entry = Time
+    }.
 
 ensure_actual_date(St) ->
     Date = date(),
