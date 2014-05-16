@@ -9,6 +9,7 @@
 %% API
 -export([
     get_coverage/3,
+    get_blacklist/3,
     get_delivery_status/4,
     retrieve_sms/4,
 
@@ -63,6 +64,33 @@ get_coverage(CustomerId, UserId, Version) ->
             end;
         {error, timeout} ->
             ?log_debug("Got coverage response: timeout", []),
+            {error, timeout}
+    end.
+
+-spec get_blacklist(customer_id(), user_id(), version()) ->
+    {ok, [#k1api_blacklist_response_dto{}]} | {error, timeout}.
+get_blacklist(CustomerId, UserId, Version) ->
+    ReqId = uuid:unparse(uuid:generate_time()),
+    Req = #k1api_blacklist_request_dto{
+        id = ReqId,
+        customer_id = CustomerId,
+        user_id = UserId,
+        version = Version
+    },
+    ?log_debug("Sending blacklist request: ~p", [Req]),
+    {ok, ReqBin} = adto:encode(Req),
+    case rmql_rpc_client:call(?MODULE, ReqBin, <<"BlacklistReq">>) of
+        {ok, RespBin} ->
+            case adto:decode(#k1api_blacklist_response_dto{}, RespBin) of
+                {ok, Resp = #k1api_blacklist_response_dto{}} ->
+                    ?log_debug("Got blacklist response: ~p", [Resp]),
+                    {ok, Resp};
+                {error, Error} ->
+                    ?log_error("Coverage blacklist decode error: ~p", [Error]),
+                    {error, Error}
+            end;
+        {error, timeout} ->
+            ?log_debug("Got blacklist response: timeout", []),
             {error, timeout}
     end.
 
