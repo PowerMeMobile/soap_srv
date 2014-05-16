@@ -13,7 +13,7 @@
 %% Cowboy onresponse hook callback
 -export([log/5]).
 
-%% GenServer Callbacks
+%% gen_server callbacks
 -export([
     init/1,
     handle_cast/2,
@@ -26,6 +26,7 @@
 -include("logging.hrl").
 -include("application.hrl").
 -include_lib("kernel/include/file.hrl").
+-include_lib("alley_common/include/gen_server_spec.hrl").
 
 -define(fileOpts, [write, raw]).
 -define(midnightCheckInterval, 5000).
@@ -83,7 +84,7 @@ log(RespCode, RespHeaders, RespBody, Req, ReqBody) ->
     gen_server:call(?MODULE, LogTask).
 
 %% ===================================================================
-%% GenServer Callbacks
+%% gen_server callbacks
 %% ===================================================================
 
 init([]) ->

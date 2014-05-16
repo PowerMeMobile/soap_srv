@@ -22,13 +22,14 @@
 
 -include("logging.hrl").
 -include_lib("stdlib/include/qlc.hrl").
+-include_lib("alley_common/include/gen_server_spec.hrl").
 
 -record(st, {}).
 
 -define(TIMEOUT, (1000 * 60 * 1)).
 
 %% ===================================================================
-%% API Functions
+%% API
 %% ===================================================================
 
 -spec start_link() -> {ok, pid()}.

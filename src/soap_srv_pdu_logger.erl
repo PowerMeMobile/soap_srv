@@ -15,7 +15,7 @@
     log/1
 ]).
 
-%% GenServer Callbacks
+%% gen_server callbacks
 -export([
     init/1,
     handle_cast/2,
@@ -29,6 +29,7 @@
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("kernel/include/file.hrl").
+-include_lib("alley_common/include/gen_server_spec.hrl").
 
 -define(fileOpts, [write, raw]).
 -define(midnightCheckInterval, 5000).
@@ -89,7 +90,7 @@ log(SmsReq) ->
     gen_server:call(LoggerPid, SmsReq).
 
 %% ===================================================================
-%% GenServer Callbacks
+%% gen_server callbacks
 %% ===================================================================
 
 init({CustomerID, UserID}) ->

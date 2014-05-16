@@ -9,7 +9,7 @@
     start_link/0
 ]).
 
-%% GenServer Callback Exports
+%% gen_server Callbacks
 -export([
     init/1,
     handle_cast/2,
@@ -24,6 +24,7 @@
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("alley_common/include/gen_server_spec.hrl").
 
 -record(state, {
     chan            :: pid(),
@@ -40,7 +41,7 @@
 }).
 
 %% ===================================================================
-%% API Functions
+%% API
 %% ===================================================================
 
 -spec start_link() -> {ok, pid()}.
@@ -48,7 +49,7 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %% ===================================================================
-%% GenServer Callback Functions
+%% gen_server callbacks
 %% ===================================================================
 
 init([]) ->
@@ -102,7 +103,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% ===================================================================
-%% Internal Functions
+%% Internal
 %% ===================================================================
 
 process(decode, Req = #req{ct = <<"OutgoingBatch">>}) ->

@@ -9,6 +9,7 @@
 -define(gv(K, PList), proplists:get_value(K, PList)).
 -define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
 
+-spec handle(record()) -> {ok, record()}.
 handle(Req = #'SendSms'{}) ->
     User = Req#'SendSms'.user,
     Req2 = #send_req{

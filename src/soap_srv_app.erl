@@ -2,7 +2,7 @@
 
 -behaviour(application).
 
-%% Application callbacks
+%% application callbacks
 -export([start/2, stop/1]).
 
 %% API
@@ -10,8 +10,10 @@
     get_env/0
 ]).
 
+-include_lib("alley_common/include/application_spec.hrl").
+
 %% ===================================================================
-%% Application callbacks
+%% application callbacks
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->

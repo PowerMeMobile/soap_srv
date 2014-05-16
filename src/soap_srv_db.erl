@@ -63,7 +63,7 @@ init_mnesia() ->
         record_info(fields, customer_next_message_id)).
 
 %% ===================================================================
-%% Local Functions
+%% Internal
 %% ===================================================================
 
 update_counter(NextID, NumberOfIDs, Key) ->

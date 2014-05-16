@@ -5,21 +5,24 @@
 %% API
 -export([start_link/0]).
 
-%% Supervisor callbacks
+%% supervisor callbacks
 -export([init/1]).
+
+-include_lib("alley_common/include/supervisor_spec.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Timeout, Type), {I, {I, start_link, []}, permanent, Timeout, Type, [I]}).
 
 %% ===================================================================
-%% API functions
+%% API
 %% ===================================================================
 
+-spec start_link() -> {ok, pid()}.
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
-%% Supervisor callbacks
+%% supervisor callbacks
 %% ===================================================================
 
 init([]) ->

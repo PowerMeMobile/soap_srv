@@ -4,9 +4,17 @@
 
 -ignore_xref([{start_link, 0}]).
 
+%% API
 -export([start_link/0]).
 
+%% supervisor callbacks
 -export([init/1]).
+
+-include_lib("alley_common/include/supervisor_spec.hrl").
+
+%% ===================================================================
+%% API
+%% ===================================================================
 
 -spec start_link() -> {ok, pid()}.
 start_link() ->

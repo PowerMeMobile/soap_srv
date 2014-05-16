@@ -29,6 +29,7 @@
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("alley_common/include/gen_server_spec.hrl").
 
 -define(just_sms_request_param(Name, Param),
     apply(fun
