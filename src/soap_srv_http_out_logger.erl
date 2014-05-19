@@ -25,9 +25,9 @@
     terminate/2
 ]).
 
--include("logging.hrl").
 -include("application.hrl").
 -include_lib("kernel/include/file.hrl").
+-include_lib("alley_common/include/logging.hrl").
 -include_lib("alley_common/include/gen_server_spec.hrl").
 
 -define(fileOpts, [write, raw]).

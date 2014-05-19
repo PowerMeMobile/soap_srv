@@ -4,8 +4,8 @@
     addr_to_dto/1
 ]).
 
--include_lib("alley_dto/include/adto.hrl").
 -include("soap_srv.hrl").
+-include_lib("alley_dto/include/adto.hrl").
 
 -define(TON_UNKNOWN,       0).
 -define(TON_INTERNATIONAL, 1).

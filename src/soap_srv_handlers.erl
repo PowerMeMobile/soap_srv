@@ -1,13 +1,17 @@
 -module(soap_srv_handlers).
 
--include("soap_srv_protocol.hrl").
 -include("soap_srv.hrl").
--include("logging.hrl").
+-include("soap_srv_protocol.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -export([handle/1]).
 
 -define(gv(K, PList), proplists:get_value(K, PList)).
 -define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
+
+%% ===================================================================
+%% API
+%% ===================================================================
 
 -spec handle(record()) -> {ok, record()}.
 handle(Req = #'SendSms'{}) ->
@@ -183,7 +187,7 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
 handle(_) -> erlang:error(method_not_implemented).
 
 %% ===================================================================
-%% Internals
+%% Internal
 %% ===================================================================
 
 build_details(Statuses) ->
