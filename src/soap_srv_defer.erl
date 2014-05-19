@@ -20,8 +20,8 @@
     terminate/2
 ]).
 
--include("logging.hrl").
 -include_lib("stdlib/include/qlc.hrl").
+-include_lib("alley_common/include/logging.hrl").
 -include_lib("alley_common/include/gen_server_spec.hrl").
 
 -record(st, {}).

@@ -24,10 +24,10 @@
     terminate/2
 ]).
 
--include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
+-include_lib("alley_common/include/logging.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("alley_common/include/gen_server_spec.hrl").
 
@@ -202,7 +202,7 @@ send(check_originator, Req) ->
 send(check_blacklist, Req) ->
     DestAddrs  = Req#send_req.recipients,
     Originator = Req#send_req.originator,
-    case check_blacklist(DestAddrs, Originator) of
+    case alley_services_blacklist:filter(DestAddrs, Originator) of
         {[], _} ->
             {ok, [{result, ?noAnyDestAddrError}]};
         {Allowed, Blacklisted} ->
@@ -493,20 +493,6 @@ fmt_validity(SecondsTotal) ->
         lists:flatten(io_lib:format("~2..0w~2..0w~2..0w~2..0w~2..0w~2..0w000R",
                   [Years, Months, Days, Hours, Minutes, Seconds])),
     list_to_binary(StringValidity).
-
--spec check_blacklist([addr()], addr()) -> {[addr()], [addr()]}.
-check_blacklist(DstAddrs, SrcAddr) ->
-    check_blacklist(DstAddrs, SrcAddr, [], []).
-
-check_blacklist([DstAddr | DstAddrs], SrcAddr, Allowed, Denied) ->
-    case alley_services_blacklist:check(DstAddr, SrcAddr) of
-        allowed ->
-            check_blacklist(DstAddrs, SrcAddr, [DstAddr | Allowed], Denied);
-        denied ->
-            check_blacklist(DstAddrs, SrcAddr, Allowed, [DstAddr | Denied])
-    end;
-check_blacklist([], _SrcAddr, Allowed, Denied) ->
-    {Allowed, Denied}.
 
 get_boolean(<<"true">>) -> true;
 get_boolean(<<"false">>) -> false.

@@ -19,10 +19,10 @@
     terminate/2
 ]).
 
--include("logging.hrl").
 -include("soap_srv.hrl").
 -include("application.hrl").
 -include_lib("alley_dto/include/adto.hrl").
+-include_lib("alley_common/include/logging.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("alley_common/include/gen_server_spec.hrl").
 

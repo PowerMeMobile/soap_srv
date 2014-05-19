@@ -6,7 +6,7 @@
     next_id/3
 ]).
 
--include("logging.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 -type customer_id()     :: binary().
 -type user_id()     :: binary().

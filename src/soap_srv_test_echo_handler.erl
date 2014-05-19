@@ -14,7 +14,7 @@
     terminate/3
 ]).
 
--include("logging.hrl").
+-include_lib("alley_common/include/logging.hrl").
 
 %% ===================================================================
 %% API
