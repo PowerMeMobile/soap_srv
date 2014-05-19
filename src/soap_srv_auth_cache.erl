@@ -87,6 +87,8 @@ handle_call(Request, _From, St) ->
 handle_cast(Request, St) ->
     {stop, {unexpected_cast, Request}, St}.
 
+handle_info({'EXIT', _Pid, Reason}, St) ->
+    {stop, Reason, St};
 handle_info(Info, St) ->
     {stop, {unexpected_info, Info}, St}.
 
