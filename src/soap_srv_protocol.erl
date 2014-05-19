@@ -167,7 +167,7 @@ onrequest_hook(Req) ->
     list(), binary(), cowboy_req:req()) -> cowboy_req:req().
 onresponse_hook(RespCode, RespHeaders, RespBody, Req) ->
     ReqBody = get_body(),
-    soap_srv_http_in_logger:log(
+    alley_services_http_in_logger:log(
         RespCode, RespHeaders, RespBody, Req, ReqBody),
     {ok, Req2} =
         cowboy_req:reply(RespCode, RespHeaders, RespBody, Req),

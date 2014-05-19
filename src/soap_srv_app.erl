@@ -18,7 +18,7 @@
 
 start(_StartType, _StartArgs) ->
     set_lager_loglevel(),
-    soap_srv_db:init_mnesia(),
+    alley_services_db:init_mnesia(),
     {ok, SupervisorPid} = soap_srv_sup:start_link(),
     soap_srv_protocol:init(),
     soap_srv_test_echo_handler:init(),

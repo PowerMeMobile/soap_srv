@@ -176,7 +176,7 @@ send(fill_coverage_tab, Req) ->
 send(parse_recipients, Req) ->
     BlobRecipients = Req#send_req.recipients,
     RawRecipients = binary:split(BlobRecipients, <<",">>, [trim, global]),
-    DestAddrs = [soap_srv_utils:addr_to_dto(Addr) || Addr <- RawRecipients],
+    DestAddrs = [alley_services_utils:addr_to_dto(Addr) || Addr <- RawRecipients],
     send(parse_def_date, Req#send_req{recipients = DestAddrs});
 
 send(parse_def_date, Req) ->
@@ -190,7 +190,7 @@ send(parse_def_date, Req) ->
 
 send(check_originator, Req) ->
     Customer = Req#send_req.customer,
-    Originator = soap_srv_utils:addr_to_dto(Req#send_req.originator),
+    Originator = alley_services_utils:addr_to_dto(Req#send_req.originator),
     AllowedSources = Customer#k1api_auth_response_customer_dto.allowed_sources,
     case lists:member(Originator, AllowedSources) of
         true ->
@@ -356,7 +356,7 @@ send(publish_dto_s, Req) ->
         fun(ReqDTO) ->
             ?log_debug("Sending submit request: ~p", [ReqDTO]),
             PublishFun(ReqDTO),
-            soap_srv_pdu_logger:log(ReqDTO)
+            alley_services_pdu_logger:log(ReqDTO)
         end,
         ReqDTOs
     ),
@@ -451,7 +451,7 @@ build_req_dto(ReqId, GatewayId, DestAddrs, Req) ->
     }.
 
 get_ids(CustomerID, UserID, NumberOfDests, Parts) ->
-    {ok, IDs} = soap_srv_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
+    {ok, IDs} = alley_services_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
     {DTOIDs, []} =
         lists:foldl(
           fun(ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->

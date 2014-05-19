@@ -157,7 +157,7 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
             CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
-            Addr = soap_srv_utils:addr_to_dto(<<>>),
+            Addr = alley_services_utils:addr_to_dto(<<>>),
             {ok, Response} =
                 alley_services_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
             Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,

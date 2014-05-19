@@ -140,23 +140,23 @@ process(deliver, Req) ->
     case httpc:request(get, {FullUrl, []}, [{timeout, 10000}], []) of
         {ok, {{HTTPVer, 200, ReasonPhrase}, RespHeaders, RespBody}} ->
             ?log_debug("Delivered: ~p", [FlatReqURL]),
-            soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, 200, ReasonPhrase, RespHeaders, RespBody),
+            alley_services_http_out_logger:log(FlatReqURL, HTTPVer, 200, ReasonPhrase, RespHeaders, RespBody),
             process(ack, Req);
         {ok, {{HTTPVer, RespCode, ReasonPhrase}, RespHeaders, RespBody}} ->
             ?log_debug("Srv respond ~p ~p", [RespCode, ReasonPhrase]),
-            soap_srv_http_out_logger:log(FlatReqURL, HTTPVer, RespCode, ReasonPhrase, RespHeaders, RespBody),
+            alley_services_http_out_logger:log(FlatReqURL, HTTPVer, RespCode, ReasonPhrase, RespHeaders, RespBody),
             ok;
         {error, {connect_failed, Reason}} ->
             ?log_debug("Connect failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
-            soap_srv_http_out_logger:log(FlatReqURL, connect_failed, Reason),
+            alley_services_http_out_logger:log(FlatReqURL, connect_failed, Reason),
             ok;
         {error, {send_failed, Reason}} ->
             ?log_debug("Send failed:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
-            soap_srv_http_out_logger:log(FlatReqURL, send_failed, Reason),
+            alley_services_http_out_logger:log(FlatReqURL, send_failed, Reason),
             ok;
         {error, Reason} ->
             ?log_debug("Unexpected error:~nReq: ~p ->~n~p", [FlatReqURL, Reason]),
-            soap_srv_http_out_logger:log(FlatReqURL, unexpected, Reason)
+            alley_services_http_out_logger:log(FlatReqURL, unexpected, Reason)
     end;
 
 process(ack, Req) ->
