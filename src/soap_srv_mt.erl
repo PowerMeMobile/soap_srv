@@ -215,7 +215,7 @@ send(check_blacklist, Req) ->
 send(route_to_providers, Req) ->
     DestAddrs   = Req#send_req.recipients,
     CoverageTab = Req#send_req.coverage_tab,
-    case route_addrs_to_providers(DestAddrs, CoverageTab) of
+    case alley_services_coverage:route_addrs_to_providers(DestAddrs, CoverageTab) of
         {[], _} ->
             {ok, [{result, ?noAnyDestAddrError}]};
         {Routable, UnroutableToProviders} ->
@@ -229,7 +229,7 @@ send(route_to_gateways, Req) ->
     DestAddrs = Req#send_req.routable,
     Customer = Req#send_req.customer,
     Providers = Customer#k1api_auth_response_customer_dto.providers,
-    case route_addrs_to_gateways(DestAddrs, Providers) of
+    case alley_services_coverage:route_addrs_to_gateways(DestAddrs, Providers) of
         {[], _} ->
             {ok, [{result, ?noAnyDestAddrError}]};
         {Routable, UnroutableToGateways} ->
@@ -493,54 +493,6 @@ fmt_validity(SecondsTotal) ->
         lists:flatten(io_lib:format("~2..0w~2..0w~2..0w~2..0w~2..0w~2..0w000R",
                   [Years, Months, Days, Hours, Minutes, Seconds])),
     list_to_binary(StringValidity).
-
--spec route_addrs_to_providers([#addr{}], ets:tab()) ->
-    {[{provider_id(), [#addr{}]}], [#addr{}]}.
-route_addrs_to_providers(Addrs, CoverageTab) ->
-    route_addrs_to_providers(Addrs, CoverageTab, dict:new(), []).
-
-route_addrs_to_providers([], _CoverageTab, Routable, Unroutable) ->
-    {dict:to_list(Routable), Unroutable};
-route_addrs_to_providers([Addr | Rest], CoverageTab, Routable, Unroutable) ->
-    case alley_services_coverage:which_network(Addr, CoverageTab) of
-        {_NetworkId, MaybeFixedAddr, ProviderId} ->
-            Routable2 = dict:append(ProviderId, MaybeFixedAddr, Routable),
-            route_addrs_to_providers(Rest, CoverageTab, Routable2, Unroutable);
-        undefined ->
-            route_addrs_to_providers(Rest, CoverageTab, Routable, [Addr | Unroutable])
-    end.
-
--spec route_addrs_to_gateways([{provider_id(), [#addr{}]}], [#provider_dto{}]) ->
-    {[{gateway_id(), [#addr{}]}], [#addr{}]}.
-route_addrs_to_gateways(ProvIdAddrs, Providers) ->
-    route_addrs_to_gateways(ProvIdAddrs, Providers, [], []).
-
-route_addrs_to_gateways([], _Providers, Routable, Unroutable) ->
-    {Routable, Unroutable};
-route_addrs_to_gateways([{ProvId, Addrs} | Rest], Providers, Routable, Unroutable) ->
-    case lists:keyfind(ProvId, #provider_dto.id, Providers) of
-        false ->
-            %% the configuration issue. nowhere to route.
-            route_addrs_to_gateways(Rest, Providers, Routable, Addrs ++ Unroutable);
-        Provider ->
-            UseBulkGtw = length(Addrs) >= alley_services_conf:get(bulk_threshold),
-            %% try to workaround possible configuration issues.
-            case {Provider#provider_dto.gateway_id, Provider#provider_dto.bulk_gateway_id, UseBulkGtw} of
-                {undefined, undefined, _} ->
-                    %% the configuration issue. nowhere to route.
-                    route_addrs_to_gateways(Rest, Providers, Routable, Addrs ++ Unroutable);
-                {GtwId, undefined, _} ->
-                    %% route all via regular gateway.
-                    route_addrs_to_gateways(Rest, Providers, [{GtwId, Addrs} | Routable], Unroutable);
-                {undefined, BulkGtwId, _} ->
-                    %% route all via bulk gateway.
-                    route_addrs_to_gateways(Rest, Providers, [{BulkGtwId, Addrs} | Routable], Unroutable);
-                {GtwId, _BulkGtwId, false} ->
-                    route_addrs_to_gateways(Rest, Providers, [{GtwId, Addrs} | Routable], Unroutable);
-                {_GtwId, BulkGtwId, true} ->
-                    route_addrs_to_gateways(Rest, Providers, [{BulkGtwId, Addrs} | Routable], Unroutable)
-            end
-    end.
 
 -spec check_blacklist([addr()], addr()) -> {[addr()], [addr()]}.
 check_blacklist(DstAddrs, SrcAddr) ->
