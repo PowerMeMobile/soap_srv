@@ -24,7 +24,7 @@
     encoded      :: undefined | binary(),
     coverage_tab :: undefined | ets:tid(),
     routable     :: undefined | [{provider_id() | gateway_id(), [#addr{}]}],
-    unroutable   :: undefined | [#addr{}],
+    rejected     :: undefined | [#addr{}],
     req_dto_s    :: undefiend | [#just_sms_request_dto{}],
 
     %% SendServiceSms extention

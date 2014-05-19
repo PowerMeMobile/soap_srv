@@ -9,7 +9,7 @@
 %% API
 -export([
     get_coverage/3,
-    get_blacklist/3,
+    get_blacklist/0,
     get_delivery_status/4,
     retrieve_sms/4,
 
@@ -67,15 +67,15 @@ get_coverage(CustomerId, UserId, Version) ->
             {error, timeout}
     end.
 
--spec get_blacklist(customer_id(), user_id(), version()) ->
+-spec get_blacklist() ->
     {ok, [#k1api_blacklist_response_dto{}]} | {error, timeout}.
-get_blacklist(CustomerId, UserId, Version) ->
+get_blacklist() ->
     ReqId = uuid:unparse(uuid:generate_time()),
     Req = #k1api_blacklist_request_dto{
         id = ReqId,
-        customer_id = CustomerId,
-        user_id = UserId,
-        version = Version
+        customer_id = <<>>,
+        user_id = <<>>,
+        version = <<>>
     },
     ?log_debug("Sending blacklist request: ~p", [Req]),
     {ok, ReqBin} = adto:encode(Req),

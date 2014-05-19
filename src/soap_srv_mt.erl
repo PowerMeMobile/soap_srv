@@ -185,7 +185,31 @@ send(parse_def_date, Req) ->
         {error, invalid} ->
             {ok, [{result, ?invalidDefDateFormatError}]};
         {ok, ParsedDefDate} ->
-            send(route_to_providers, Req#send_req{def_date = ParsedDefDate})
+            send(check_originator, Req#send_req{def_date = ParsedDefDate})
+    end;
+
+send(check_originator, Req) ->
+    Customer = Req#send_req.customer,
+    Originator = soap_srv_utils:addr_to_dto(Req#send_req.originator),
+    AllowedSources = Customer#k1api_auth_response_customer_dto.allowed_sources,
+    case lists:member(Originator, AllowedSources) of
+        true ->
+            send(check_blacklist, Req#send_req{originator = Originator});
+        false ->
+            {ok, [{result, ?originatorNotAllowedError}]}
+    end;
+
+send(check_blacklist, Req) ->
+    DestAddrs  = Req#send_req.recipients,
+    Originator = Req#send_req.originator,
+    case check_blacklist(DestAddrs, Originator) of
+        {[], _} ->
+            {ok, [{result, ?noAnyDestAddrError}]};
+        {Allowed, Blacklisted} ->
+            send(route_to_providers, Req#send_req{
+                recipients = Allowed,
+                rejected = Blacklisted
+            })
     end;
 
 send(route_to_providers, Req) ->
@@ -197,7 +221,7 @@ send(route_to_providers, Req) ->
         {Routable, UnroutableToProviders} ->
             send(route_to_gateways, Req#send_req{
                 routable = Routable,
-                unroutable = UnroutableToProviders
+                rejected = Req#send_req.rejected ++ UnroutableToProviders
             })
     end;
 
@@ -209,21 +233,10 @@ send(route_to_gateways, Req) ->
         {[], _} ->
             {ok, [{result, ?noAnyDestAddrError}]};
         {Routable, UnroutableToGateways} ->
-            send(check_originator, Req#send_req{
+            send(process_msg_type, Req#send_req{
                 routable = Routable,
-                unroutable = Req#send_req.unroutable ++ UnroutableToGateways
+                rejected = Req#send_req.rejected ++ UnroutableToGateways
             })
-    end;
-
-send(check_originator, Req) ->
-    Customer = Req#send_req.customer,
-    Originator = soap_srv_utils:addr_to_dto(Req#send_req.originator),
-    AllowedSources = Customer#k1api_auth_response_customer_dto.allowed_sources,
-    case lists:member(Originator, AllowedSources) of
-        true ->
-            send(process_msg_type, Req#send_req{originator = Originator});
-        false ->
-            {ok, [{result, ?originatorNotAllowedError}]}
     end;
 
 send(process_msg_type, Req) when Req#send_req.text =:= undefined andalso
@@ -348,7 +361,7 @@ send(publish_dto_s, Req) ->
         ReqDTOs
     ),
 
-    {ok, [{id, ReqId}, {rejected, Req#send_req.unroutable}]}.
+    {ok, [{id, ReqId}, {rejected, Req#send_req.rejected}]}.
 
 %% ===================================================================
 %% Public Confirms
@@ -528,6 +541,20 @@ route_addrs_to_gateways([{ProvId, Addrs} | Rest], Providers, Routable, Unroutabl
                     route_addrs_to_gateways(Rest, Providers, [{BulkGtwId, Addrs} | Routable], Unroutable)
             end
     end.
+
+-spec check_blacklist([addr()], addr()) -> {[addr()], [addr()]}.
+check_blacklist(DstAddrs, SrcAddr) ->
+    check_blacklist(DstAddrs, SrcAddr, [], []).
+
+check_blacklist([DstAddr | DstAddrs], SrcAddr, Allowed, Denied) ->
+    case soap_srv_blacklist:check(DstAddr, SrcAddr) of
+        allowed ->
+            check_blacklist(DstAddrs, SrcAddr, [DstAddr | Allowed], Denied);
+        denied ->
+            check_blacklist(DstAddrs, SrcAddr, Allowed, [DstAddr | Denied])
+    end;
+check_blacklist([], _SrcAddr, Allowed, Denied) ->
+    {Allowed, Denied}.
 
 get_boolean(<<"true">>) -> true;
 get_boolean(<<"false">>) -> false.

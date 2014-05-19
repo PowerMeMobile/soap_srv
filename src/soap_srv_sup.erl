@@ -32,8 +32,9 @@ init([]) ->
         ?CHILD(soap_srv_http_out_logger, 5000, worker),
         ?CHILD(soap_srv_auth_cache, 5000, worker),
         ?CHILD(soap_srv_auth, 5000, worker),
-        ?CHILD(soap_srv_mt, 5000, worker),
         ?CHILD(soap_srv_defer, 5000, worker),
-        ?CHILD(soap_srv_mo, 5000, worker),
-        ?CHILD(mm_srv_kelly_api, 5000, worker)
+        ?CHILD(mm_srv_kelly_api, 5000, worker),
+        ?CHILD(soap_srv_blacklist, 5000, worker),
+        ?CHILD(soap_srv_mt, 5000, worker),
+        ?CHILD(soap_srv_mo, 5000, worker)
     ]}}.
