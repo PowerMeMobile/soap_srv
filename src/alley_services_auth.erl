@@ -1,4 +1,4 @@
--module(soap_srv_auth).
+-module(alley_services_auth).
 
 -ignore_xref([{start_link, 0}]).
 
@@ -32,7 +32,7 @@ authenticate(CustomerId, UserId, Password, ConnType) ->
 %% ===================================================================
 
 authenticate(check_cache, CustomerId, UserId, Password, ConnType) ->
-    case soap_srv_auth_cache:fetch(CustomerId, UserId) of
+    case alley_services_auth_cache:fetch(CustomerId, UserId) of
         {ok, AuthResp} ->
             {ok, AuthResp};
         not_found ->
@@ -57,7 +57,7 @@ authenticate(request_backend, CustomerId, UserId, Password, ConnType) ->
                     ?log_debug("Got auth response: ~p", [AuthResp]),
                     case Result of
                         {customer, _} ->
-                            ok = soap_srv_auth_cache:store(CustomerId, UserId, AuthResp);
+                            ok = alley_services_auth_cache:store(CustomerId, UserId, AuthResp);
                         {error, _} ->
                             ok
                     end,

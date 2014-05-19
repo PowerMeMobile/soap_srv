@@ -46,8 +46,8 @@ defer(Id, Timestamp, Req) ->
 
 init([]) ->
     process_flag(trap_exit, true),
-    {ok, ?MODULE} = dets:open_file(?MODULE, [{file, "data/defered_requests.dets"}]),
-    ?log_info("def_srv: started", []),
+    {ok, ?MODULE} = dets:open_file(?MODULE, [{file, "data/deferred_requests.dets"}]),
+    ?log_info("Defer: started", []),
     {ok, #st{}, ?TIMEOUT}.
 
 handle_call({defer, Id, Timestamp, Req}, _From, St) ->
@@ -66,12 +66,14 @@ handle_info(timeout, St) ->
     )),
     [send(Task) || Task <- DeferedTasks],
     {noreply, St, ?TIMEOUT};
+handle_info({'EXIT', _Pid, Reason}, St) ->
+    {stop, Reason, St};
 handle_info(_Info, St) ->
     {stop, unexpected_info, St}.
 
 terminate(Reason, _St) ->
     dets:close(?MODULE),
-    ?log_info("def_srv: terminated (~p)", [Reason]).
+    ?log_info("Defer: terminated (~p)", [Reason]).
 
 code_change(_OldVsn, St, _Extra) ->
     {ok, St}.

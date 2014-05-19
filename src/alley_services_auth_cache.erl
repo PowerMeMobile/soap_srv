@@ -1,4 +1,4 @@
--module(soap_srv_auth_cache).
+-module(alley_services_auth_cache).
 
 -behaviour(gen_server).
 
@@ -60,7 +60,7 @@ init([]) ->
     DetsOpts = [{ram_file, true}, {file, "data/auth_cache.dets"}],
     {ok, ?MODULE} = dets:open_file(?MODULE, DetsOpts),
     ok = dets:sync(?MODULE),
-    ?log_info("auth_cache: started", []),
+    ?log_info("Auth cache: started", []),
     {ok, #st{}}.
 
 handle_call({store, Key, Value}, _From, St) ->
@@ -97,4 +97,4 @@ code_change(_OldVsn, St, _Extra) ->
 
 terminate(Reason, _St) ->
     dets:close(?MODULE),
-    ?log_info("auth_cache: terminated (~p)", [Reason]).
+    ?log_info("Auth cache: terminated (~p)", [Reason]).

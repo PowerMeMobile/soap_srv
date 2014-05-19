@@ -1,4 +1,4 @@
--module(soap_srv_blacklist).
+-module(alley_services_blacklist).
 
 -behaviour(gen_server).
 
@@ -107,7 +107,7 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 
 fill_blacklist(Tab) ->
-    case mm_srv_kelly_api:get_blacklist() of
+    case alley_services_api:get_blacklist() of
         {ok, #k1api_blacklist_response_dto{entries = Entries}} ->
             true = ets:delete_all_objects(Tab),
             ok = fill_entries_to_tab(Entries, Tab),

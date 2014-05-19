@@ -155,7 +155,7 @@ send(authenticate, Req) ->
     CustomerID = Req#send_req.customer_id,
     UserName = Req#send_req.user_name,
     Pass = Req#send_req.password,
-    case soap_srv_auth:authenticate(CustomerID, UserName, Pass, soap) of
+    case alley_services_auth:authenticate(CustomerID, UserName, Pass, soap) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Req2 = Req#send_req{customer = Customer},
             send(fill_coverage_tab, Req2);
@@ -170,7 +170,7 @@ send(fill_coverage_tab, Req) ->
     Networks = Customer#k1api_auth_response_customer_dto.networks,
     DefaultProviderId = Customer#k1api_auth_response_customer_dto.default_provider_id,
     CoverageTab = ets:new(coverage_tab, [private]),
-    alley_router_coverage:fill_coverage_tab(Networks, DefaultProviderId, CoverageTab),
+    alley_services_coverage:fill_coverage_tab(Networks, DefaultProviderId, CoverageTab),
     send(parse_recipients, Req#send_req{coverage_tab = CoverageTab});
 
 send(parse_recipients, Req) ->
@@ -502,7 +502,7 @@ route_addrs_to_providers(Addrs, CoverageTab) ->
 route_addrs_to_providers([], _CoverageTab, Routable, Unroutable) ->
     {dict:to_list(Routable), Unroutable};
 route_addrs_to_providers([Addr | Rest], CoverageTab, Routable, Unroutable) ->
-    case alley_router_coverage:which_network(Addr, CoverageTab) of
+    case alley_services_coverage:which_network(Addr, CoverageTab) of
         {_NetworkId, MaybeFixedAddr, ProviderId} ->
             Routable2 = dict:append(ProviderId, MaybeFixedAddr, Routable),
             route_addrs_to_providers(Rest, CoverageTab, Routable2, Unroutable);
@@ -523,7 +523,7 @@ route_addrs_to_gateways([{ProvId, Addrs} | Rest], Providers, Routable, Unroutabl
             %% the configuration issue. nowhere to route.
             route_addrs_to_gateways(Rest, Providers, Routable, Addrs ++ Unroutable);
         Provider ->
-            UseBulkGtw = length(Addrs) >= alley_router_conf:get(bulk_threshold),
+            UseBulkGtw = length(Addrs) >= alley_services_conf:get(bulk_threshold),
             %% try to workaround possible configuration issues.
             case {Provider#provider_dto.gateway_id, Provider#provider_dto.bulk_gateway_id, UseBulkGtw} of
                 {undefined, undefined, _} ->
@@ -547,7 +547,7 @@ check_blacklist(DstAddrs, SrcAddr) ->
     check_blacklist(DstAddrs, SrcAddr, [], []).
 
 check_blacklist([DstAddr | DstAddrs], SrcAddr, Allowed, Denied) ->
-    case soap_srv_blacklist:check(DstAddr, SrcAddr) of
+    case alley_services_blacklist:check(DstAddr, SrcAddr) of
         allowed ->
             check_blacklist(DstAddrs, SrcAddr, [DstAddr | Allowed], Denied);
         denied ->

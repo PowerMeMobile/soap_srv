@@ -1,4 +1,4 @@
--module(mm_srv_kelly_api).
+-module(alley_services_api).
 
 -ignore_xref([{start_link, 0}]).
 

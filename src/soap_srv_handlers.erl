@@ -149,13 +149,13 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
     UserName = Req#'HTTP_GetSmsStatus'.userName,
     Password = Req#'HTTP_GetSmsStatus'.userPassword,
 
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password, soap) of
+    case alley_services_auth:authenticate(CustomerID, UserName, Password, soap) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
             CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
             Addr = soap_srv_utils:addr_to_dto(<<>>),
             {ok, Response} =
-                mm_srv_kelly_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
+                alley_services_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
             Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,
             {ok, Statistics} = build_statistics(Statuses),
             case Req#'HTTP_GetSmsStatus'.detailed of
@@ -252,7 +252,7 @@ send_result(Result) when is_list(Result) ->
     }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password, soap) of
+    case alley_services_auth:authenticate(CustomerID, UserName, Password, soap) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Originators =
                 [Addr#addr.addr ||
@@ -271,7 +271,7 @@ handle_authenticate(CustomerID, UserName, Password) ->
     end.
 
 handle_keep_alive(CustomerID, UserName, Password) ->
-    case soap_srv_auth:authenticate(CustomerID, UserName, Password, soap) of
+    case alley_services_auth:authenticate(CustomerID, UserName, Password, soap) of
         {ok, _Customer} ->
             {ok, #'CommonResult'{'Result' = <<"OK">>}};
         {error, timeout} ->
