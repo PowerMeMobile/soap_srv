@@ -7,12 +7,13 @@
         stdlib,
         lager,
         rmql,
-        alley_dto,
         gsm0338,
         cowboy,
         libuuid,
         gproc,
-        inets
+        inets,
+        alley_dto,
+        alley_services
     ]},
     {mod, {soap_srv_app, []}},
     {env, []}
