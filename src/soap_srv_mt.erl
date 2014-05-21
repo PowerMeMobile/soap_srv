@@ -398,7 +398,7 @@ unconfirmed_ids_up_to(UpToId, Acc, LastId) when LastId =< UpToId ->
         NextId ->
             unconfirmed_ids_up_to(UpToId, [LastId | Acc], NextId)
     end;
-unconfirmed_ids_up_to(_UUId, Acc, _LastId) ->
+unconfirmed_ids_up_to(_Uuid, Acc, _LastId) ->
     Acc.
 
 %% ===================================================================
