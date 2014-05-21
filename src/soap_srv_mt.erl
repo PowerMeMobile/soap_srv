@@ -152,10 +152,10 @@ code_change(_OldVsn, St, _Extra) ->
 %% ===================================================================
 
 send(authenticate, Req) ->
-    CustomerID = Req#send_req.customer_id,
+    CustomerId = Req#send_req.customer_id,
     UserName = Req#send_req.user_name,
     Password = Req#send_req.password,
-    case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
+    case alley_services_auth:authenticate(CustomerId, UserName, soap, Password) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Req2 = Req#send_req{customer = Customer},
             send(fill_coverage_tab, Req2);
@@ -290,7 +290,7 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orels
     DefaultValidity = Customer#k1api_auth_response_customer_dto.default_validity,
     _DC = list_to_integer(binary_to_list(Req#send_req.data_coding)),
     ESMClass = list_to_integer(binary_to_list(Req#send_req.esm_class)),
-    ProtocolID = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
+    ProtocolId = list_to_integer(binary_to_list(Req#send_req.protocol_id)),
     Params = lists:flatten([
         ?just_sms_request_param(<<"registered_delivery">>, true),
         ?just_sms_request_param(<<"service_type">>, <<>>),
@@ -298,7 +298,7 @@ send(define_smpp_params, Req) when Req#send_req.action =:= 'SendBinarySms' orels
         ?just_sms_request_param(<<"validity_period">>, fmt_validity(DefaultValidity)),
         ?just_sms_request_param(<<"priority_flag">>, 0),
         ?just_sms_request_param(<<"esm_class">>, ESMClass),
-        ?just_sms_request_param(<<"protocol_id">>, ProtocolID)
+        ?just_sms_request_param(<<"protocol_id">>, ProtocolId)
         %% ?just_sms_request_param(<<"data_coding">>, SendBinarySmsReq#send_binary_sms_req.data_coding)
      ]),
     send(build_req_dto_s, Req#send_req{smpp_params = Params});
@@ -377,28 +377,28 @@ handle_confirm(#'basic.nack'{delivery_tag = DTag, multiple = true}) ->
     reply_up_to(DTag, {error, nack}).
 
 reply_up_to(DTag, Reply) ->
-    IDs = unconfirmed_ids_up_to(DTag),
-    [reply_to(ID, Reply) || ID <- IDs].
+    Ids = unconfirmed_ids_up_to(DTag),
+    [reply_to(Id, Reply) || Id <- Ids].
 
 reply_to(DTag, Reply) when is_integer(DTag) ->
     [Unconf] = ets:lookup(?MODULE, DTag),
     gen_server:reply(Unconf#unconfirmed.from, Reply),
     true = ets:delete(?MODULE, Unconf#unconfirmed.id).
 
-unconfirmed_ids_up_to(UpToID) ->
+unconfirmed_ids_up_to(UpToId) ->
     case ets:first(?MODULE) of
         '$end_of_table' -> [];
-        FirstID ->
-            unconfirmed_ids_up_to(UpToID, [], FirstID)
+        FirstId ->
+            unconfirmed_ids_up_to(UpToId, [], FirstId)
     end.
 
-unconfirmed_ids_up_to(UpToID, Acc, LastID) when LastID =< UpToID ->
-    case ets:next(?MODULE, LastID) of
-        '$end_of_table' -> [LastID | Acc];
-        NextID ->
-            unconfirmed_ids_up_to(UpToID, [LastID | Acc], NextID)
+unconfirmed_ids_up_to(UpToId, Acc, LastId) when LastId =< UpToId ->
+    case ets:next(?MODULE, LastId) of
+        '$end_of_table' -> [LastId | Acc];
+        NextId ->
+            unconfirmed_ids_up_to(UpToId, [LastId | Acc], NextId)
     end;
-unconfirmed_ids_up_to(_UUID, Acc, _LastID) ->
+unconfirmed_ids_up_to(_UUId, Acc, _LastId) ->
     Acc.
 
 %% ===================================================================
@@ -450,18 +450,18 @@ build_req_dto(ReqId, GatewayId, DestAddrs, Req) ->
         message_ids = MessageIds
     }.
 
-get_ids(CustomerID, UserID, NumberOfDests, Parts) ->
-    {ok, IDs} = alley_services_db:next_id(CustomerID, UserID, NumberOfDests * Parts),
-    {DTOIDs, []} =
+get_ids(CustomerId, UserId, NumberOfDests, Parts) ->
+    {ok, Ids} = alley_services_db:next_id(CustomerId, UserId, NumberOfDests * Parts),
+    {DTOIds, []} =
         lists:foldl(
-          fun(ID, {Acc, Group}) when (length(Group) + 1) =:= Parts ->
-                  StrID = integer_to_list(ID),
-                  GroupIDs = list_to_binary(string:join(lists:reverse([StrID | Group]), ":")),
-                  {[GroupIDs | Acc], []};
-             (ID, {Acc, Group}) ->
-                  {Acc, [integer_to_list(ID) | Group]}
-          end, {[], []}, IDs),
-    DTOIDs.
+          fun(Id, {Acc, Group}) when (length(Group) + 1) =:= Parts ->
+                  StrId = integer_to_list(Id),
+                  GroupIds = list_to_binary(string:join(lists:reverse([StrId | Group]), ":")),
+                  {[GroupIds | Acc], []};
+             (Id, {Acc, Group}) ->
+                  {Acc, [integer_to_list(Id) | Group]}
+          end, {[], []}, Ids),
+    DTOIds.
 
 get_message_parts(Size, default) when Size =< 160 ->
     {ok, 1};
