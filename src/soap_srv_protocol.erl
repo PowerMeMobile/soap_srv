@@ -31,11 +31,11 @@
     terminate/3
 ]).
 
--include("soap_srv.hrl").
 -include("application.hrl").
 -include("soap_srv_protocol.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("alley_common/include/logging.hrl").
+-include_lib("alley_services/include/alley_services.hrl").
 
 -define(Handler, soap_srv_handlers).
 
