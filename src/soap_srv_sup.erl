@@ -26,8 +26,4 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [
-        ?CHILD(soap_srv_defer, 5000, worker),
-        ?CHILD(soap_srv_mt, 5000, worker),
-        ?CHILD(soap_srv_mo, 5000, worker)
-    ]}}.
+    {ok, {{one_for_one, 5, 10}, []}}.

@@ -1,8 +1,8 @@
 -module(soap_srv_handlers).
 
--include("soap_srv.hrl").
 -include("soap_srv_protocol.hrl").
 -include_lib("alley_common/include/logging.hrl").
+-include_lib("alley_services/include/alley_services.hrl").
 
 -export([handle/1]).
 
@@ -17,9 +17,10 @@
 handle(Req = #'SendSms'{}) ->
     User = Req#'SendSms'.user,
     Req2 = #send_req{
-        action = 'SendSms',
+        action = send_sms,
         customer_id = User#user.'CustomerID',
         user_name = User#user.'Name',
+        client_type = soap,
         password = User#user.'Password',
         recipients = Req#'SendSms'.recipientPhone,
         originator = Req#'SendSms'.originator,
@@ -28,15 +29,16 @@ handle(Req = #'SendSms'{}) ->
         def_date =  Req#'SendSms'.defDate,
         flash = Req#'SendSms'.flash
     },
-    {ok, Result} = soap_srv_mt:send(Req2),
+    {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'HTTP_SendSms'{}) ->
     Req2 = #send_req{
-        action = 'HTTP_SendSms',
+        action = send_sms,
         customer_id = Req#'HTTP_SendSms'.'customerID',
         user_name = Req#'HTTP_SendSms'.'userName',
+        client_type = soap,
         password = Req#'HTTP_SendSms'.'userPassword',
         recipients = Req#'HTTP_SendSms'.recipientPhone,
         originator = Req#'HTTP_SendSms'.originator,
@@ -45,16 +47,17 @@ handle(Req = #'HTTP_SendSms'{}) ->
         def_date =  Req#'HTTP_SendSms'.defDate,
         flash = Req#'HTTP_SendSms'.flash
     },
-    {ok, Result} = soap_srv_mt:send(Req2),
+    {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'SendSms2'{}) ->
     User = Req#'SendSms2'.user,
     Req2 = #send_req{
-        action = 'SendSms2',
+        action = send_sms,
         customer_id = User#user.'CustomerID',
         user_name = User#user.'Name',
+        client_type = soap,
         password = User#user.'Password',
         recipients = base64:decode(Req#'SendSms2'.recipientPhonesFile),
         originator = Req#'SendSms2'.originator,
@@ -63,15 +66,16 @@ handle(Req = #'SendSms2'{}) ->
         def_date =  Req#'SendSms2'.defDate,
         flash = Req#'SendSms2'.flash
     },
-    {ok, Result} = soap_srv_mt:send(Req2),
+    {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'SendServiceSms'{}) ->
     Req2 = #send_req{
-        action = 'SendServiceSms',
+        action = send_service_sms,
         customer_id = Req#'SendServiceSms'.'customerID',
         user_name = Req#'SendServiceSms'.userName,
+        client_type = soap,
         password = Req#'SendServiceSms'.userPassword,
         recipients = Req#'SendServiceSms'.recipientPhone,
         originator = Req#'SendServiceSms'.originator,
@@ -81,16 +85,17 @@ handle(Req = #'SendServiceSms'{}) ->
         def_date =  Req#'SendServiceSms'.defDate,
         flash = Req#'SendServiceSms'.flash
     },
-    {ok, Result} = soap_srv_mt:send(Req2),
+    {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'SendBinarySms'{}) ->
     User = Req#'SendBinarySms'.user,
     Req2 = #send_req{
-        action = 'SendBinarySms',
+        action = send_binary_sms,
         customer_id = User#user.'CustomerID',
         user_name = User#user.'Name',
+        client_type = soap,
         password = User#user.'Password',
         originator = Req#'SendBinarySms'.originator,
         binary_body = Req#'SendBinarySms'.binaryBody,
@@ -100,15 +105,16 @@ handle(Req = #'SendBinarySms'{}) ->
         esm_class = Req#'SendBinarySms'.esm_class,
         protocol_id = Req#'SendBinarySms'.'PID'
     },
-    {ok, Result} = soap_srv_mt:send(Req2),
+    {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
     Req2 = #send_req{
-        action = 'HTTP_SendBinarySms',
+        action = send_binary_sms,
         customer_id = Req#'HTTP_SendBinarySms'.'customerID',
         user_name = Req#'HTTP_SendBinarySms'.'userName',
+        client_type = soap,
         password = Req#'HTTP_SendBinarySms'.'userPassword',
         originator = Req#'HTTP_SendBinarySms'.originator,
         binary_body = Req#'HTTP_SendBinarySms'.binaryBody,
@@ -118,7 +124,7 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
         esm_class = Req#'HTTP_SendBinarySms'.esm_class,
         protocol_id = Req#'HTTP_SendBinarySms'.'PID'
     },
-    {ok, Result} = soap_srv_mt:send(Req2),
+    {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
     send_result(Result);
 
