@@ -154,8 +154,8 @@ code_change(_OldVsn, St, _Extra) ->
 send(authenticate, Req) ->
     CustomerID = Req#send_req.customer_id,
     UserName = Req#send_req.user_name,
-    Pass = Req#send_req.password,
-    case alley_services_auth:authenticate(CustomerID, UserName, Pass, soap) of
+    Password = Req#send_req.password,
+    case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             Req2 = Req#send_req{customer = Customer},
             send(fill_coverage_tab, Req2);
