@@ -410,11 +410,15 @@ step(process_wsdl_req, Req, St) ->
     {ok, Binary} = file:read_file("./data/WSDL"),
     Scheme = <<"http://">>,
     {Host, Req2} = cowboy_req:host(Req),
-    {Path, Req3} = cowboy_req:path(Req2),
-    Location = <<Scheme/binary, Host/binary, Path/binary>>,
+    {Port, Req3} = cowboy_req:port(Req2),
+    {Path, Req4} = cowboy_req:path(Req3),
+    Location = <<Scheme/binary,
+                 Host/binary,
+                 $:, (integer_to_binary(Port))/binary,
+                 Path/binary>>,
     Resp = binary:replace(Binary, <<"%%location%%">>, Location, [global]),
-    {ok, Req4} = cowboy_req:reply(200, [], Resp, Req3),
-    {ok, Req4, St};
+    {ok, Req5} = cowboy_req:reply(200, [], Resp, Req4),
+    {ok, Req5, St};
 
 step(_, _, _) ->
     erlang:error(not_implemented). %% @todo implement soap fault
