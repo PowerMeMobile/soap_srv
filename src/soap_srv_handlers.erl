@@ -27,7 +27,7 @@ handle(Req = #'SendSms'{}) ->
         text = Req#'SendSms'.smsText,
         type = Req#'SendSms'.messageType,
         def_date =  Req#'SendSms'.defDate,
-        flash = Req#'SendSms'.flash
+        flash = maybe_boolean(Req#'SendSms'.flash)
     },
     {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
@@ -45,7 +45,7 @@ handle(Req = #'HTTP_SendSms'{}) ->
         text = Req#'HTTP_SendSms'.smsText,
         type = Req#'HTTP_SendSms'.messageType,
         def_date =  Req#'HTTP_SendSms'.defDate,
-        flash = Req#'HTTP_SendSms'.flash
+        flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
     },
     {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
@@ -64,7 +64,7 @@ handle(Req = #'SendSms2'{}) ->
         text = Req#'SendSms2'.smsText,
         type = Req#'SendSms2'.messageType,
         def_date =  Req#'SendSms2'.defDate,
-        flash = Req#'SendSms2'.flash
+        flash = maybe_boolean(Req#'SendSms2'.flash)
     },
     {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
@@ -83,7 +83,7 @@ handle(Req = #'SendServiceSms'{}) ->
         s_url = Req#'SendServiceSms'.serviceUrl,
         type = Req#'SendServiceSms'.messageType,
         def_date =  Req#'SendServiceSms'.defDate,
-        flash = Req#'SendServiceSms'.flash
+        flash = maybe_boolean(Req#'SendServiceSms'.flash)
     },
     {ok, Result} = alley_services_mt:send(Req2),
     ?log_debug("Got submit result: ~p", [Result]),
@@ -252,6 +252,10 @@ aggregate_statistics([], Dict) ->
 aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
     Dict1 = dict:update_counter(Status, 1, Dict),
     aggregate_statistics(Rest, Dict1).
+
+maybe_boolean(<<"true">>)  -> true;
+maybe_boolean(<<"false">>) -> false;
+maybe_boolean(undefined)   -> false.
 
 send_result(Result) when is_list(Result) ->
     {ok, #'SendResult'{
