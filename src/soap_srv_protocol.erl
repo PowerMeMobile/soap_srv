@@ -66,6 +66,7 @@
     'CommonResult',
     'AuthResult',
     'HTTP_GetSmsStatus',
+    'GetSmsStatus',
     'SmsStatus'
 ]).
 
@@ -79,7 +80,9 @@
     'KeepAlive' |
     'HTTP_KeepAlive' |
     'Authenticate' |
-    'HTTP_Authenticate'.
+    'HTTP_Authenticate' |
+    'HTTP_GetSmsStatus' |
+    'GetSmsStatus'.
 
 -type transport() ::
     soap11 |
@@ -358,6 +361,9 @@ step(is_transport_allowed, Req, St = #st{}) ->
         ]},
         {'HTTP_GetSmsStatus', [
             {transport, [soap11, soap12, http_get, http_post]}
+        ]},
+        {'GetSmsStatus', [
+            {transport, [soap11, soap12]}
         ]}
     ],
     ActionSpec = proplists:get_value(St#st.action, Spec),
@@ -569,15 +575,16 @@ get_qs_vals(Req) ->
         [{cowboy_bstr:to_lower(K), V} || {K, V} <- QsVals],
     {QsValsLowerCase, Req3}.
 
-action("HTTP_SendSms") -> 'HTTP_SendSms';
-action("SendSms") -> 'SendSms';
-action("SendSms2") -> 'SendSms2';
-action("SendServiceSms") -> 'SendServiceSms';
-action("SendBinarySms") -> 'SendBinarySms';
+action("Authenticate")       -> 'Authenticate';
+action("GetSmsStatus")       -> 'GetSmsStatus';
+action("KeepAlive")          -> 'KeepAlive';
+action("SendSms")            -> 'SendSms';
+action("SendSms2")           -> 'SendSms2';
+action("SendBinarySms")      -> 'SendBinarySms';
+action("SendServiceSms")     -> 'SendServiceSms';
+action("HTTP_Authenticate")  -> 'HTTP_Authenticate';
+action("HTTP_GetSmsStatus")  -> 'HTTP_GetSmsStatus';
+action("HTTP_KeepAlive")     -> 'HTTP_KeepAlive';
+action("HTTP_SendSms")       -> 'HTTP_SendSms';
 action("HTTP_SendBinarySms") -> 'HTTP_SendBinarySms';
-action("KeepAlive") -> 'KeepAlive';
-action("HTTP_KeepAlive") -> 'HTTP_KeepAlive';
-action("Authenticate") -> 'Authenticate';
-action("HTTP_Authenticate") -> 'HTTP_Authenticate';
-action("HTTP_GetSmsStatus") -> 'HTTP_GetSmsStatus';
-action(_) -> undefined.
+action(_)                    -> undefined.

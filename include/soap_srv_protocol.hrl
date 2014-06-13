@@ -128,6 +128,14 @@
     'detailed' :: boolean()
 }).
 
+-record('GetSmsStatus', {
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary(),
+    'transactionID' :: binary(),
+    'detailed' :: boolean()
+}).
+
 -record('SmsStatus', {
     'Result' :: binary(),
     'Statistics' :: binary(),

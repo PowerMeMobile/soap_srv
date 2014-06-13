@@ -158,39 +158,20 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
     CustomerID = Req#'HTTP_GetSmsStatus'.customerID,
     UserName = Req#'HTTP_GetSmsStatus'.userName,
     Password = Req#'HTTP_GetSmsStatus'.userPassword,
+    TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
+    Detailed = maybe_boolean(Req#'HTTP_GetSmsStatus'.detailed),
+    handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed);
 
-    case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
-        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
-            TransactionID = Req#'HTTP_GetSmsStatus'.transactionID,
-            CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
-            Addr = alley_services_utils:addr_to_dto(<<>>),
-            {ok, Response} =
-                alley_services_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
-            Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,
-            {ok, Statistics} = build_statistics(Statuses),
-            case Req#'HTTP_GetSmsStatus'.detailed of
-                <<"true">> ->
-                    {ok, Details} = build_details(Statuses),
-                    {ok, #'SmsStatus'{
-                        'Result' = <<"OK">>,
-                        'Statistics' = Statistics,
-                        'Details' = Details,
-                        'NetPoints' = <<"POSTPAID">>
-                    }};
-                <<"false">> ->
-                    {ok, #'SmsStatus'{
-                        'Result' = <<"OK">>,
-                        'Statistics' = Statistics,
-                        'NetPoints' = <<"POSTPAID">>
-                    }}
-            end;
-        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            {ok, #'AuthResult'{'Result' = Error}};
-        {error, Error} ->
-            ?log_error("handler: error on auth: ~p", [Error]),
-            {ok, #'AuthResult'{'Result' = ?authError}}
-    end;
-handle(_) -> erlang:error(method_not_implemented).
+handle(Req = #'GetSmsStatus'{}) ->
+    CustomerID = Req#'GetSmsStatus'.customerID,
+    UserName = Req#'GetSmsStatus'.userName,
+    Password = Req#'GetSmsStatus'.userPassword,
+    TransactionID = Req#'GetSmsStatus'.transactionID,
+    Detailed = maybe_boolean(Req#'GetSmsStatus'.detailed),
+    handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed);
+
+handle(_) ->
+    erlang:error(method_not_implemented).
 
 %% ===================================================================
 %% Internal
@@ -290,4 +271,36 @@ handle_keep_alive(CustomerID, UserName, Password) ->
             {ok, #'CommonResult'{'Result' = <<"OK">>}};
         {error, timeout} ->
             {ok, #'CommonResult'{'Result' = ?authError}}
+    end.
+
+handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) ->
+    case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
+            Addr = alley_services_utils:addr_to_dto(<<>>),
+            {ok, Response} =
+                alley_services_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
+            Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,
+            {ok, Statistics} = build_statistics(Statuses),
+            case Detailed of
+                true ->
+                    {ok, Details} = build_details(Statuses),
+                    {ok, #'SmsStatus'{
+                        'Result' = <<"OK">>,
+                        'Statistics' = Statistics,
+                        'Details' = Details,
+                        'NetPoints' = <<"POSTPAID">>
+                    }};
+                false ->
+                    {ok, #'SmsStatus'{
+                        'Result' = <<"OK">>,
+                        'Statistics' = Statistics,
+                        'NetPoints' = <<"POSTPAID">>
+                    }}
+            end;
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            {ok, #'AuthResult'{'Result' = Error}};
+        {error, Error} ->
+            ?log_error("handler: error on auth: ~p", [Error]),
+            {ok, #'AuthResult'{'Result' = ?authError}}
     end.
