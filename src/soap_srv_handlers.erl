@@ -9,6 +9,9 @@
 -define(gv(K, PList), proplists:get_value(K, PList)).
 -define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
 
+-define(INVALID_RECIPIENTS_FORMAT,
+    <<"Invalid recipients format. Base64 encoded comma separated address list is expected">>).
+
 %% ===================================================================
 %% API
 %% ===================================================================
@@ -52,23 +55,31 @@ handle(Req = #'HTTP_SendSms'{}) ->
     send_result(Result);
 
 handle(Req = #'SendSms2'{}) ->
-    User = Req#'SendSms2'.user,
-    Req2 = #send_req{
-        action = send_sms,
-        customer_id = User#user.'CustomerID',
-        user_name = User#user.'Name',
-        client_type = soap,
-        password = User#user.'Password',
-        recipients = base64:decode(Req#'SendSms2'.recipientPhonesFile),
-        originator = Req#'SendSms2'.originator,
-        text = Req#'SendSms2'.smsText,
-        type = Req#'SendSms2'.messageType,
-        def_date =  Req#'SendSms2'.defDate,
-        flash = maybe_boolean(Req#'SendSms2'.flash)
-    },
-    {ok, Result} = alley_services_mt:send(Req2),
-    ?log_debug("Got submit result: ~p", [Result]),
-    send_result(Result);
+    try base64:decode(Req#'SendSms2'.recipientPhonesFile) of
+        Recipients ->
+            User = Req#'SendSms2'.user,
+            Req2 = #send_req{
+                action = send_sms,
+                customer_id = User#user.'CustomerID',
+                user_name = User#user.'Name',
+                client_type = soap,
+                password = User#user.'Password',
+                recipients = Recipients,
+                originator = Req#'SendSms2'.originator,
+                text = Req#'SendSms2'.smsText,
+                type = Req#'SendSms2'.messageType,
+                def_date =  Req#'SendSms2'.defDate,
+                flash = maybe_boolean(Req#'SendSms2'.flash)
+            },
+            {ok, Result} = alley_services_mt:send(Req2),
+            ?log_debug("Got submit result: ~p", [Result]),
+            send_result(Result)
+    catch
+        _:_ ->
+            ?log_error("Invalid recipientPhonesFile: ~p",
+                [Req#'SendSms2'.recipientPhonesFile]),
+            send_result([{result, ?INVALID_RECIPIENTS_FORMAT}])
+    end;
 
 handle(Req = #'SendServiceSms'{}) ->
     Req2 = #send_req{
