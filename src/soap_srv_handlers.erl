@@ -163,9 +163,10 @@ handle(Req = #'HTTP_GetSmsStatus'{}) ->
     handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed);
 
 handle(Req = #'GetSmsStatus'{}) ->
-    CustomerID = Req#'GetSmsStatus'.customerID,
-    UserName = Req#'GetSmsStatus'.userName,
-    Password = Req#'GetSmsStatus'.userPassword,
+    User = Req#'GetSmsStatus'.user,
+    CustomerID = User#user.'CustomerID',
+    UserName = User#user.'Name',
+    Password = User#user.'Password',
     TransactionID = Req#'GetSmsStatus'.transactionID,
     Detailed = maybe_boolean(Req#'GetSmsStatus'.detailed),
     handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed);

@@ -129,9 +129,7 @@
 }).
 
 -record('GetSmsStatus', {
-    'customerID' :: integer(),
-    'userName' :: binary(),
-    'userPassword' :: binary(),
+    'user' :: user(),
     'transactionID' :: binary(),
     'detailed' :: boolean()
 }).
