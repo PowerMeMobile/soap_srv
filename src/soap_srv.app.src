@@ -1,5 +1,5 @@
 {application, soap_srv,[
-    {description, "Replacement solution of MMWL lite server soap interface"},
+    {description, "Legacy SOAP API Server from Power Alley Gateway Suite"},
     {vsn, git},
     {registered, []},
     {applications, [
