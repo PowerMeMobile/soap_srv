@@ -5,12 +5,7 @@
     {applications, [
         kernel,
         stdlib,
-        lager,
-        rmql,
-        gsm0338,
         cowboy,
-        libuuid,
-        gproc,
         inets,
         alley_dto,
         alley_services
