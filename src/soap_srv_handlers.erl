@@ -23,8 +23,8 @@ handle(Req = #'SendSms'{}) ->
         user_name = User#user.'Name',
         client_type = soap,
         password = User#user.'Password',
-        recipients = Req#'SendSms'.recipientPhone,
-        originator = Req#'SendSms'.originator,
+        recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
+        originator = reformat_addr(Req#'SendSms'.originator),
         text = Req#'SendSms'.smsText,
         type = Req#'SendSms'.messageType,
         def_date =  Req#'SendSms'.defDate,
@@ -41,8 +41,8 @@ handle(Req = #'HTTP_SendSms'{}) ->
         user_name = Req#'HTTP_SendSms'.'userName',
         client_type = soap,
         password = Req#'HTTP_SendSms'.'userPassword',
-        recipients = Req#'HTTP_SendSms'.recipientPhone,
-        originator = Req#'HTTP_SendSms'.originator,
+        recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
+        originator = reformat_addr(Req#'HTTP_SendSms'.originator),
         text = Req#'HTTP_SendSms'.smsText,
         type = Req#'HTTP_SendSms'.messageType,
         def_date =  Req#'HTTP_SendSms'.defDate,
@@ -62,8 +62,8 @@ handle(Req = #'SendSms2'{}) ->
                 user_name = User#user.'Name',
                 client_type = soap,
                 password = User#user.'Password',
-                recipients = Recipients,
-                originator = Req#'SendSms2'.originator,
+                recipients = reformat_addrs(Recipients),
+                originator = reformat_addr(Req#'SendSms2'.originator),
                 text = Req#'SendSms2'.smsText,
                 type = Req#'SendSms2'.messageType,
                 def_date =  Req#'SendSms2'.defDate,
@@ -86,8 +86,8 @@ handle(Req = #'SendServiceSms'{}) ->
         user_name = Req#'SendServiceSms'.userName,
         client_type = soap,
         password = Req#'SendServiceSms'.userPassword,
-        recipients = Req#'SendServiceSms'.recipientPhone,
-        originator = Req#'SendServiceSms'.originator,
+        recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
+        originator = reformat_addr(Req#'SendServiceSms'.originator),
         s_name = Req#'SendServiceSms'.serviceName,
         s_url = Req#'SendServiceSms'.serviceUrl,
         type = Req#'SendServiceSms'.messageType,
@@ -106,9 +106,9 @@ handle(Req = #'SendBinarySms'{}) ->
         user_name = User#user.'Name',
         client_type = soap,
         password = User#user.'Password',
-        originator = Req#'SendBinarySms'.originator,
+        recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
+        originator = reformat_addr(Req#'SendBinarySms'.originator),
         binary_body = Req#'SendBinarySms'.binaryBody,
-        recipients = Req#'SendBinarySms'.recipientPhone,
         def_date = Req#'SendBinarySms'.defDate,
         data_coding = Req#'SendBinarySms'.data_coding,
         esm_class = Req#'SendBinarySms'.esm_class,
@@ -125,9 +125,9 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
         user_name = Req#'HTTP_SendBinarySms'.'userName',
         client_type = soap,
         password = Req#'HTTP_SendBinarySms'.'userPassword',
-        originator = Req#'HTTP_SendBinarySms'.originator,
+        recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
+        originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
         binary_body = Req#'HTTP_SendBinarySms'.binaryBody,
-        recipients = Req#'HTTP_SendBinarySms'.recipientPhone,
         def_date = Req#'HTTP_SendBinarySms'.defDate,
         data_coding = Req#'HTTP_SendBinarySms'.data_coding,
         esm_class = Req#'HTTP_SendBinarySms'.esm_class,
@@ -247,6 +247,13 @@ aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
 maybe_boolean(<<"true">>)  -> true;
 maybe_boolean(<<"false">>) -> false;
 maybe_boolean(undefined)   -> false.
+
+reformat_addr(Addr) ->
+    alley_services_utils:addr_to_dto(Addr).
+
+reformat_addrs(BlobAddrs) ->
+    RawAddrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
+    [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs].
 
 send_result(Result) when is_list(Result) ->
     {ok, #'SendResult'{
