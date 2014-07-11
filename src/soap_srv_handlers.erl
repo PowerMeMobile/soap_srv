@@ -2,12 +2,10 @@
 
 -include("soap_srv_protocol.hrl").
 -include_lib("alley_common/include/logging.hrl").
+-include_lib("alley_common/include/utils.hrl").
 -include_lib("alley_services/include/alley_services.hrl").
 
 -export([handle/1]).
-
--define(gv(K, PList), proplists:get_value(K, PList)).
--define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
 
 -define(INVALID_RECIPIENTS_FORMAT,
     <<"Invalid recipients format. Base64 encoded comma separated address list is expected">>).
