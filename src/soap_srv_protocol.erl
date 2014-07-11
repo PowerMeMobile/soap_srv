@@ -18,13 +18,13 @@
     update_dispatch_rules/0
 ]).
 
-%% Cowboy hooks to save req body
+%% cowboy hooks
 -export([
     onrequest_hook/1,
     onresponse_hook/4
 ]).
 
-%% Cowboy callbacks
+%% cowboy_http_handler callbacks
 -export([
     init/3,
     handle/2,
@@ -35,6 +35,8 @@
 -include("soap_srv_protocol.hrl").
 -include_lib("alley_dto/include/adto.hrl").
 -include_lib("alley_common/include/logging.hrl").
+-include_lib("alley_common/include/utils.hrl").
+-include_lib("alley_common/include/cowboy_http_handler_spec.hrl").
 -include_lib("alley_services/include/alley_services.hrl").
 
 -define(Handler, soap_srv_handlers).
@@ -43,9 +45,6 @@
 -define(NS, "http://pmmsoapmessenger.com/").
 
 -define(ContentTypeHName, <<"Content-Type">>).
-
--define(gv(K, PList), proplists:get_value(K, PList)).
--define(gv(K, PList, Default), proplists:get_value(K, PList, Default)).
 
 -import(record_info, [record_to_proplist/2]).
 -import(record_info, [proplist_to_record/3]).
@@ -142,7 +141,7 @@ dispatch_rules() ->
     cowboy_router:compile(DispatchRaw).
 
 %% ===================================================================
-%% Cowboy hooks
+%% cowboy hooks
 %% ===================================================================
 
 %% Since app uses cowboy onresponse hook for logging purposes
@@ -176,25 +175,21 @@ onresponse_hook(RespCode, RespHeaders, RespBody, Req) ->
         cowboy_req:reply(RespCode, RespHeaders, RespBody, Req),
     Req2.
 
-%% get body helper
-get_body() -> get(req_body).
+get_body() ->
+    get(req_body).
 
-%% clean body helper
-clean_body() -> put(req_body, undefined).
+clean_body() ->
+    put(req_body, undefined).
 
 %% ===================================================================
-%% Cowboy callbacks
+%% cowboy_http_handler callbacks
 %% ===================================================================
 
--spec init({tcp, http}, cowboy_req:req(), [] | error) ->
-    {ok, cowboy_req:req(), #st{} | error}.
 init({tcp, http}, Req, []) ->
     {ok, Req, #st{}};
 init({tcp, http}, Req, error) ->
     {ok, Req, error}.
 
--spec handle(cowboy_req:req(), #st{} | error) ->
-    {ok, cowboy_req:req(), #st{} | error}.
 handle(Req, error) ->
     Resp = <<"Not found: mistake in the host or path of the service URI">>,
     {ok, Req2} = cowboy_req:reply(404, [], Resp, Req),
@@ -202,7 +197,6 @@ handle(Req, error) ->
 handle(Req, State) ->
     step(get_http_method, Req, State).
 
--spec terminate(term(), cowboy_req:req(), #st{}) -> ok.
 terminate(_Reason, _Req, _St) ->
     clean_body(),       %% Need to cleanup body record in proc dict
     ok.                 %% since cowboy uses one process per several
