@@ -201,75 +201,8 @@ handle(_) ->
     erlang:error(method_not_implemented).
 
 %% ===================================================================
-%% Internal
+%% Internal Handlers
 %% ===================================================================
-
-build_details(Statuses) ->
-    <<
-    "<details xmlns=\"\">",
-    (list_to_binary([detailed_status_tag(Status) || Status <- Statuses]))/binary,
-    "</details>"
-    >>.
-
-detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
-    StatusName = Status#k1api_sms_status_dto.status,
-    Number = Status#k1api_sms_status_dto.address,
-    Timestamp = Status#k1api_sms_status_dto.timestamp,
-    ISO8601 = ac_datetime:unixepoch_to_iso8601(Timestamp),
-
-    Content =
-    <<
-    (content_tag('number', Number#addr.addr))/binary,
-    (content_tag('TimeStamp', ISO8601))/binary
-    >>,
-
-    content_tag(StatusName, Content).
-
-build_statistics(Statuses) ->
-    Agregated = aggregate_statistics(Statuses),
-    <<
-    "<statistics xmlns=\"\">",
-    (list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
-    "</statistics>"
-    >>.
-
-status_tag(Status, Counter) ->
-    Content =
-    <<
-    (list_to_binary(integer_to_list(Counter)))/binary
-    >>,
-    content_tag(Status, Content).
-
-content_tag(Name, Content) when is_atom(Name) ->
-    content_tag(atom_to_binary(Name, utf8), Content);
-content_tag(Name, Content) when is_integer(Content) ->
-    content_tag(Name, list_to_binary(integer_to_list(Content)));
-content_tag(Name, Content) ->
-    <<
-    "<", Name/binary, ">",
-    Content/binary,
-    "</", Name/binary, ">"
-    >>.
-
-aggregate_statistics(Statuses) ->
-    aggregate_statistics(Statuses, dict:new()).
-
-aggregate_statistics([], Dict) ->
-    dict:to_list(Dict);
-aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
-    Dict1 = dict:update_counter(Status, 1, Dict),
-    aggregate_statistics(Rest, Dict1).
-
-maybe_boolean(<<"true">>)  -> true;
-maybe_boolean(<<"false">>) -> false;
-maybe_boolean(undefined)   -> false.
-
-reformat_addr(Addr) ->
-    alley_services_utils:addr_to_dto(Addr).
-
-reformat_addrs(BlobAddrs) ->
-    RawAddrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
-    [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs].
 
 send_result(Result) when is_list(Result) ->
     {ok, #'SendResult'{
@@ -340,3 +273,74 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
 
 handle_inbox_processing(CustomerID, UserName, Password, Operation, MessageId) ->
     {ok, {}}.
+
+%% ===================================================================
+%% Internal
+%% ===================================================================
+
+build_details(Statuses) ->
+    <<
+    "<details xmlns=\"\">",
+    (list_to_binary([detailed_status_tag(Status) || Status <- Statuses]))/binary,
+    "</details>"
+    >>.
+
+detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
+    StatusName = Status#k1api_sms_status_dto.status,
+    Number = Status#k1api_sms_status_dto.address,
+    Timestamp = Status#k1api_sms_status_dto.timestamp,
+    ISO8601 = ac_datetime:unixepoch_to_iso8601(Timestamp),
+
+    Content =
+    <<
+    (content_tag('number', Number#addr.addr))/binary,
+    (content_tag('TimeStamp', ISO8601))/binary
+    >>,
+
+    content_tag(StatusName, Content).
+
+build_statistics(Statuses) ->
+    Agregated = aggregate_statistics(Statuses),
+    <<
+    "<statistics xmlns=\"\">",
+    (list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
+    "</statistics>"
+    >>.
+
+status_tag(Status, Counter) ->
+    Content =
+    <<
+    (list_to_binary(integer_to_list(Counter)))/binary
+    >>,
+    content_tag(Status, Content).
+
+content_tag(Name, Content) when is_atom(Name) ->
+    content_tag(atom_to_binary(Name, utf8), Content);
+content_tag(Name, Content) when is_integer(Content) ->
+    content_tag(Name, list_to_binary(integer_to_list(Content)));
+content_tag(Name, Content) ->
+    <<
+    "<", Name/binary, ">",
+    Content/binary,
+    "</", Name/binary, ">"
+    >>.
+
+aggregate_statistics(Statuses) ->
+    aggregate_statistics(Statuses, dict:new()).
+
+aggregate_statistics([], Dict) ->
+    dict:to_list(Dict);
+aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
+    Dict1 = dict:update_counter(Status, 1, Dict),
+    aggregate_statistics(Rest, Dict1).
+
+maybe_boolean(<<"true">>)  -> true;
+maybe_boolean(<<"false">>) -> false;
+maybe_boolean(undefined)   -> false.
+
+reformat_addr(Addr) ->
+    alley_services_utils:addr_to_dto(Addr).
+
+reformat_addrs(BlobAddrs) ->
+    RawAddrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
+    [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs].
