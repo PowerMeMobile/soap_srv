@@ -214,10 +214,13 @@ build_details(Statuses) ->
 detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
     StatusName = Status#k1api_sms_status_dto.status,
     Number = Status#k1api_sms_status_dto.address,
+    Timestamp = Status#k1api_sms_status_dto.timestamp,
+    ISO8601 = ac_datetime:unixepoch_to_iso8601(Timestamp),
 
     Content =
     <<
-    (content_tag('number', Number#addr.addr))/binary
+    (content_tag('number', Number#addr.addr))/binary,
+    (content_tag('TimeStamp', ISO8601))/binary
     >>,
 
     content_tag(StatusName, Content).

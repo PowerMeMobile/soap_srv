@@ -27,7 +27,7 @@ if soap_ns == 'soap12env':
 statistics = {'submitted':int, 'sent':int, 'failed':int, 'delivered':int, 'expired':int, 'deleted':int, 'undeliverable':int, 'accepted':int, 'unknown':int, 'rejected':int}
 client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Statistics'] = {'statistics':statistics}
 
-numbers = [{'number':str}]
+numbers = [{'number':str, 'TimeStamp':str}]
 details = {'submitted':numbers, 'sent':numbers, 'failed':numbers, 'delivered':numbers, 'expired':numbers, 'deleted':numbers, 'undeliverable':numbers, 'accepted':numbers, 'unknown':numbers, 'rejected':numbers}
 client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Details'] = {'details':details}
 
