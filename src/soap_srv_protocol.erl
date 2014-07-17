@@ -281,7 +281,8 @@ step(get_soap_envelope, Req, St = #st{}) ->
             Resp = <<"Invalid soap message format">>,
             {ok, Req3} = cowboy_req:reply(400, [], Resp, Req),
             {ok, Req3, undefined};
-        _ -> erlang:error(unexpected_xml_format) %% @todo implement soap fault
+        _ ->
+            erlang:error(unexpected_xml_format) %% @todo implement soap fault
     end;
 
 step(get_soap_body, Req, St = #st{transport = soap11}) ->
