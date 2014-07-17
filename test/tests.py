@@ -5,10 +5,19 @@
 #sudo ./setup.py install
 #python
 
-from pysimplesoap.client import SoapClient
-client = SoapClient(wsdl="http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl", trace=False)
+# https://code.google.com/p/pysimplesoap/wiki/SoapClient
 
 origPhone='999'
+
+# don't use 'soap12' it's wrong
+soap_ns='soapenv' # 'soapenv' | 'soap12env'
+
+from pysimplesoap.client import SoapClient
+client = SoapClient(wsdl="http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl", soap_ns=soap_ns, trace=False)
+
+# fix content type for soap12
+if soap_ns == 'soap12env':
+    client.http_headers = {'Content-type':'application/soap+xml;charset=utf-8'}
 
 # return Statistics and Details as embedded XML
 #client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Statistics'] = None
