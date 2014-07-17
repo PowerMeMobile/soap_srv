@@ -66,7 +66,9 @@
     'AuthResult',
     'HTTP_GetSmsStatus',
     'GetSmsStatus',
-    'SmsStatus'
+    'SmsStatus',
+    'HTTP_InboxProcessing',
+    'InboxProcessing'
 ]).
 
 -type action() ::
@@ -81,7 +83,9 @@
     'Authenticate' |
     'HTTP_Authenticate' |
     'HTTP_GetSmsStatus' |
-    'GetSmsStatus'.
+    'GetSmsStatus' |
+    'HTTP_InboxProcessing' |
+    'InboxProcessing'.
 
 -type transport() ::
     soap11 |
@@ -358,6 +362,12 @@ step(is_transport_allowed, Req, St = #st{}) ->
         ]},
         {'GetSmsStatus', [
             {transport, [soap11, soap12]}
+        ]},
+        {'HTTP_InboxProcessing', [
+            {transport, [soap11, soap12, http_get, http_post]}
+        ]},
+        {'InboxProcessing', [
+            {transport, [soap11, soap12]}
         ]}
     ],
     ActionSpec = proplists:get_value(St#st.action, Spec),
@@ -569,16 +579,18 @@ get_qs_vals(Req) ->
         [{cowboy_bstr:to_lower(K), V} || {K, V} <- QsVals],
     {QsValsLowerCase, Req3}.
 
-action("Authenticate")       -> 'Authenticate';
-action("GetSmsStatus")       -> 'GetSmsStatus';
-action("KeepAlive")          -> 'KeepAlive';
-action("SendSms")            -> 'SendSms';
-action("SendSms2")           -> 'SendSms2';
-action("SendBinarySms")      -> 'SendBinarySms';
-action("SendServiceSms")     -> 'SendServiceSms';
-action("HTTP_Authenticate")  -> 'HTTP_Authenticate';
-action("HTTP_GetSmsStatus")  -> 'HTTP_GetSmsStatus';
-action("HTTP_KeepAlive")     -> 'HTTP_KeepAlive';
-action("HTTP_SendSms")       -> 'HTTP_SendSms';
-action("HTTP_SendBinarySms") -> 'HTTP_SendBinarySms';
-action(_)                    -> undefined.
+action("Authenticate")         -> 'Authenticate';
+action("GetSmsStatus")         -> 'GetSmsStatus';
+action("KeepAlive")            -> 'KeepAlive';
+action("SendSms")              -> 'SendSms';
+action("SendSms2")             -> 'SendSms2';
+action("SendBinarySms")        -> 'SendBinarySms';
+action("SendServiceSms")       -> 'SendServiceSms';
+action("InboxProcessing")      -> 'InboxProcessing';
+action("HTTP_Authenticate")    -> 'HTTP_Authenticate';
+action("HTTP_GetSmsStatus")    -> 'HTTP_GetSmsStatus';
+action("HTTP_KeepAlive")       -> 'HTTP_KeepAlive';
+action("HTTP_SendSms")         -> 'HTTP_SendSms';
+action("HTTP_SendBinarySms")   -> 'HTTP_SendBinarySms';
+action("HTTP_InboxProcessing") -> 'HTTP_InboxProcessing';
+action(_)                      -> undefined.

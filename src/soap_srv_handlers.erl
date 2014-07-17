@@ -180,6 +180,23 @@ handle(Req = #'GetSmsStatus'{}) ->
     Detailed = maybe_boolean(Req#'GetSmsStatus'.detailed),
     handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed);
 
+handle(Req = #'HTTP_InboxProcessing'{}) ->
+    CustomerID = Req#'HTTP_InboxProcessing'.customerID,
+    UserName = Req#'HTTP_InboxProcessing'.userName,
+    Password = Req#'HTTP_InboxProcessing'.userPassword,
+    Operation = Req#'HTTP_InboxProcessing'.operation,
+    MessageId = Req#'HTTP_InboxProcessing'.messageId,
+    handle_inbox_processing(CustomerID, UserName, Password, Operation, MessageId);
+
+handle(Req = #'InboxProcessing'{}) ->
+    User = Req#'InboxProcessing'.user,
+    CustomerID = User#user.'CustomerID',
+    UserName = User#user.'Name',
+    Password = User#user.'Password',
+    Operation = Req#'HTTP_InboxProcessing'.operation,
+    MessageId = Req#'HTTP_InboxProcessing'.messageId,
+    handle_inbox_processing(CustomerID, UserName, Password, Operation, MessageId);
+
 handle(_) ->
     erlang:error(method_not_implemented).
 
@@ -321,3 +338,6 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
             ?log_error("handler: error on auth: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?authError}}
     end.
+
+handle_inbox_processing(CustomerID, UserName, Password, Operation, MessageId) ->
+    {ok, {}}.

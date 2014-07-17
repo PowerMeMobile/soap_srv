@@ -304,6 +304,52 @@
           </s:sequence>
         </s:complexType>
       </s:element>
+      <s:element name="HTTP_InboxProcessing">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="customerID" type="s:int" />
+            <s:element minOccurs="0" maxOccurs="1" name="userName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="userPassword" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="operation" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="messageId" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="HTTP_InboxProcessingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="HTTP_InboxProcessingResult">
+              <s:complexType mixed="true">
+                <s:sequence>
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InboxProcessing">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="user" type="tns:SoapUser" />
+            <s:element minOccurs="0" maxOccurs="1" name="operation" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="messageId" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InboxProcessingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InboxProcessingResult">
+              <s:complexType mixed="true">
+                <s:sequence>
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
       <s:element name="SendResult" nillable="true" type="tns:SendResult" />
       <s:element name="SmsStatus" nillable="true" type="tns:SmsStatus" />
       <s:element name="AuthResult" nillable="true" type="tns:AuthResult" />
@@ -394,6 +440,18 @@
   <wsdl:message name="HTTP_KeepAliveSoapOut">
     <wsdl:part name="parameters" element="tns:HTTP_KeepAliveResponse" />
   </wsdl:message>
+  <wsdl:message name="HTTP_InboxProcessingSoapIn">
+    <wsdl:part name="parameters" element="tns:HTTP_InboxProcessing" />
+  </wsdl:message>
+  <wsdl:message name="HTTP_InboxProcessingSoapOut">
+    <wsdl:part name="parameters" element="tns:HTTP_InboxProcessingResponse" />
+  </wsdl:message>
+  <wsdl:message name="InboxProcessingSoapIn">
+    <wsdl:part name="parameters" element="tns:InboxProcessing" />
+  </wsdl:message>
+  <wsdl:message name="InboxProcessingSoapOut">
+    <wsdl:part name="parameters" element="tns:InboxProcessingResponse" />
+  </wsdl:message>
   <wsdl:message name="HTTP_SendSmsHttpGetIn">
     <wsdl:part name="customerID" type="s:string" />
     <wsdl:part name="userName" type="s:string" />
@@ -467,6 +525,16 @@
   </wsdl:message>
   <wsdl:message name="HTTP_KeepAliveHttpGetOut">
     <wsdl:part name="Body" element="tns:CommonResult" />
+  </wsdl:message>
+  <wsdl:message name="HTTP_InboxProcessingHttpGetIn">
+    <wsdl:part name="customerID" type="s:string" />
+    <wsdl:part name="userName" type="s:string" />
+    <wsdl:part name="userPassword" type="s:string" />
+    <wsdl:part name="operation" type="s:string" />
+    <wsdl:part name="messageId" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="HTTP_InboxProcessingHttpGetOut">
+    <wsdl:part name="Body" />
   </wsdl:message>
   <wsdl:message name="HTTP_SendSmsHttpPostIn">
     <wsdl:part name="customerID" type="s:string" />
@@ -542,6 +610,16 @@
   <wsdl:message name="HTTP_KeepAliveHttpPostOut">
     <wsdl:part name="Body" element="tns:CommonResult" />
   </wsdl:message>
+  <wsdl:message name="HTTP_InboxProcessingHttpPostIn">
+    <wsdl:part name="customerID" type="s:string" />
+    <wsdl:part name="userName" type="s:string" />
+    <wsdl:part name="userPassword" type="s:string" />
+    <wsdl:part name="operation" type="s:string" />
+    <wsdl:part name="messageId" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="HTTP_InboxProcessingHttpPostOut">
+    <wsdl:part name="Body" />
+  </wsdl:message>
   <wsdl:portType name="MessengerSoap">
     <wsdl:operation name="SendSms">
       <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Sends SMS using specified parameters.</wsdl:documentation>
@@ -603,6 +681,16 @@
       <wsdl:input message="tns:HTTP_KeepAliveSoapIn" />
       <wsdl:output message="tns:HTTP_KeepAliveSoapOut" />
     </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Operate with Inbox</wsdl:documentation>
+      <wsdl:input message="tns:HTTP_InboxProcessingSoapIn" />
+      <wsdl:output message="tns:HTTP_InboxProcessingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InboxProcessing">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Operate with Inbox</wsdl:documentation>
+      <wsdl:input message="tns:InboxProcessingSoapIn" />
+      <wsdl:output message="tns:InboxProcessingSoapOut" />
+    </wsdl:operation>
   </wsdl:portType>
   <wsdl:portType name="MessengerHttpGet">
     <wsdl:operation name="HTTP_SendSms">
@@ -635,6 +723,11 @@
       <wsdl:input message="tns:HTTP_KeepAliveHttpGetIn" />
       <wsdl:output message="tns:HTTP_KeepAliveHttpGetOut" />
     </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Operate with Inbox</wsdl:documentation>
+      <wsdl:input message="tns:HTTP_InboxProcessingHttpGetIn" />
+      <wsdl:output message="tns:HTTP_InboxProcessingHttpGetOut" />
+    </wsdl:operation>
   </wsdl:portType>
   <wsdl:portType name="MessengerHttpPost">
     <wsdl:operation name="HTTP_SendSms">
@@ -666,6 +759,11 @@
       <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Sends keep alive signal to server</wsdl:documentation>
       <wsdl:input message="tns:HTTP_KeepAliveHttpPostIn" />
       <wsdl:output message="tns:HTTP_KeepAliveHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Operate with Inbox</wsdl:documentation>
+      <wsdl:input message="tns:HTTP_InboxProcessingHttpPostIn" />
+      <wsdl:output message="tns:HTTP_InboxProcessingHttpPostOut" />
     </wsdl:operation>
   </wsdl:portType>
   <wsdl:binding name="MessengerSoap" type="tns:MessengerSoap">
@@ -771,6 +869,24 @@
     </wsdl:operation>
     <wsdl:operation name="HTTP_KeepAlive">
       <soap:operation soapAction="http://pmmsoapmessenger.com/HTTP_KeepAlive" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <soap:operation soapAction="http://pmmsoapmessenger.com/HTTP_InboxProcessing" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InboxProcessing">
+      <soap:operation soapAction="http://pmmsoapmessenger.com/InboxProcessing" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -889,6 +1005,24 @@
         <soap12:body use="literal" />
       </wsdl:output>
     </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <soap12:operation soapAction="http://pmmsoapmessenger.com/HTTP_InboxProcessing" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InboxProcessing">
+      <soap12:operation soapAction="http://pmmsoapmessenger.com/InboxProcessing" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
   </wsdl:binding>
   <wsdl:binding name="MessengerHttpGet" type="tns:MessengerHttpGet">
     <http:binding verb="GET" />
@@ -946,6 +1080,15 @@
         <mime:mimeXml part="Body" />
       </wsdl:output>
     </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <http:operation location="/HTTP_InboxProcessing" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:content part="Body" type="text/xml" />
+      </wsdl:output>
+    </wsdl:operation>
   </wsdl:binding>
   <wsdl:binding name="MessengerHttpPost" type="tns:MessengerHttpPost">
     <http:binding verb="POST" />
@@ -1001,6 +1144,15 @@
       </wsdl:input>
       <wsdl:output>
         <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="HTTP_InboxProcessing">
+      <http:operation location="/HTTP_InboxProcessing" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:content part="Body" type="text/xml" />
       </wsdl:output>
     </wsdl:operation>
   </wsdl:binding>

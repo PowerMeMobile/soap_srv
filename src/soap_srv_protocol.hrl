@@ -141,6 +141,20 @@
     'NetPoints' :: binary()
 }).
 
+-record('HTTP_InboxProcessing', {
+    'customerID' :: integer(),
+    'userName' :: binary(),
+    'userPassword' :: binary(),
+    'operation' :: binary(),
+    'messageId' :: binary()
+}).
+
+-record('InboxProcessing', {
+    'user' :: user(),
+    'operation' :: binary(),
+    'messageId' :: binary()
+}).
+
 -record('Authenticate', {
     user :: #user{}
 }).
