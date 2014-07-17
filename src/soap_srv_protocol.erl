@@ -305,8 +305,8 @@ step(get_soap_body, Req, St = #st{transport = soap12}) ->
     end;
 
 step(get_action_name, Req, St = #st{transport = Transport}) when
-            Transport =:= http_get orelse
-            Transport =:= http_post ->
+        Transport =:= http_get orelse
+        Transport =:= http_post ->
     case action(binary_to_list(St#st.subpath)) of
         undefined ->
             erlang:error(action_not_implemented); %% @todo implement soap fault
@@ -315,8 +315,8 @@ step(get_action_name, Req, St = #st{transport = Transport}) when
     end;
 
 step(get_action_name, Req, St = #st{transport = SOAP}) when
-            SOAP =:= soap11 orelse
-            SOAP =:= soap12 ->
+        SOAP =:= soap11 orelse
+        SOAP =:= soap12 ->
     NameSpace = "{" ++ ?NS ++ "}",
     case action(St#st.action --  NameSpace) of
         undefined ->
@@ -433,7 +433,6 @@ step(process_wsdl_req, Req, St) ->
 step(_, _, _) ->
     erlang:error(not_implemented). %% @todo implement soap fault
 
-
 build_result_content(Record) when is_tuple(Record) ->
     Plist = record_to_proplist(Record, ?MODULE),
     build_result_content(Plist, []).
@@ -441,8 +440,8 @@ build_result_content(Record) when is_tuple(Record) ->
 build_result_content([], Acc) ->
     list_to_binary(lists:reverse(Acc));
 build_result_content([{Key, Value} | Tail], Acc) when
-                    is_list(Value) andalso
-                    Value =/= [] ->
+        is_list(Value) andalso
+        Value =/= [] ->
     ComposedElements =
     list_to_binary(
         [<<"<string>", Element/binary, "</string>">> ||
@@ -453,8 +452,8 @@ build_result_content([{Key, Value} | Tail], Acc) ->
     build_result_content(Tail, [Tag | Acc]).
 
 wrap_result(Content, St) when
-            St#st.transport =:= http_post orelse
-            St#st.transport =:= http_get ->
+        St#st.transport =:= http_post orelse
+        St#st.transport =:= http_get ->
     Name = atom_to_binary(element(1, St#st.result), utf8),
     NameNS = <<Name/binary, " xmlns=\"", ?NS, "\"">>,
     <<
@@ -463,17 +462,17 @@ wrap_result(Content, St) when
     "</", Name/binary, ">"
     >>;
 wrap_result(Content, St) when
-            St#st.transport =:= soap11 orelse
-            St#st.transport =:= soap12 ->
+        St#st.transport =:= soap11 orelse
+        St#st.transport =:= soap12 ->
     construct_xml_tag(atom_to_list(St#st.action) ++ "Result", Content).
 
 construct_response(Content, St) when
-            St#st.transport =:= http_post orelse
-            St#st.transport =:= http_get ->
+        St#st.transport =:= http_post orelse
+        St#st.transport =:= http_get ->
     Content;
 construct_response(Content, St) when
-            St#st.transport =:= soap11 orelse
-            St#st.transport =:= soap12 ->
+        St#st.transport =:= soap11 orelse
+        St#st.transport =:= soap12 ->
     Name = atom_to_list(St#st.action),
     << "<", (list_to_binary(Name ++ "Response"))/binary, " xmlns=\"", ?NS, "\">",
         Content/binary,
@@ -504,8 +503,8 @@ construct_soap_body(Content, St) when St#st.transport =:= soap12 ->
     "</soap12:Envelope>"
     >>;
 construct_soap_body(Content, St) when
-            St#st.transport =:= http_get orelse
-            St#st.transport =:= http_post ->
+        St#st.transport =:= http_get orelse
+        St#st.transport =:= http_post ->
     <<
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     Content/binary
@@ -533,14 +532,14 @@ construct_xml_tag(Name, Content) when is_list(Name) ->
 get_headers(soap12) ->
     [{?ContentTypeHName, <<"application/soap+xml; charset=utf-8">>}];
 get_headers(Transport) when
-            Transport =:= http_get orelse
-            Transport =:= http_post orelse
-            Transport =:= soap11 ->
+        Transport =:= http_get orelse
+        Transport =:= http_post orelse
+        Transport =:= soap11 ->
     [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}].
 
 get_method_values(Transport, _, Keys, Req) when
-                Transport =:= http_post orelse
-                Transport =:= http_get ->
+        Transport =:= http_post orelse
+        Transport =:= http_get ->
     {QsVals, Req2} = get_qs_vals(Req),
     Fun = fun(AtomKey) ->
         Key = cowboy_bstr:to_lower(atom_to_binary(AtomKey, utf8)),
@@ -550,8 +549,8 @@ get_method_values(Transport, _, Keys, Req) when
     {lists:map(Fun, Keys), Req2};
 
 get_method_values(Transport, Body, Keys, Req) when
-                Transport =:= soap11 orelse
-                Transport =:= soap12 ->
+        Transport =:= soap11 orelse
+        Transport =:= soap12 ->
     Fun = fun(AtomKey) ->
         Key = atom_to_list(AtomKey),
         Value = case lists:keysearch("{" ++ ?NS ++ "}" ++ Key, 1, Body) of

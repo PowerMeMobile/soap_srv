@@ -205,13 +205,11 @@ handle(_) ->
 %% ===================================================================
 
 build_details(Statuses) ->
-    Details = list_to_binary([detailed_status_tag(Status) || Status <- Statuses]),
-    {ok,
     <<
     "<details xmlns=\"\">",
-    Details/binary,
+    (list_to_binary([detailed_status_tag(Status) || Status <- Statuses]))/binary,
     "</details>"
-    >>}.
+    >>.
 
 detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
     StatusName = Status#k1api_sms_status_dto.status,
@@ -226,13 +224,11 @@ detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
 
 build_statistics(Statuses) ->
     Agregated = aggregate_statistics(Statuses),
-    Statistics = list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]),
-    {ok,
     <<
     "<statistics xmlns=\"\">",
-    Statistics/binary,
+    (list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
     "</statistics>"
-    >>}.
+    >>.
 
 status_tag(Status, Counter) ->
     Content =
@@ -274,10 +270,10 @@ reformat_addrs(BlobAddrs) ->
 
 send_result(Result) when is_list(Result) ->
     {ok, #'SendResult'{
-            'Result' = ?gv(result, Result, <<"OK">>),
-            'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-            'TransactionID' = ?gv(id, Result),
-            'NetPoints' = <<"POSTPAID">>
+        'Result' = ?gv(result, Result, <<"OK">>),
+        'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
+        'TransactionID' = ?gv(id, Result),
+        'NetPoints' = <<"POSTPAID">>
     }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
@@ -287,11 +283,11 @@ handle_authenticate(CustomerID, UserName, Password) ->
                 [Addr#addr.addr ||
                     Addr <- Customer#k1api_auth_response_customer_dto.allowed_sources],
             {ok, #'AuthResult'{
-                    'Result' = <<"OK">>,
-                    'NetPoints' = <<"POSTPAID">>,
-                    'Originators' = Originators,
-                    'CustomerID' = CustomerID,
-                    'CreditSMS' = <<"POSTPAID">>
+                'Result' = <<"OK">>,
+                'NetPoints' = <<"POSTPAID">>,
+                'Originators' = Originators,
+                'CustomerID' = CustomerID,
+                'CreditSMS' = <<"POSTPAID">>
             }};
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             {ok, #'AuthResult'{'Result' = Error}};
@@ -315,10 +311,10 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
             {ok, Response} =
                 alley_services_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
             Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,
-            {ok, Statistics} = build_statistics(Statuses),
+            Statistics = build_statistics(Statuses),
             case Detailed of
                 true ->
-                    {ok, Details} = build_details(Statuses),
+                    Details = build_details(Statuses),
                     {ok, #'SmsStatus'{
                         'Result' = <<"OK">>,
                         'Statistics' = Statistics,
