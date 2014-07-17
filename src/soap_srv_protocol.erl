@@ -475,7 +475,7 @@ construct_response(Content, St) when
             St#st.transport =:= soap11 orelse
             St#st.transport =:= soap12 ->
     Name = atom_to_list(St#st.action),
-    << "<", (list_to_binary(Name ++ "Respose"))/binary, " xmlns=\"", ?NS, "\">",
+    << "<", (list_to_binary(Name ++ "Response"))/binary, " xmlns=\"", ?NS, "\">",
         Content/binary,
     "</", (list_to_binary(Name ++ "Response"))/binary, ">" >>.
 
