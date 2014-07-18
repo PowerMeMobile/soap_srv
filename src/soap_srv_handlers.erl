@@ -193,8 +193,8 @@ handle(Req = #'InboxProcessing'{}) ->
     CustomerID = User#user.'CustomerID',
     UserName = User#user.'Name',
     Password = User#user.'Password',
-    Operation = Req#'HTTP_InboxProcessing'.operation,
-    MessageId = Req#'HTTP_InboxProcessing'.messageId,
+    Operation = Req#'InboxProcessing'.operation,
+    MessageId = Req#'InboxProcessing'.messageId,
     handle_inbox_processing(CustomerID, UserName, Password, Operation, MessageId);
 
 handle(_) ->
@@ -271,12 +271,45 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
             {ok, #'AuthResult'{'Result' = ?authError}}
     end.
 
-handle_inbox_processing(CustomerID, UserName, Password, Operation, MessageId) ->
-    {ok, {}}.
+handle_inbox_processing(CustomerID, UserName, Password, _Operation, _MessageIds) ->
+    case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, _Customer}}} ->
+            {ok, #'CommonResult'{'Result' = ?E_NOT_IMPLEMENTED}};
+            %% CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
+            %% Operation2 = inbox_operation(Operation),
+            %% case alley_services_api:process_inbox(CustomerUUID, UserName,
+            %%         Operation2, MessageIds) of
+            %%     {ok, #k1api_process_inbox_response_dto{result = Result}} ->
+            %%         handle_inbox_response(Result);
+            %%     {error, Reason} ->
+            %%         {ok, #'CommonResult'{'Result' = Reason}}
+            %% end;
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            {ok, #'AuthResult'{'Result' = Error}};
+        {error, Error} ->
+            ?log_error("handler: error on auth: ~p", [Error]),
+            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
+    end.
 
 %% ===================================================================
 %% Internal
 %% ===================================================================
+
+handle_inbox_response({messages, _Messages}) ->
+    {ok, #'CommonResult'{'Result' = <<"messages">>}};
+handle_inbox_response({deleted, _Deleted}) ->
+    {ok, #'CommonResult'{'Result' = <<"deleted">>}};
+handle_inbox_response({error, Error}) ->
+    {ok, #'CommonResult'{'Result' = Error}}.
+
+inbox_operation(<<"list-all">>)  -> list_all;
+inbox_operation(<<"list-new">>)  -> list_new;
+inbox_operation(<<"fetch-all">>) -> fetch_all;
+inbox_operation(<<"fetch-new">>) -> fetch_new;
+inbox_operation(<<"fetch-id">>)  -> fetch_id;
+inbox_operation(<<"kill-all">>)  -> kill_all;
+inbox_operation(<<"kill-old">>)  -> kill_old;
+inbox_operation(<<"kill-id">>)   -> kill_id.
 
 build_details(Statuses) ->
     <<
