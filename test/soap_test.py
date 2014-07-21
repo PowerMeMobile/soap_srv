@@ -1,8 +1,11 @@
-# $ py.test --pdb
 # $ py.test soap_test.py
 # $ py.test soap_test.py::test_SendSms_fail
+# $ py.test --pdb
+# $ py.test -v
 
-# py.test --genscript=runtests.py
+# make standalone test script and then run it in verbose mode
+# $ py.test --genscript=runtests.py
+# $ python runtests.py -v
 
 import pytest
 
