@@ -40,12 +40,13 @@ SOAP12 = 'soap12env'
 #WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl'
 WSDL = 'http://mm.powermemobile.com/mm/soap/messenger.asmx?WSDL'
 
-@pytest.fixture(scope="module")
-def client():
+@pytest.fixture(scope="module",
+                params=[SOAP11, SOAP12])
+def client(request):
     from pysimplesoap.client import SoapClient
 
     wsdl = WSDL
-    soap_ns = SOAP11
+    soap_ns = request.param
 
     client = SoapClient(wsdl=wsdl, soap_ns=soap_ns, trace=False)
 
