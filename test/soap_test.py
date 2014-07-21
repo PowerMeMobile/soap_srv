@@ -2,6 +2,8 @@
 # $ py.test soap_test.py
 # $ py.test soap_test.py::test_SendSms_fail
 
+# py.test --genscript=runtests.py
+
 import pytest
 
 CUSTOMER_ID = 79
@@ -35,7 +37,7 @@ SOAP12 = 'soap12env'
 #WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl'
 WSDL = 'http://mm.powermemobile.com/mm/soap/messenger.asmx?WSDL'
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
     from pysimplesoap.client import SoapClient
 
