@@ -7,8 +7,10 @@
 
 -export([handle/1]).
 
--define(INVALID_RECIPIENTS_FORMAT,
-    <<"Invalid recipients format. Base64 encoded comma separated address list is expected">>).
+-define(E_SUCCESS, <<"OK">>).
+-define(E_AUTHENTICATION, <<"Unknown user">>).
+-define(E_NOT_IMPLEMENTED, <<"Not implemented">>).
+-define(E_INVALID_RECIPIENTS, <<"Invalid recipients format">>).
 
 %% ===================================================================
 %% API
@@ -76,7 +78,7 @@ handle(Req = #'SendSms2'{}) ->
         _:_ ->
             ?log_error("Invalid recipientPhonesFile: ~p",
                 [Req#'SendSms2'.recipientPhonesFile]),
-            send_result([{result, ?INVALID_RECIPIENTS_FORMAT}])
+            send_result([{result, ?E_INVALID_RECIPIENTS}])
     end;
 
 handle(Req = #'SendServiceSms'{}) ->
@@ -206,7 +208,7 @@ handle(_) ->
 
 send_result(Result) when is_list(Result) ->
     {ok, #'SendResult'{
-        'Result' = ?gv(result, Result, <<"OK">>),
+        'Result' = ?gv(result, Result, ?E_SUCCESS),
         'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
         'TransactionID' = ?gv(id, Result),
         'NetPoints' = <<"POSTPAID">>
@@ -219,7 +221,7 @@ handle_authenticate(CustomerID, UserName, Password) ->
                 [Addr#addr.addr ||
                     Addr <- Customer#k1api_auth_response_customer_dto.allowed_sources],
             {ok, #'AuthResult'{
-                'Result' = <<"OK">>,
+                'Result' = ?E_SUCCESS,
                 'NetPoints' = <<"POSTPAID">>,
                 'Originators' = Originators,
                 'CustomerID' = CustomerID,
@@ -228,15 +230,15 @@ handle_authenticate(CustomerID, UserName, Password) ->
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             {ok, #'AuthResult'{'Result' = Error}};
         {error, timeout} ->
-            {ok, #'AuthResult'{'Result' = ?authError}}
+            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
 handle_keep_alive(CustomerID, UserName, Password) ->
     case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
         {ok, _Customer} ->
-            {ok, #'CommonResult'{'Result' = <<"OK">>}};
+            {ok, #'CommonResult'{'Result' = ?E_SUCCESS}};
         {error, timeout} ->
-            {ok, #'CommonResult'{'Result' = ?authError}}
+            {ok, #'CommonResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
 handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) ->
@@ -252,14 +254,14 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
                 true ->
                     Details = build_details(Statuses),
                     {ok, #'SmsStatus'{
-                        'Result' = <<"OK">>,
+                        'Result' = ?E_SUCCESS,
                         'Statistics' = Statistics,
                         'Details' = Details,
                         'NetPoints' = <<"POSTPAID">>
                     }};
                 false ->
                     {ok, #'SmsStatus'{
-                        'Result' = <<"OK">>,
+                        'Result' = ?E_SUCCESS,
                         'Statistics' = Statistics,
                         'NetPoints' = <<"POSTPAID">>
                     }}
@@ -268,7 +270,7 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
             {ok, #'AuthResult'{'Result' = Error}};
         {error, Error} ->
             ?log_error("handler: error on auth: ~p", [Error]),
-            {ok, #'AuthResult'{'Result' = ?authError}}
+            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
 handle_inbox_processing(CustomerID, UserName, Password, _Operation, _MessageIds) ->
