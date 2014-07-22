@@ -14,9 +14,15 @@
 
 import pytest
 
-CUSTOMER_ID = 79
-USER_ID = 'xxx1'
-PASSWORD = '1xxx'
+SOAP11 = 'soapenv'
+SOAP12 = 'soap12env'
+
+WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl'
+#WSDL = 'http://mm.powermemobile.com/mm/soap/messenger.asmx?WSDL'
+
+CUSTOMER_ID = 3#79
+USER_ID     = 'user'#'dev1'
+PASSWORD    = 'password'#'1dev'
 BAD_PASSWORD = 'intentionally wrong password'
 
 USER = {
@@ -41,12 +47,6 @@ BAD_RECIPIENT_BASE64 = 'OTk5OTk5OTk5OTk5'
 
 TRANSACTION_ID = '85ccccbf-f854-4898-86b1-5072d3e33da1'
 BAD_TRANSACTION_ID = '915c1f0e-0ce8-11e4-9d4c-00269e42f7a5'
-
-SOAP11 = 'soapenv'
-SOAP12 = 'soap12env'
-
-#WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl'
-WSDL = 'http://mm.powermemobile.com/mm/soap/messenger.asmx?WSDL'
 
 @pytest.fixture(scope="module",
                 params=[SOAP11, SOAP12])
@@ -187,7 +187,7 @@ def test_SendBinarySms_bad_originator_fail(client):
     assert res['SendBinarySmsResult']['TransactionID'] == None
 
 def test_SendBinarySms_no_recipient_fail(client):
-    res = client.SendBinarySms(user=USER, originator='', binaryBody='7465737420746573742074657374207465737420', recipientPhone='', defDate='', data_coding='4', esm_class='', PID='')
+    res = client.SendBinarySms(user=USER, originator=ORIGINATOR, binaryBody='7465737420746573742074657374207465737420', recipientPhone='', defDate='', data_coding='4', esm_class='', PID='')
     assert res['SendBinarySmsResult']['Result'] == '600.4 Phone not specified'
     assert res['SendBinarySmsResult']['RejectedNumbers'] == []
     assert res['SendBinarySmsResult']['NetPoints'] == '0'
