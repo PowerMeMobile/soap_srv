@@ -35,6 +35,9 @@ BAD_USER = {
 
 ORIGINATOR = 'SMS'
 RECIPIENT = '375293615363'
+BAD_RECIPIENT = '999999999999'
+RECIPIENT_BASE64 = 'Mzc1Mjk2NTQzMjEw'
+BAD_RECIPIENT_BASE64 = 'OTk5OTk5OTk5OTk5'
 
 TRANSACTION_ID = '85ccccbf-f854-4898-86b1-5072d3e33da1'
 BAD_TRANSACTION_ID = '915c1f0e-0ce8-11e4-9d4c-00269e42f7a5'
@@ -130,9 +133,23 @@ def test_SendSms_bad_originator_fail(client):
     assert res['SendSmsResult']['NetPoints'] == '0'
     assert res['SendSmsResult']['TransactionID'] == None
 
-def test_SendSms_empty_body_fail(client):
+def test_SendSms_no_recipient_fail(client):
     res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone='', messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['SendSmsResult']['Result'] == '600.4 Phone not specified'
+    assert res['SendSmsResult']['RejectedNumbers'] == []
+    assert res['SendSmsResult']['NetPoints'] == '0'
+    assert res['SendSmsResult']['TransactionID'] == None
+
+def test_SendSms_bad_recipient_fail(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=BAD_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+    assert res['SendSmsResult']['RejectedNumbers'] == []
+    assert res['SendSmsResult']['NetPoints'] == '0'
+    assert res['SendSmsResult']['TransactionID'] == None
+
+def test_SendSms_empty_body_fail(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'Message Content Is Empty'
     assert res['SendSmsResult']['RejectedNumbers'] == []
     assert res['SendSmsResult']['NetPoints'] == '0'
     assert res['SendSmsResult']['TransactionID'] == None
@@ -165,6 +182,20 @@ def test_SendBinarySms_bad_user_fail(client):
 def test_SendBinarySms_bad_originator_fail(client):
     res = client.SendBinarySms(user=USER, originator='', binaryBody='7465737420746573742074657374207465737420', recipientPhone=RECIPIENT, defDate='', data_coding='4', esm_class='', PID='')
     assert res['SendBinarySmsResult']['Result'] == '600.1 Originator for customerID is not found'
+    assert res['SendBinarySmsResult']['RejectedNumbers'] == []
+    assert res['SendBinarySmsResult']['NetPoints'] == '0'
+    assert res['SendBinarySmsResult']['TransactionID'] == None
+
+def test_SendBinarySms_no_recipient_fail(client):
+    res = client.SendBinarySms(user=USER, originator='', binaryBody='7465737420746573742074657374207465737420', recipientPhone='', defDate='', data_coding='4', esm_class='', PID='')
+    assert res['SendBinarySmsResult']['Result'] == '600.4 Phone not specified'
+    assert res['SendBinarySmsResult']['RejectedNumbers'] == []
+    assert res['SendBinarySmsResult']['NetPoints'] == '0'
+    assert res['SendBinarySmsResult']['TransactionID'] == None
+
+def test_SendBinarySms_bad_recipient_fail(client):
+    res = client.SendBinarySms(user=USER, originator=ORIGINATOR, binaryBody='7465737420746573742074657374207465737420', recipientPhone=BAD_RECIPIENT, defDate='', data_coding='4', esm_class='', PID='')
+    assert res['SendBinarySmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
     assert res['SendBinarySmsResult']['RejectedNumbers'] == []
     assert res['SendBinarySmsResult']['NetPoints'] == '0'
     assert res['SendBinarySmsResult']['TransactionID'] == None
@@ -208,6 +239,20 @@ def test_SendServiceSms_bad_originator_fail(client):
     assert res['SendServiceSmsResult']['NetPoints'] == '0'
     assert res['SendServiceSmsResult']['TransactionID'] == None
 
+def test_SendServiceSms_no_recipient_fail(client):
+    res = client.SendServiceSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, serviceName='google', serviceUrl='http://google.com', recipientPhone='', messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendServiceSmsResult']['Result'] == '600.4 Phone not specified'
+    assert res['SendServiceSmsResult']['RejectedNumbers'] == []
+    assert res['SendServiceSmsResult']['NetPoints'] == '0'
+    assert res['SendServiceSmsResult']['TransactionID'] == None
+
+def test_SendServiceSms_bad_recipient_fail(client):
+    res = client.SendServiceSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, serviceName='google', serviceUrl='http://google.com', recipientPhone=BAD_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendServiceSmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+    assert res['SendServiceSmsResult']['RejectedNumbers'] == []
+    assert res['SendServiceSmsResult']['NetPoints'] == '0'
+    assert res['SendServiceSmsResult']['TransactionID'] == None
+
 def test_SendServiceSms_empty_service_name_succ(client):
     res = client.SendServiceSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, serviceName='', serviceUrl='http://google.com', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['SendServiceSmsResult']['Result'] == 'OK'
@@ -235,6 +280,59 @@ def test_SendServiceSms_succ(client):
     assert res['SendServiceSmsResult']['RejectedNumbers'] == []
     assert res['SendServiceSmsResult']['NetPoints'] == 'POSTPAID'
     assert res['SendServiceSmsResult']['TransactionID'] != None
+
+#
+# SendSms2
+#
+
+def test_SendSms2_bad_user_fail(client):
+    res = client.SendSms2(user=BAD_USER, originator=ORIGINATOR, smsText='Hello', recipientPhonesFile=RECIPIENT_BASE64, messageType='Latin', defDate='', flash=False)
+    assert res['SendSms2Result']['Result'] == '404.2 FAILURE (User is unknown)'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == '0'
+    assert res['SendSms2Result']['TransactionID'] == None
+
+def test_SendSms2_bad_originator_fail(client):
+    res = client.SendSms2(user=USER, originator='', smsText='Hello', recipientPhonesFile=RECIPIENT_BASE64, messageType='Latin', defDate='', flash=False)
+    assert res['SendSms2Result']['Result'] == '600.1 Originator for customerID is not found'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == '0'
+    assert res['SendSms2Result']['TransactionID'] == None
+
+def test_SendSms2_no_recipient_fail(client):
+    res = client.SendSms2(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhonesFile='', messageType='Latin', defDate='', flash=False)
+    assert res['SendSms2Result']['Result'] == '600.4 Phone not specified'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == '0'
+    assert res['SendSms2Result']['TransactionID'] == None
+
+def test_SendSms2_bad_recipient_fail(client):
+    res = client.SendSms2(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhonesFile=BAD_RECIPIENT_BASE64, messageType='Latin', defDate='', flash=False)
+    assert res['SendSms2Result']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == '0'
+    assert res['SendSms2Result']['TransactionID'] == None
+
+def test_SendSms2_empty_body_fail(client):
+    res = client.SendSms2(user=USER, originator=ORIGINATOR, smsText='', recipientPhonesFile=RECIPIENT_BASE64, messageType='Latin', defDate='', flash=False)
+    assert res['SendSms2Result']['Result'] == 'Message Content Is Empty'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == '0'
+    assert res['SendSms2Result']['TransactionID'] == None
+
+def test_SendSms2_bad_defdate_fail(client):
+    res = client.SendSms2(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhonesFile=RECIPIENT_BASE64, messageType='Latin', defDate='2014-07-21', flash=False)
+    assert res['SendSms2Result']['Result'] == 'Def Date format is incorrect. Correct format is YYYYMMDDHHMMSS'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == '0'
+    assert res['SendSms2Result']['TransactionID'] == None
+
+def test_SendSms2_succ(client):
+    res = client.SendSms2(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhonesFile=RECIPIENT_BASE64, messageType='Latin', defDate='', flash=False)
+    assert res['SendSms2Result']['Result'] == 'OK'
+    assert res['SendSms2Result']['RejectedNumbers'] == []
+    assert res['SendSms2Result']['NetPoints'] == 'POSTPAID'
+    assert res['SendSms2Result']['TransactionID'] != None
 
 #
 # GetSmsStatus
@@ -326,9 +424,23 @@ def test_HTTP_SendSms_bad_originator_fail(client):
     assert res['HTTP_SendSmsResult']['NetPoints'] == '0'
     assert res['HTTP_SendSmsResult']['TransactionID'] == None
 
-def test_HTTP_SendSms_empty_body_fail(client):
+def test_HTTP_SendSms_no_recipient_fail(client):
     res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone='', messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['HTTP_SendSmsResult']['Result'] == '600.4 Phone not specified'
+    assert res['HTTP_SendSmsResult']['RejectedNumbers'] == []
+    assert res['HTTP_SendSmsResult']['NetPoints'] == '0'
+    assert res['HTTP_SendSmsResult']['TransactionID'] == None
+
+def test_HTTP_SendSms_bad_recipient_fail(client):
+    res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=BAD_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['HTTP_SendSmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+    assert res['HTTP_SendSmsResult']['RejectedNumbers'] == []
+    assert res['HTTP_SendSmsResult']['NetPoints'] == '0'
+    assert res['HTTP_SendSmsResult']['TransactionID'] == None
+
+def test_HTTP_SendSms_empty_body_fail(client):
+    res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['HTTP_SendSmsResult']['Result'] == 'Message Content Is Empty'
     assert res['HTTP_SendSmsResult']['RejectedNumbers'] == []
     assert res['HTTP_SendSmsResult']['NetPoints'] == '0'
     assert res['HTTP_SendSmsResult']['TransactionID'] == None
@@ -361,6 +473,20 @@ def test_HTTP_SendBinarySms_bad_user_fail(client):
 def test_HTTP_SendBinarySms_bad_originator_fail(client):
     res = client.HTTP_SendBinarySms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator='', binaryBody='7465737420746573742074657374207465737420', recipientPhone=RECIPIENT, defDate='', data_coding='4', esm_class='', PID='')
     assert res['HTTP_SendBinarySmsResult']['Result'] == '600.1 Originator for customerID is not found'
+    assert res['HTTP_SendBinarySmsResult']['RejectedNumbers'] == []
+    assert res['HTTP_SendBinarySmsResult']['NetPoints'] == '0'
+    assert res['HTTP_SendBinarySmsResult']['TransactionID'] == None
+
+def test_HTTP_SendBinarySms_no_recipient_fail(client):
+    res = client.HTTP_SendBinarySms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, binaryBody='7465737420746573742074657374207465737420', recipientPhone='', defDate='', data_coding='4', esm_class='', PID='')
+    assert res['HTTP_SendBinarySmsResult']['Result'] == '600.4 Phone not specified'
+    assert res['HTTP_SendBinarySmsResult']['RejectedNumbers'] == []
+    assert res['HTTP_SendBinarySmsResult']['NetPoints'] == '0'
+    assert res['HTTP_SendBinarySmsResult']['TransactionID'] == None
+
+def test_HTTP_SendBinarySms_bad_recipient_fail(client):
+    res = client.HTTP_SendBinarySms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, binaryBody='7465737420746573742074657374207465737420', recipientPhone=BAD_RECIPIENT, defDate='', data_coding='4', esm_class='', PID='')
+    assert res['HTTP_SendBinarySmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
     assert res['HTTP_SendBinarySmsResult']['RejectedNumbers'] == []
     assert res['HTTP_SendBinarySmsResult']['NetPoints'] == '0'
     assert res['HTTP_SendBinarySmsResult']['TransactionID'] == None
