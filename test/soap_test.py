@@ -63,6 +63,11 @@ def client(request):
 
     # Statistics and Details parsers
     # workaround of <s:sequence><s:any/></s:sequence>
+
+    # return Statistics and Details as embedded XML
+    #client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Statistics'] = None
+    #client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Details'] = None
+
     # SMSC_DELIVERED, 3e231a28-cdf2-4d95-ac2e-a8cd1e0a0a0a - TempFail_WillRetry
     statistics = {'submitted':int, 'sent':int, 'failed':int, 'delivered':int, 'expired':int, 'deleted':int, 'undeliverable':int, 'accepted':int, 'unknown':int, 'rejected':int, 'SMSC_DELIVERED':int}
     client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Statistics'] = {'statistics':statistics}
