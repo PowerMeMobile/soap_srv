@@ -1,3 +1,8 @@
+# https://code.google.com/p/pysimplesoap/wiki/SoapClient
+# $ git clone https://github.com/pysimplesoap/pysimplesoap.git
+# $ cd pysimplesoap
+# sudo ./setup.py install
+
 # $ py.test soap_test.py
 # $ py.test soap_test.py::test_SendSms_fail
 # $ py.test --pdb
