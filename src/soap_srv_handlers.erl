@@ -11,6 +11,14 @@
 -define(E_AUTHENTICATION, <<"404.2 FAILURE (User is unknown)">>).
 -define(E_NOT_IMPLEMENTED, <<"Not implemented">>).
 -define(E_INVALID_RECIPIENTS, <<"Invalid recipients format">>).
+-define(E_TIMEOUT, <<"Request timeout">>).
+-define(E_ORIGINATOR_NOT_FOUND, <<"600.1 Originator for customerID is not found">>).
+-define(E_NO_RECIPIENTS, <<"600.4 Phone not specified">>).
+-define(E_NO_DEST_ADDRS, <<"FAILURE: All recipient numbers in your message "
+    "are either Rejected or Blacklisted">>).
+-define(E_INVALID_DEF_DATE, <<"Def Date format is incorrect. "
+    "Correct format is YYYYMMDDHHMMSS">>).
+-define(E_NO_MESSAGE_BODY, <<"Message Content Is Empty">>).
 
 %% ===================================================================
 %% API
@@ -290,12 +298,20 @@ handle(_) ->
 %% Internal Handlers
 %% ===================================================================
 
-send_result(Result) when is_list(Result) ->
+send_result(#send_result{
+    result = ok,
+    req_id = ReqId,
+    rejected = Rejected
+}) ->
     {ok, #'SendResult'{
-        'Result' = ?gv(result, Result, ?E_SUCCESS),
-        'RejectedNumbers' = [Addr#addr.addr || Addr <- ?gv(rejected, Result, [])],
-        'TransactionID' = ?gv(id, Result),
+        'Result' = ?E_SUCCESS,
+        'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
+        'TransactionID' = ReqId,
         'NetPoints' = <<"POSTPAID">>
+    }};
+send_result(#send_result{result = Result}) ->
+    {ok, #'SendResult'{
+        'Result' = reformat_result(Result)
     }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
@@ -462,9 +478,32 @@ maybe_boolean(<<"true">>)  -> true;
 maybe_boolean(<<"false">>) -> false;
 maybe_boolean(undefined)   -> false.
 
+reformat_addr(undefined) ->
+    reformat_addr(<<"">>);
 reformat_addr(Addr) ->
     alley_services_utils:addr_to_dto(Addr).
 
+reformat_addrs(undefined) ->
+    [];
 reformat_addrs(BlobAddrs) ->
     RawAddrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
     [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs].
+
+reformat_result(invalid_def_date) ->
+    ?E_INVALID_DEF_DATE;
+reformat_result(originator_not_found) ->
+    ?E_ORIGINATOR_NOT_FOUND;
+reformat_result(no_recipients) ->
+    ?E_NO_RECIPIENTS;
+reformat_result(no_dest_addrs) ->
+    ?E_NO_DEST_ADDRS;
+reformat_result(no_message_body) ->
+    ?E_NO_MESSAGE_BODY;
+reformat_result(bad_service_name_or_url) ->
+    ?serviceNameAndUrlExpected;
+reformat_result(credit_limit_exceeded) ->
+    ?postpaidCreditLimitExceeded;
+reformat_result(timeout) ->
+    ?E_TIMEOUT;
+reformat_result(Result) ->
+    atom_to_binary(Result, utf8).
