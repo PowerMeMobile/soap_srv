@@ -19,61 +19,103 @@
 -spec handle(record()) -> {ok, record()}.
 handle(Req = #'SendSms'{}) ->
     User = Req#'SendSms'.user,
-    Req2 = #send_req{
-        action = send_sms,
-        customer_id = User#user.'CustomerID',
-        user_name = User#user.'Name',
-        client_type = soap,
-        password = User#user.'Password',
-        recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
-        originator = reformat_addr(Req#'SendSms'.originator),
-        text = Req#'SendSms'.smsText,
-        type = Req#'SendSms'.messageType,
-        def_date =  Req#'SendSms'.defDate,
-        flash = maybe_boolean(Req#'SendSms'.flash)
-    },
-    {ok, Result} = alley_services_mt:send(Req2),
-    ?log_debug("Got submit result: ~p", [Result]),
-    send_result(Result);
+    CustomerId = User#user.'CustomerID',
+    UserName = User#user.'Name',
+    ClientType = soap,
+    Password = User#user.'Password',
+    case alley_services_auth:authenticate(CustomerId, UserName, ClientType, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            Req2 = #send_req{
+                action = send_sms,
+                customer_id = CustomerId,
+                user_name = UserName,
+                client_type = ClientType,
+                password = Password,
+                customer = Customer,
+                recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
+                originator = reformat_addr(Req#'SendSms'.originator),
+                text = Req#'SendSms'.smsText,
+                type = Req#'SendSms'.messageType,
+                def_date =  Req#'SendSms'.defDate,
+                flash = maybe_boolean(Req#'SendSms'.flash)
+            },
+            {ok, Result} = alley_services_mt:send(Req2),
+            ?log_debug("Got submit result: ~p", [Result]),
+            send_result(Result);
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            ?log_error("Authenticate response error: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
+        {error, Error} ->
+            ?log_error("Authenticate failed with: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+    end;
 
 handle(Req = #'HTTP_SendSms'{}) ->
-    Req2 = #send_req{
-        action = send_sms,
-        customer_id = Req#'HTTP_SendSms'.'customerID',
-        user_name = Req#'HTTP_SendSms'.'userName',
-        client_type = soap,
-        password = Req#'HTTP_SendSms'.'userPassword',
-        recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
-        originator = reformat_addr(Req#'HTTP_SendSms'.originator),
-        text = Req#'HTTP_SendSms'.smsText,
-        type = Req#'HTTP_SendSms'.messageType,
-        def_date =  Req#'HTTP_SendSms'.defDate,
-        flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
-    },
-    {ok, Result} = alley_services_mt:send(Req2),
-    ?log_debug("Got submit result: ~p", [Result]),
-    send_result(Result);
+    CustomerId = Req#'HTTP_SendSms'.'customerID',
+    UserName = Req#'HTTP_SendSms'.'userName',
+    ClientType = soap,
+    Password = Req#'HTTP_SendSms'.'userPassword',
+    case alley_services_auth:authenticate(CustomerId, UserName, ClientType, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            Req2 = #send_req{
+                action = send_sms,
+                customer_id = CustomerId,
+                user_name = UserName,
+                client_type = ClientType,
+                password = Password,
+                customer = Customer,
+                recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
+                originator = reformat_addr(Req#'HTTP_SendSms'.originator),
+                text = Req#'HTTP_SendSms'.smsText,
+                type = Req#'HTTP_SendSms'.messageType,
+                def_date =  Req#'HTTP_SendSms'.defDate,
+                flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
+            },
+            {ok, Result} = alley_services_mt:send(Req2),
+            ?log_debug("Got submit result: ~p", [Result]),
+            send_result(Result);
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            ?log_error("Authenticate response error: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
+        {error, Error} ->
+            ?log_error("Authenticate failed with: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+    end;
 
 handle(Req = #'SendSms2'{}) ->
     try base64:decode(Req#'SendSms2'.recipientPhonesFile) of
         Recipients ->
             User = Req#'SendSms2'.user,
-            Req2 = #send_req{
-                action = send_sms,
-                customer_id = User#user.'CustomerID',
-                user_name = User#user.'Name',
-                client_type = soap,
-                password = User#user.'Password',
-                recipients = reformat_addrs(Recipients),
-                originator = reformat_addr(Req#'SendSms2'.originator),
-                text = Req#'SendSms2'.smsText,
-                type = Req#'SendSms2'.messageType,
-                def_date =  Req#'SendSms2'.defDate,
-                flash = maybe_boolean(Req#'SendSms2'.flash)
-            },
-            {ok, Result} = alley_services_mt:send(Req2),
-            ?log_debug("Got submit result: ~p", [Result]),
-            send_result(Result)
+            CustomerId = User#user.'CustomerID',
+            UserName = User#user.'Name',
+            ClientType = soap,
+            Password = User#user.'Password',
+            case alley_services_auth:authenticate(CustomerId, UserName, ClientType, Password) of
+                {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+                    Req2 = #send_req{
+                        action = send_sms,
+                        customer_id = CustomerId,
+                        user_name = UserName,
+                        client_type = ClientType,
+                        password = Password,
+                        customer = Customer,
+                        recipients = reformat_addrs(Recipients),
+                        originator = reformat_addr(Req#'SendSms2'.originator),
+                        text = Req#'SendSms2'.smsText,
+                        type = Req#'SendSms2'.messageType,
+                        def_date =  Req#'SendSms2'.defDate,
+                        flash = maybe_boolean(Req#'SendSms2'.flash)
+                    },
+                    {ok, Result} = alley_services_mt:send(Req2),
+                    ?log_debug("Got submit result: ~p", [Result]),
+                    send_result(Result);
+                {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+                    ?log_error("Authenticate response error: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
+                {error, Error} ->
+                    ?log_error("Authenticate failed with: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+            end
     catch
         _:_ ->
             ?log_error("Invalid recipientPhonesFile: ~p",
@@ -82,62 +124,104 @@ handle(Req = #'SendSms2'{}) ->
     end;
 
 handle(Req = #'SendServiceSms'{}) ->
-    Req2 = #send_req{
-        action = send_service_sms,
-        customer_id = Req#'SendServiceSms'.'customerID',
-        user_name = Req#'SendServiceSms'.userName,
-        client_type = soap,
-        password = Req#'SendServiceSms'.userPassword,
-        recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
-        originator = reformat_addr(Req#'SendServiceSms'.originator),
-        s_name = Req#'SendServiceSms'.serviceName,
-        s_url = Req#'SendServiceSms'.serviceUrl,
-        type = Req#'SendServiceSms'.messageType,
-        def_date =  Req#'SendServiceSms'.defDate,
-        flash = maybe_boolean(Req#'SendServiceSms'.flash)
-    },
-    {ok, Result} = alley_services_mt:send(Req2),
-    ?log_debug("Got submit result: ~p", [Result]),
-    send_result(Result);
+    CustomerId = Req#'SendServiceSms'.'customerID',
+    UserName = Req#'SendServiceSms'.userName,
+    ClientType = soap,
+    Password = Req#'SendServiceSms'.userPassword,
+    case alley_services_auth:authenticate(CustomerId, UserName, ClientType, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            Req2 = #send_req{
+                action = send_service_sms,
+                customer_id = CustomerId,
+                user_name = UserName,
+                client_type = ClientType,
+                password = Password,
+                customer = Customer,
+                recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
+                originator = reformat_addr(Req#'SendServiceSms'.originator),
+                s_name = Req#'SendServiceSms'.serviceName,
+                s_url = Req#'SendServiceSms'.serviceUrl,
+                type = Req#'SendServiceSms'.messageType,
+                def_date =  Req#'SendServiceSms'.defDate,
+                flash = maybe_boolean(Req#'SendServiceSms'.flash)
+            },
+            {ok, Result} = alley_services_mt:send(Req2),
+            ?log_debug("Got submit result: ~p", [Result]),
+            send_result(Result);
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            ?log_error("Authenticate response error: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
+        {error, Error} ->
+            ?log_error("Authenticate failed with: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+    end;
 
 handle(Req = #'SendBinarySms'{}) ->
     User = Req#'SendBinarySms'.user,
-    Req2 = #send_req{
-        action = send_binary_sms,
-        customer_id = User#user.'CustomerID',
-        user_name = User#user.'Name',
-        client_type = soap,
-        password = User#user.'Password',
-        recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
-        originator = reformat_addr(Req#'SendBinarySms'.originator),
-        binary_body = Req#'SendBinarySms'.binaryBody,
-        def_date = Req#'SendBinarySms'.defDate,
-        data_coding = Req#'SendBinarySms'.data_coding,
-        esm_class = Req#'SendBinarySms'.esm_class,
-        protocol_id = Req#'SendBinarySms'.'PID'
-    },
-    {ok, Result} = alley_services_mt:send(Req2),
-    ?log_debug("Got submit result: ~p", [Result]),
-    send_result(Result);
+    CustomerId = User#user.'CustomerID',
+    UserName = User#user.'Name',
+    ClientType = soap,
+    Password = User#user.'Password',
+    case alley_services_auth:authenticate(CustomerId, UserName, ClientType, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            Req2 = #send_req{
+                action = send_binary_sms,
+                customer_id = CustomerId,
+                user_name = UserName,
+                client_type = ClientType,
+                password = Password,
+                customer = Customer,
+                recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
+                originator = reformat_addr(Req#'SendBinarySms'.originator),
+                binary_body = Req#'SendBinarySms'.binaryBody,
+                def_date = Req#'SendBinarySms'.defDate,
+                data_coding = Req#'SendBinarySms'.data_coding,
+                esm_class = Req#'SendBinarySms'.esm_class,
+                protocol_id = Req#'SendBinarySms'.'PID'
+            },
+            {ok, Result} = alley_services_mt:send(Req2),
+            ?log_debug("Got submit result: ~p", [Result]),
+            send_result(Result);
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            ?log_error("Authenticate response error: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
+        {error, Error} ->
+            ?log_error("Authenticate failed with: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+    end;
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
-    Req2 = #send_req{
-        action = send_binary_sms,
-        customer_id = Req#'HTTP_SendBinarySms'.'customerID',
-        user_name = Req#'HTTP_SendBinarySms'.'userName',
-        client_type = soap,
-        password = Req#'HTTP_SendBinarySms'.'userPassword',
-        recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
-        originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
-        binary_body = Req#'HTTP_SendBinarySms'.binaryBody,
-        def_date = Req#'HTTP_SendBinarySms'.defDate,
-        data_coding = Req#'HTTP_SendBinarySms'.data_coding,
-        esm_class = Req#'HTTP_SendBinarySms'.esm_class,
-        protocol_id = Req#'HTTP_SendBinarySms'.'PID'
-    },
-    {ok, Result} = alley_services_mt:send(Req2),
-    ?log_debug("Got submit result: ~p", [Result]),
-    send_result(Result);
+    CustomerId = Req#'HTTP_SendBinarySms'.'customerID',
+    UserName = Req#'HTTP_SendBinarySms'.'userName',
+    ClientType = soap,
+    Password = Req#'HTTP_SendBinarySms'.'userPassword',
+    case alley_services_auth:authenticate(CustomerId, UserName, ClientType, Password) of
+        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
+            Req2 = #send_req{
+                action = send_binary_sms,
+                customer_id = CustomerId,
+                user_name = UserName,
+                client_type = ClientType,
+                password = Password,
+                customer = Customer,
+                recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
+                originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
+                binary_body = Req#'HTTP_SendBinarySms'.binaryBody,
+                def_date = Req#'HTTP_SendBinarySms'.defDate,
+                data_coding = Req#'HTTP_SendBinarySms'.data_coding,
+                esm_class = Req#'HTTP_SendBinarySms'.esm_class,
+                protocol_id = Req#'HTTP_SendBinarySms'.'PID'
+            },
+            {ok, Result} = alley_services_mt:send(Req2),
+            ?log_debug("Got submit result: ~p", [Result]),
+            send_result(Result);
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            ?log_error("Authenticate response error: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
+        {error, Error} ->
+            ?log_error("Authenticate failed with: ~p", [Error]),
+            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+    end;
 
 handle(Req = #'KeepAlive'{}) ->
     User = Req#'KeepAlive'.user,
@@ -228,10 +312,10 @@ handle_authenticate(CustomerID, UserName, Password) ->
                 'CreditSMS' = <<"POSTPAID">>
             }};
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            ?log_error("authenticate response error: ~p", [Error]),
+            ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
-            ?log_error("authenticate failed with: ~p", [Error]),
+            ?log_error("Authenticate failed with: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
@@ -240,7 +324,7 @@ handle_keep_alive(CustomerID, UserName, Password) ->
         {ok, _Customer} ->
             {ok, #'CommonResult'{'Result' = ?E_SUCCESS}};
         {error, Error} ->
-            ?log_error("authenticate failed with: ~p", [Error]),
+            ?log_error("Authenticate failed with: ~p", [Error]),
             {ok, #'CommonResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
@@ -270,10 +354,10 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
                     }}
             end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            ?log_error("authenticate response error: ~p", [Error]),
+            ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
-            ?log_error("authenticate failed with: ~p", [Error]),
+            ?log_error("Authenticate failed with: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
@@ -291,10 +375,10 @@ handle_inbox_processing(CustomerID, UserName, Password, _Operation, _MessageIds)
             %%         {ok, #'CommonResult'{'Result' = Reason}}
             %% end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            ?log_error("authenticate response error: ~p", [Error]),
+            ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
-            ?log_error("authenticate failed with: ~p", [Error]),
+            ?log_error("Authenticate failed with: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 

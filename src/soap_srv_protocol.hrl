@@ -92,7 +92,7 @@
     'Result' :: binary(),
     'RejectedNumbers' :: [binary()],
     'TransactionID' :: binary(),
-    'NetPoints' :: binary()
+    'NetPoints' = <<"0">> :: binary()
 }).
 
 -record('HTTP_SendBinarySms', {
