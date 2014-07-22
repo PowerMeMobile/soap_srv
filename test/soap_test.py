@@ -4,7 +4,7 @@
 # sudo ./setup.py install
 
 # $ py.test soap_test.py
-# $ py.test soap_test.py::test_SendSms_fail
+# $ py.test soap_test.py -k test_Authenticate_bad_user_fail
 # $ py.test --pdb
 # $ py.test -v
 
