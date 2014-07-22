@@ -441,13 +441,15 @@ build_result_content(Record) when is_tuple(Record) ->
 build_result_content([], Acc) ->
     list_to_binary(lists:reverse(Acc));
 build_result_content([{Key, Value} | Tail], Acc) when
-        is_list(Value) andalso
-        Value =/= [] ->
-    ComposedElements =
-    list_to_binary(
+        is_list(Value) andalso Value =/= [] ->
+    ComposedElements = list_to_binary(
         [<<"<string>", Element/binary, "</string>">> ||
             Element <- Value]),
     build_result_content([{Key, ComposedElements} | Tail], Acc);
+build_result_content([{Key, Value} | Tail], Acc) when
+        is_integer(Value) ->
+    Tag = construct_xml_tag(Key, integer_to_binary(Value)),
+    build_result_content(Tail, [Tag | Acc]);
 build_result_content([{Key, Value} | Tail], Acc) ->
     Tag = construct_xml_tag(Key, Value),
     build_result_content(Tail, [Tag | Acc]).

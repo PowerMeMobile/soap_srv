@@ -161,9 +161,9 @@
 
 -record('AuthResult', {
     'Result' :: binary(),
-    'NetPoints' :: binary(),
+    'NetPoints' = <<"0">> :: binary(),
     'Originators' = [] :: [binary()],
-    'CustomerID' :: integer(),
+    'CustomerID' = -1 :: integer(),
     'CreditSMS' :: binary(),
     'CreditMMS' :: binary()
 }).
