@@ -138,7 +138,7 @@
     'Result' :: binary(),
     'Statistics' :: binary(),
     'Details' :: binary(),
-    'NetPoints' :: binary()
+    'NetPoints' = <<"0">> :: binary()
 }).
 
 -record('HTTP_InboxProcessing', {

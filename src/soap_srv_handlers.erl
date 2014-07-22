@@ -128,7 +128,7 @@ handle(Req = #'SendSms2'{}) ->
         _:_ ->
             ?log_error("Invalid recipientPhonesFile: ~p",
                 [Req#'SendSms2'.recipientPhonesFile]),
-            send_result([{result, ?E_INVALID_RECIPIENTS}])
+            send_result(#send_result{result = no_recipients})
     end;
 
 handle(Req = #'SendServiceSms'{}) ->
@@ -371,10 +371,10 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
             end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
-            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
+            {ok, #'SmsStatus'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SmsStatus'{'Result' = ?E_AUTHENTICATION}}
     end.
 
 handle_inbox_processing(CustomerID, UserName, Password, _Operation, _MessageIds) ->
