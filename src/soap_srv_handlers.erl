@@ -8,7 +8,7 @@
 -export([handle/1]).
 
 -define(E_SUCCESS, <<"OK">>).
--define(E_AUTHENTICATION, <<"Unknown user">>).
+-define(E_AUTHENTICATION, <<"404.2 FAILURE (User is unknown)">>).
 -define(E_NOT_IMPLEMENTED, <<"Not implemented">>).
 -define(E_INVALID_RECIPIENTS, <<"Invalid recipients format">>).
 
@@ -228,8 +228,10 @@ handle_authenticate(CustomerID, UserName, Password) ->
                 'CreditSMS' = <<"POSTPAID">>
             }};
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            {ok, #'AuthResult'{'Result' = Error}};
-        {error, timeout} ->
+            ?log_error("authenticate response error: ~p", [Error]),
+            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
+        {error, Error} ->
+            ?log_error("authenticate failed with: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
@@ -237,7 +239,8 @@ handle_keep_alive(CustomerID, UserName, Password) ->
     case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
         {ok, _Customer} ->
             {ok, #'CommonResult'{'Result' = ?E_SUCCESS}};
-        {error, timeout} ->
+        {error, Error} ->
+            ?log_error("authenticate failed with: ~p", [Error]),
             {ok, #'CommonResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
@@ -267,9 +270,10 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
                     }}
             end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            {ok, #'AuthResult'{'Result' = Error}};
+            ?log_error("authenticate response error: ~p", [Error]),
+            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
-            ?log_error("handler: error on auth: ~p", [Error]),
+            ?log_error("authenticate failed with: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
@@ -287,9 +291,10 @@ handle_inbox_processing(CustomerID, UserName, Password, _Operation, _MessageIds)
             %%         {ok, #'CommonResult'{'Result' = Reason}}
             %% end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            {ok, #'AuthResult'{'Result' = Error}};
+            ?log_error("authenticate response error: ~p", [Error]),
+            {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
-            ?log_error("handler: error on auth: ~p", [Error]),
+            ?log_error("authenticate failed with: ~p", [Error]),
             {ok, #'AuthResult'{'Result' = ?E_AUTHENTICATION}}
     end.
 
