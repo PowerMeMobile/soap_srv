@@ -111,7 +111,7 @@ def test_KeepAlive_bad_user_fail(client):
 
 def test_KeepAlive_fail(client):
     res = client.KeepAlive(user=USER)
-    assert res['KeepAliveResult']['Result'] == 'Keep alive is not activated for customer 79.'
+    assert res['KeepAliveResult']['Result'] == 'OK'
 
 #
 # SendSms
@@ -402,7 +402,7 @@ def test_HTTP_KeepAlive_bad_user_fail(client):
 
 def test_HTTP_KeepAlive_fail(client):
     res = client.HTTP_KeepAlive(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD)
-    assert res['HTTP_KeepAliveResult']['Result'] == 'Keep alive is not activated for customer 79.'
+    assert res['HTTP_KeepAliveResult']['Result'] == 'OK'
 
 #
 # HTTP_SendSms
