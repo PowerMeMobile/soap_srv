@@ -337,8 +337,11 @@ handle_authenticate(CustomerID, UserName, Password) ->
 
 handle_keep_alive(CustomerID, UserName, Password) ->
     case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
-        {ok, _Customer} ->
+        {ok, #k1api_auth_response_dto{result = {customer, _Customer}}} ->
             {ok, #'CommonResult'{'Result' = ?E_SUCCESS}};
+        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
+            ?log_error("Authenticate response error: ~p", [Error]),
+            {ok, #'CommonResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
             {ok, #'CommonResult'{'Result' = ?E_AUTHENTICATION}}
