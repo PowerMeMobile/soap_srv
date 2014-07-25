@@ -46,7 +46,7 @@ RECIPIENT_BASE64 = 'Mzc1Mjk2NTQzMjEw'
 BAD_RECIPIENT_BASE64 = 'OTk5OTk5OTk5OTk5'
 
 TRANSACTION_ID = '85ccccbf-f854-4898-86b1-5072d3e33da1'
-BAD_TRANSACTION_ID = '915c1f0e-0ce8-11e4-9d4c-00269e42f7a5'
+BAD_TRANSACTION_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
 @pytest.fixture(scope="module",
                 params=[SOAP11, SOAP12])
