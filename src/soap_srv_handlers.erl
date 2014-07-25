@@ -9,8 +9,9 @@
 
 -define(E_SUCCESS, <<"OK">>).
 -define(E_AUTHENTICATION, <<"404.2 FAILURE (User is unknown)">>).
--define(E_NOT_IMPLEMENTED, <<"Not implemented">>).
--define(E_INVALID_RECIPIENTS, <<"Invalid recipients format">>).
+-define(E_INTERNAL,        <<"500 FAILURE (Internal server error)">>).
+-define(E_NOT_IMPLEMENTED, <<"501 FAILURE (Not implemented)">>).
+-define(E_INVALID_RECIPIENTS, <<"400.1 FAILURE (Invalid recipients format)">>).
 -define(E_TIMEOUT, <<"Request timeout">>).
 -define(E_ORIGINATOR_NOT_FOUND, <<"600.1 Originator for customerID is not found">>).
 -define(E_NO_RECIPIENTS, <<"600.4 Phone not specified">>).
