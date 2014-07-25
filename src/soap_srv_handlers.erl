@@ -52,9 +52,14 @@ handle(Req = #'SendSms'{}) ->
                 def_date =  Req#'SendSms'.defDate,
                 flash = maybe_boolean(Req#'SendSms'.flash)
             },
-            {ok, Result} = alley_services_mt:send(Req2),
-            ?log_debug("Got submit result: ~p", [Result]),
-            send_result(Result);
+            case alley_services_mt:send(Req2) of
+                {ok, Result} ->
+                    ?log_debug("Got submit result: ~p", [Result]),
+                    send_result(Result);
+                {error, Error} ->
+                    ?log_error("SendSms failed with: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
@@ -84,9 +89,14 @@ handle(Req = #'HTTP_SendSms'{}) ->
                 def_date =  Req#'HTTP_SendSms'.defDate,
                 flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
             },
-            {ok, Result} = alley_services_mt:send(Req2),
-            ?log_debug("Got submit result: ~p", [Result]),
-            send_result(Result);
+            case alley_services_mt:send(Req2) of
+                {ok, Result} ->
+                    ?log_debug("Got submit result: ~p", [Result]),
+                    send_result(Result);
+                {error, Error} ->
+                    ?log_error("SendSms failed with: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
@@ -119,9 +129,14 @@ handle(Req = #'SendSms2'{}) ->
                         def_date =  Req#'SendSms2'.defDate,
                         flash = maybe_boolean(Req#'SendSms2'.flash)
                     },
-                    {ok, Result} = alley_services_mt:send(Req2),
-                    ?log_debug("Got submit result: ~p", [Result]),
-                    send_result(Result);
+                    case alley_services_mt:send(Req2) of
+                        {ok, Result} ->
+                            ?log_debug("Got submit result: ~p", [Result]),
+                            send_result(Result);
+                        {error, Error} ->
+                            ?log_error("SendSms failed with: ~p", [Error]),
+                            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+                    end;
                 {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
                     ?log_error("Authenticate response error: ~p", [Error]),
                     {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
@@ -158,9 +173,14 @@ handle(Req = #'SendServiceSms'{}) ->
                 def_date =  Req#'SendServiceSms'.defDate,
                 flash = maybe_boolean(Req#'SendServiceSms'.flash)
             },
-            {ok, Result} = alley_services_mt:send(Req2),
-            ?log_debug("Got submit result: ~p", [Result]),
-            send_result(Result);
+            case alley_services_mt:send(Req2) of
+                {ok, Result} ->
+                    ?log_debug("Got submit result: ~p", [Result]),
+                    send_result(Result);
+                {error, Error} ->
+                    ?log_error("SendSms failed with: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+           end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
@@ -192,9 +212,14 @@ handle(Req = #'SendBinarySms'{}) ->
                 esm_class = Req#'SendBinarySms'.esm_class,
                 protocol_id = Req#'SendBinarySms'.'PID'
             },
-            {ok, Result} = alley_services_mt:send(Req2),
-            ?log_debug("Got submit result: ~p", [Result]),
-            send_result(Result);
+            case alley_services_mt:send(Req2) of
+                {ok, Result} ->
+                    ?log_debug("Got submit result: ~p", [Result]),
+                    send_result(Result);
+                {error, Error} ->
+                    ?log_error("SendSms failed with: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+           end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
@@ -225,9 +250,14 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
                 esm_class = Req#'HTTP_SendBinarySms'.esm_class,
                 protocol_id = Req#'HTTP_SendBinarySms'.'PID'
             },
-            {ok, Result} = alley_services_mt:send(Req2),
-            ?log_debug("Got submit result: ~p", [Result]),
-            send_result(Result);
+            case alley_services_mt:send(Req2) of
+                {ok, Result} ->
+                    ?log_debug("Got submit result: ~p", [Result]),
+                    send_result(Result);
+                {error, Error} ->
+                    ?log_error("SendSms failed with: ~p", [Error]),
+                    {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+           end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
