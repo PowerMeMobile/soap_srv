@@ -20,9 +20,9 @@ SOAP12 = 'soap12env'
 WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?wsdl'
 #WSDL = 'http://mm.powermemobile.com/mm/soap/messenger.asmx?WSDL'
 
-CUSTOMER_ID = 3#79
-USER_ID     = 'user'#'dev1'
-PASSWORD    = 'password'#'1dev'
+CUSTOMER_ID = 3
+USER_ID     = 'user'
+PASSWORD    = 'password'
 BAD_PASSWORD = 'intentionally wrong password'
 
 USER = {
@@ -370,7 +370,9 @@ def test_GetSmsStatus_detailed_true_succ(client):
     assert res['GetSmsStatusResult']['Result'] == 'OK'
     assert res['GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
-    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'] == [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
+    ## [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
+    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'].lower() == '00640065006c006900760065007200650064' # 'delivered'
+    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
 
 #
 # HTTP_Authenticate
@@ -548,4 +550,6 @@ def test_HTTP_GetSmsStatus_detailed_true_succ(client):
     assert res['HTTP_GetSmsStatusResult']['Result'] == 'OK'
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
-    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'] == [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
+    ## [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
+    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'].lower() == '00640065006c006900760065007200650064' # 'delivered'
+    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'

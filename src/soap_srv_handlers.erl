@@ -12,7 +12,7 @@
 -define(E_INTERNAL,        <<"500 FAILURE (Internal server error)">>).
 -define(E_NOT_IMPLEMENTED, <<"501 FAILURE (Not implemented)">>).
 -define(E_INVALID_RECIPIENTS, <<"400.1 FAILURE (Invalid recipients format)">>).
--define(E_TIMEOUT, <<"Request timeout">>).
+-define(E_TIMEOUT, <<"504 FAILURE (Request timeout)">>).
 -define(E_ORIGINATOR_NOT_FOUND, <<"600.1 Originator for customerID is not found">>).
 -define(E_NO_RECIPIENTS, <<"600.4 Phone not specified">>).
 -define(E_NO_DEST_ADDRS, <<"FAILURE: All recipient numbers in your message "
@@ -20,6 +20,10 @@
 -define(E_INVALID_DEF_DATE, <<"Def Date format is incorrect. "
     "Correct format is YYYYMMDDHHMMSS">>).
 -define(E_NO_MESSAGE_BODY, <<"Message Content Is Empty">>).
+-define(E_INVALID_REQUEST_ID, <<"SMS ID for status request is incorrect or not specified">>).
+-define(E_EMPTY_REQUEST_ID, <<"605.7 The action you requested cannot be performed, because one of your the required request parameters ('TransactionID') was not supplied.">>).
+-define(E_SERVICE_NAME_OR_URL_EXPECTED, <<"Service name and url is expected">>).
+-define(E_CREDIT_LIMIT_EXCEEDED, <<"Customer's postpaid credit limit is exceeded">>).
 
 %% ===================================================================
 %% API
@@ -56,7 +60,7 @@ handle(Req = #'SendSms'{}) ->
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
     end;
 
 handle(Req = #'HTTP_SendSms'{}) ->
@@ -88,7 +92,7 @@ handle(Req = #'HTTP_SendSms'{}) ->
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
     end;
 
 handle(Req = #'SendSms2'{}) ->
@@ -123,7 +127,7 @@ handle(Req = #'SendSms2'{}) ->
                     {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
                 {error, Error} ->
                     ?log_error("Authenticate failed with: ~p", [Error]),
-                    {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+                    {ok, #'SendResult'{'Result' = reformat_error(Error)}}
             end
     catch
         _:_ ->
@@ -162,7 +166,7 @@ handle(Req = #'SendServiceSms'{}) ->
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
     end;
 
 handle(Req = #'SendBinarySms'{}) ->
@@ -196,7 +200,7 @@ handle(Req = #'SendBinarySms'{}) ->
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
     end;
 
 handle(Req = #'HTTP_SendBinarySms'{}) ->
@@ -229,7 +233,7 @@ handle(Req = #'HTTP_SendBinarySms'{}) ->
             {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
     end;
 
 handle(Req = #'KeepAlive'{}) ->
@@ -312,7 +316,7 @@ send_result(#send_result{
     }};
 send_result(#send_result{result = Result}) ->
     {ok, #'SendResult'{
-        'Result' = reformat_result(Result)
+        'Result' = reformat_error(Result)
     }}.
 
 handle_authenticate(CustomerID, UserName, Password) ->
@@ -353,32 +357,36 @@ handle_get_sms_status(CustomerID, UserName, Password, TransactionID, Detailed) -
         {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
             CustomerUUID = Customer#k1api_auth_response_customer_dto.uuid,
             Addr = alley_services_utils:addr_to_dto(<<>>),
-            {ok, Response} =
-                alley_services_api:get_delivery_status(CustomerUUID, UserName, TransactionID, Addr),
-            Statuses = Response#k1api_sms_delivery_status_response_dto.statuses,
-            Statistics = build_statistics(Statuses),
-            case Detailed of
-                true ->
-                    Details = build_details(Statuses),
-                    {ok, #'SmsStatus'{
-                        'Result' = ?E_SUCCESS,
-                        'Statistics' = Statistics,
-                        'Details' = Details,
-                        'NetPoints' = <<"POSTPAID">>
-                    }};
-                false ->
-                    {ok, #'SmsStatus'{
-                        'Result' = ?E_SUCCESS,
-                        'Statistics' = Statistics,
-                        'NetPoints' = <<"POSTPAID">>
-                    }}
+            case alley_services_api:get_delivery_status(
+                    CustomerUUID, UserName, TransactionID, Addr) of
+                {ok, #k1api_sms_delivery_status_response_dto{statuses = Statuses}} ->
+                    Statistics = build_statistics(Statuses),
+                    case Detailed of
+                        true ->
+                            Details = build_details(Statuses),
+                            {ok, #'SmsStatus'{
+                                'Result' = ?E_SUCCESS,
+                                'Statistics' = Statistics,
+                                'Details' = Details,
+                                'NetPoints' = <<"POSTPAID">>
+                            }};
+                        false ->
+                            {ok, #'SmsStatus'{
+                                'Result' = ?E_SUCCESS,
+                                'Statistics' = Statistics,
+                                'NetPoints' = <<"POSTPAID">>
+                            }}
+                    end;
+                {error, Error} ->
+                    ?log_error("GetSmsStatus failed with: ~p", [Error]),
+                    {ok, #'SmsStatus'{'Result' = reformat_error(Error)}}
             end;
         {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
             ?log_error("Authenticate response error: ~p", [Error]),
             {ok, #'SmsStatus'{'Result' = ?E_AUTHENTICATION}};
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
-            {ok, #'SmsStatus'{'Result' = ?E_AUTHENTICATION}}
+            {ok, #'SmsStatus'{'Result' = reformat_error(Error)}}
     end.
 
 handle_inbox_processing(CustomerID, UserName, Password, _Operation, _MessageIds) ->
@@ -437,37 +445,46 @@ detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
 
     Content =
     <<
+    (content_tag('StatusU', to_utf16_hexdump(StatusName)))/binary,
     (content_tag('number', Number#addr.addr))/binary,
     (content_tag('TimeStamp', ISO8601))/binary
     >>,
 
-    content_tag(StatusName, Content).
+    content_tag(reformat_status_name(StatusName), Content).
 
 build_statistics(Statuses) ->
     Agregated = aggregate_statistics(Statuses),
     <<
     "<statistics xmlns=\"\">",
-    (list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
+    (list_to_binary([status_tag(reformat_status_name(Status), Counter) || {Status, Counter} <- Agregated]))/binary,
     "</statistics>"
     >>.
 
 status_tag(Status, Counter) ->
     Content =
     <<
-    (list_to_binary(integer_to_list(Counter)))/binary
+    (integer_to_binary(Counter))/binary
     >>,
     content_tag(Status, Content).
 
 content_tag(Name, Content) when is_atom(Name) ->
     content_tag(atom_to_binary(Name, utf8), Content);
 content_tag(Name, Content) when is_integer(Content) ->
-    content_tag(Name, list_to_binary(integer_to_list(Content)));
+    content_tag(Name, integer_to_binary(Content));
 content_tag(Name, Content) ->
     <<
     "<", Name/binary, ">",
     Content/binary,
     "</", Name/binary, ">"
     >>.
+
+to_utf16_hexdump(Status) ->
+    ac_hexdump:binary_to_hexdump(
+        unicode:characters_to_binary(
+            Status, utf8, utf16), to_lower).
+
+reformat_status_name(Status) when is_binary(Status) ->
+     <<"SMSC_", (bstr:upper(Status))/binary>>.
 
 aggregate_statistics(Statuses) ->
     aggregate_statistics(Statuses, dict:new()).
@@ -493,21 +510,25 @@ reformat_addrs(BlobAddrs) ->
     RawAddrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
     [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs].
 
-reformat_result(invalid_def_date) ->
+reformat_error(invalid_def_date) ->
     ?E_INVALID_DEF_DATE;
-reformat_result(originator_not_found) ->
+reformat_error(originator_not_found) ->
     ?E_ORIGINATOR_NOT_FOUND;
-reformat_result(no_recipients) ->
+reformat_error(no_recipients) ->
     ?E_NO_RECIPIENTS;
-reformat_result(no_dest_addrs) ->
+reformat_error(no_dest_addrs) ->
     ?E_NO_DEST_ADDRS;
-reformat_result(no_message_body) ->
+reformat_error(no_message_body) ->
     ?E_NO_MESSAGE_BODY;
-reformat_result(bad_service_name_or_url) ->
-    ?serviceNameAndUrlExpected;
-reformat_result(credit_limit_exceeded) ->
-    ?postpaidCreditLimitExceeded;
-reformat_result(timeout) ->
+reformat_error(invalid_service_name_or_url) ->
+    ?E_SERVICE_NAME_OR_URL_EXPECTED;
+reformat_error(credit_limit_exceeded) ->
+    ?E_CREDIT_LIMIT_EXCEEDED;
+reformat_error(empty_request_id) ->
+    ?E_EMPTY_REQUEST_ID;
+reformat_error(invalid_request_id) ->
+    ?E_INVALID_REQUEST_ID;
+reformat_error(timeout) ->
     ?E_TIMEOUT;
-reformat_result(Result) ->
+reformat_error(Result) ->
     atom_to_binary(Result, utf8).
