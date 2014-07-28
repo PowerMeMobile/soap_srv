@@ -21,7 +21,8 @@
     "Correct format is YYYYMMDDHHMMSS">>).
 -define(E_NO_MESSAGE_BODY, <<"Message Content Is Empty">>).
 -define(E_INVALID_REQUEST_ID, <<"SMS ID for status request is incorrect or not specified">>).
--define(E_EMPTY_REQUEST_ID, <<"605.7 The action you requested cannot be performed, because one of your the required request parameters ('TransactionID') was not supplied.">>).
+-define(E_EMPTY_REQUEST_ID, <<"605.7 The action you requested cannot be performed, "
+    "because one of your the required request parameters ('TransactionID') was not supplied.">>).
 -define(E_SERVICE_NAME_OR_URL_EXPECTED, <<"Service name and url is expected">>).
 -define(E_CREDIT_LIMIT_EXCEEDED, <<"Customer's postpaid credit limit is exceeded">>).
 
