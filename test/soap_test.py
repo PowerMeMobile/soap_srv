@@ -161,6 +161,13 @@ def test_SendSms_bad_defdate_fail(client):
     assert res['SendSmsResult']['NetPoints'] == '0'
     assert res['SendSmsResult']['TransactionID'] == None
 
+def DISABLED_test_SendSms_past_defdate_fail(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='20100101150000', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'Def Date format is incorrect. Correct format is YYYYMMDDHHMMSS'
+    assert res['SendSmsResult']['RejectedNumbers'] == []
+    assert res['SendSmsResult']['NetPoints'] == '0'
+    assert res['SendSmsResult']['TransactionID'] == None
+
 def test_SendSms_succ(client):
     res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['SendSmsResult']['Result'] == 'OK'
