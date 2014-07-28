@@ -1,8 +1,6 @@
 -ifndef(soap_srv_protocol_hrl).
 -define(soap_srv_protocol_hrl, defined).
 
--include_lib("alley_dto/include/adto.hrl").
-
 %% SOAP methods
 
 -record(user, {

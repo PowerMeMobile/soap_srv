@@ -6,7 +6,6 @@
         kernel,
         stdlib,
         cowboy,
-        alley_dto,
         alley_services
     ]},
     {mod, {soap_srv_app, []}},
