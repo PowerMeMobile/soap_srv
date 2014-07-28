@@ -2,4 +2,6 @@ ebin/
 deps/
 .eunit/
 rel/soap_srv/
+test/__pycache__/
+test/*.pyc
 TAGS
