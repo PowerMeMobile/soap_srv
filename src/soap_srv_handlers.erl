@@ -658,29 +658,28 @@ reformat_error(timeout) ->
 reformat_error(Result) ->
     atom_to_binary(Result, utf8).
 
-parse_def_date(<<>>) ->
-    {ok, undefined};
 parse_def_date(undefined) ->
     {ok, undefined};
-parse_def_date(DefDateList) when is_list(DefDateList) ->
-    try [binary_to_integer(D) || D <- DefDateList] of
-        [Month, Day, Year, Hour, Min] ->
-            DateTime = {{Year, Month, Day}, {Hour, Min, 0}},
-            RefDate = ac_datetime:datetime_to_timestamp(DateTime),
-            case RefDate > ac_datetime:utc_timestamp() of
-                true ->
-                    {ok, RefDate};
-                false ->
-                    {error, invalid}
-            end
+parse_def_date(<<>>) ->
+    {ok, undefined};
+parse_def_date(Date) ->
+    try
+        {YearB, Date2} = split_binary(Date, 4),
+        {MonB, Date3} = split_binary(Date2, 2),
+        {DayB, Date4} = split_binary(Date3, 2),
+        {HourB, Date5} = split_binary(Date4, 2),
+        {MinB, Date6} = split_binary(Date5, 2),
+        {SecB, _} = split_binary(Date6, 2),
+        Year = binary_to_integer(YearB),
+        Mon = binary_to_integer(MonB),
+        Day = binary_to_integer(DayB),
+        Hour = binary_to_integer(HourB),
+        Min = binary_to_integer(MinB),
+        Sec = binary_to_integer(SecB),
+        DateTime = {{Year, Mon, Day}, {Hour, Min, Sec}},
+        RefDate = ac_datetime:datetime_to_timestamp(DateTime),
+        {ok, RefDate}
     catch
         _:_ ->
-            {error, invalid}
-    end;
-parse_def_date(DefDate) when is_binary(DefDate) ->
-    case binary:split(DefDate, [<<"/">>, <<" ">>, <<":">>], [global]) of
-        [_M, _D, _Y, _H, _Min] = DefDateList ->
-            parse_def_date(DefDateList);
-        _ ->
             {error, invalid}
     end.
