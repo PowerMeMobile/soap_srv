@@ -109,7 +109,7 @@ def test_KeepAlive_bad_user_fail(client):
     res = client.KeepAlive(user=BAD_USER)
     assert res['KeepAliveResult']['Result'] == '404.2 FAILURE (User is unknown)'
 
-def test_KeepAlive_fail(client):
+def test_KeepAlive_succ(client):
     res = client.KeepAlive(user=USER)
     assert res['KeepAliveResult']['Result'] == 'OK'
 
