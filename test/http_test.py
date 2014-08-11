@@ -88,10 +88,10 @@ def get_sms_status(request, customerID, userName, userPassword, transactionID, d
     return request.make(url, params)
 
 #
-# Authenticate
+# HTTP_Authenticate
 #
 
-def test_Authenticate_bad_user_fail(request):
+def test_HTTP_Authenticate_bad_user_fail(request):
     res = authenticate(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD)
     assert res['AuthResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['AuthResult']['Originators'] == None
@@ -99,7 +99,7 @@ def test_Authenticate_bad_user_fail(request):
     assert res['AuthResult']['CreditSMS'] == None
     assert res['AuthResult']['CustomerID'] == str(-1)
 
-def test_Authenticate_succ(request):
+def test_HTTP_Authenticate_succ(request):
     res = authenticate(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD)
     assert res['AuthResult']['Result'] == 'OK'
     assert res['AuthResult']['Originators'] != []
@@ -108,14 +108,14 @@ def test_Authenticate_succ(request):
     assert res['AuthResult']['CustomerID'] == str(CUSTOMER_ID)
 
 #
-# KeepAlive
+# HTTP_KeepAlive
 #
 
-def test_KeepAlive_bad_user_fail(request):
+def test_HTTP_KeepAlive_bad_user_fail(request):
     res = keep_alive(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD)
     assert res['CommonResult']['Result'] == '404.2 FAILURE (User is unknown)'
 
-def test_KeepAlive_succ(request):
+def test_HTTP_KeepAlive_succ(request):
     res = keep_alive(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD)
     assert res['CommonResult']['Result'] == 'OK'
 
