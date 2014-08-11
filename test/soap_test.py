@@ -1,8 +1,7 @@
-# https://code.google.com/p/pysimplesoap/wiki/SoapClient
-# $ git clone https://github.com/pysimplesoap/pysimplesoap.git
-# $ cd pysimplesoap
-# sudo ./setup.py install
+# setup python's virtualenv as described here
+# https://gist.github.com/ten0s/98e7d88476ec75351d75
 
+# $ . env/bin/activate
 # $ py.test soap_test.py
 # $ py.test soap_test.py -k test_Authenticate_bad_user_fail
 # $ py.test --pdb
@@ -378,7 +377,7 @@ def test_GetSmsStatus_detailed_true_succ(client):
     assert res['GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
-    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'].lower() == '00640065006c006900760065007200650064' # 'delivered'
+    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'] == '00440065006c006900760065007200650064' # 'delivered'
     assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
 
 #
@@ -546,17 +545,11 @@ def test_HTTP_GetSmsStatus_detailed_false_succ(client):
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
 
-def test_HTTP_GetSmsStatus_detailed_false_succ(client):
-    res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=TRANSACTION_ID, detailed=False)
-    assert res['HTTP_GetSmsStatusResult']['Result'] == 'OK'
-    assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
-    assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
-
 def test_HTTP_GetSmsStatus_detailed_true_succ(client):
     res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=TRANSACTION_ID, detailed=True)
     assert res['HTTP_GetSmsStatusResult']['Result'] == 'OK'
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
-    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'].lower() == '00640065006c006900760065007200650064' # 'delivered'
+    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'] == '00440065006c006900760065007200650064' # 'delivered'
     assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
