@@ -12,6 +12,7 @@
 # $ python runtests.py -v
 
 import pytest
+import hexdump
 
 SOAP11 = 'soapenv'
 SOAP12 = 'soap12env'
@@ -377,7 +378,8 @@ def test_GetSmsStatus_detailed_true_succ(client):
     assert res['GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00640065006c006900760065007200650064'}, {'number': u'375296543210'}]
-    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'].lower() == '00640065006c006900760065007200650064' # 'Delivered'
+    StatusU = str(res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
+    assert hexdump.restore(StatusU).lower() == u'delivered'.encode('utf-16be')
     assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
 
 #
@@ -551,5 +553,6 @@ def test_HTTP_GetSmsStatus_detailed_true_succ(client):
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00640065006c006900760065007200650064'}, {'number': u'375296543210'}]
-    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'].lower() == '00640065006c006900760065007200650064' # 'Delivered'
+    StatusU = str(res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
+    assert hexdump.restore(StatusU).lower() == u'delivered'.encode('utf-16be')
     assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'

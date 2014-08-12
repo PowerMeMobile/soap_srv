@@ -595,16 +595,17 @@ build_statistics(Statuses) ->
     Agregated = aggregate_statistics(Statuses),
     <<
     "<statistics xmlns=\"\">",
-    (list_to_binary([status_tag(reformat_status_name(Status), Counter) || {Status, Counter} <- Agregated]))/binary,
+    (list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
     "</statistics>"
     >>.
 
 status_tag(Status, Counter) ->
     Content =
     <<
-    (integer_to_binary(Counter))/binary
+    (integer_to_binary(Counter))/binary,
+    (content_tag('StatusU', to_utf16_hexdump(Status)))/binary
     >>,
-    content_tag(Status, Content).
+    content_tag(reformat_status_name(Status), Content).
 
 content_tag(Name, Content) when is_atom(Name) ->
     content_tag(atom_to_binary(Name, utf8), Content);
