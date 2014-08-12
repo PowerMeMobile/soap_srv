@@ -30,7 +30,7 @@
 %% API
 %% ===================================================================
 
--spec handle(record()) -> {ok, record()}.
+-spec handle(tuple()) -> {ok, tuple()}.
 handle(Req) ->
     handle(authenticate, Req).
 
