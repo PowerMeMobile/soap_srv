@@ -45,8 +45,10 @@ class HttpRequest:
         req = None
         if self.method == 'GET':
             req = requests.get(url, params = params)
+            print("{0}".format(req.request.url))
         elif self.method == 'POST':
             req = requests.post(url, data = params)
+            print("{0} data: {1}".format(req.request.url, req.request.body))
         return xmltodict.parse(req.text)
 
 @pytest.fixture(scope="function",
