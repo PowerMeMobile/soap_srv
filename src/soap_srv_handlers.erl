@@ -277,23 +277,39 @@ handle(check_params, Req = #'SendServiceSms'{}, Customer) ->
     end;
 
 handle(check_params, Req = #'SendBinarySms'{}, Customer) ->
-    DefDate =  Req#'SendBinarySms'.defDate,
-    case parse_def_date(DefDate) of
-        {ok, ParsedDefDate} ->
-            Req2 = Req#'SendBinarySms'{defDate = ParsedDefDate},
-            handle(send, Req2, Customer);
-        {error, invalid} ->
-            send_result(#send_result{result = invalid_def_date})
+    BinaryBody =  Req#'SendBinarySms'.binaryBody,
+    case BinaryBody of
+        <<>> ->
+            send_result(#send_result{result = no_message_body});
+        undefined ->
+            send_result(#send_result{result = no_message_body});
+        _ ->
+            DefDate =  Req#'SendBinarySms'.defDate,
+            case parse_def_date(DefDate) of
+                {ok, ParsedDefDate} ->
+                    Req2 = Req#'SendBinarySms'{defDate = ParsedDefDate},
+                    handle(send, Req2, Customer);
+                {error, invalid} ->
+                    send_result(#send_result{result = invalid_def_date})
+        end
     end;
 
 handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
-    DefDate =  Req#'HTTP_SendBinarySms'.defDate,
-    case parse_def_date(DefDate) of
-        {ok, ParsedDefDate} ->
-            Req2 = Req#'HTTP_SendBinarySms'{defDate = ParsedDefDate},
-            handle(send, Req2, Customer);
-        {error, invalid} ->
-            send_result(#send_result{result = invalid_def_date})
+    BinaryBody =  Req#'HTTP_SendBinarySms'.binaryBody,
+    case BinaryBody of
+        <<>> ->
+            send_result(#send_result{result = no_message_body});
+        undefined ->
+            send_result(#send_result{result = no_message_body});
+        _ ->
+            DefDate =  Req#'HTTP_SendBinarySms'.defDate,
+            case parse_def_date(DefDate) of
+                {ok, ParsedDefDate} ->
+                    Req2 = Req#'HTTP_SendBinarySms'{defDate = ParsedDefDate},
+                    handle(send, Req2, Customer);
+                {error, invalid} ->
+                    send_result(#send_result{result = invalid_def_date})
+        end
     end;
 
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
