@@ -619,7 +619,9 @@ aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
     aggregate_statistics(Rest, Dict1).
 
 maybe_boolean(<<"true">>)  -> true;
+maybe_boolean(<<"True">>)  -> true;
 maybe_boolean(<<"false">>) -> false;
+maybe_boolean(<<"False">>) -> false;
 maybe_boolean(undefined)   -> false.
 
 reformat_addr(undefined) ->
