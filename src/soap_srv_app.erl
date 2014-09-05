@@ -7,7 +7,8 @@
 
 %% API
 -export([
-    get_env/0
+    get_env/0,
+    set_develop_mode/0
 ]).
 
 -include_lib("alley_common/include/application_spec.hrl").
@@ -17,7 +18,6 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    set_lager_loglevel(),
     alley_services_db:init_mnesia(),
     {ok, SupervisorPid} = soap_srv_sup:start_link(),
     soap_srv_protocol:init(),
@@ -40,12 +40,7 @@ get_env() ->
         _ -> production
     end.
 
-%% ===================================================================
-%% Internals
-%% ===================================================================
-
-set_lager_loglevel() ->
-    case get_env() of
-        develop -> lager:set_loglevel(lager_console_backend, debug);
-        _ -> ok
-    end.
+-spec set_develop_mode() -> ok.
+set_develop_mode() ->
+    ok = application:ensure_started(sync),
+    lager:set_loglevel(lager_console_backend, debug).
