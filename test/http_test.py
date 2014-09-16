@@ -3,7 +3,7 @@
 
 # $ . env/bin/activate
 # $ py.test http_test.py
-# $ py.test http_test.py -k test_Authenticate_bad_user_fail
+# $ py.test http_test.py -k test_HTTP_Authenticate_succ
 # $ py.test --pdb
 # $ py.test -v
 
