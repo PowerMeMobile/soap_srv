@@ -7,8 +7,7 @@
 
 %% API
 -export([
-    get_env/0,
-    set_develop_mode/0
+    get_env/0
 ]).
 
 -include_lib("alley_common/include/application_spec.hrl").
@@ -39,8 +38,3 @@ get_env() ->
         {ok, [["develop"]]} -> develop;
         _ -> production
     end.
-
--spec set_develop_mode() -> ok.
-set_develop_mode() ->
-    ok = application:ensure_started(sync),
-    lager:set_loglevel(lager_console_backend, debug).
