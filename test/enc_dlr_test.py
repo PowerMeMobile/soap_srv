@@ -140,14 +140,14 @@ def check_sink_delivery_status(request, command, status, timeout):
 
 def test_check_sink_delivery_statuses(request):
     checks = [
-        ('receipt:enroute',       'SMSC_ENROUTE',       1),
-        ('receipt:delivered',     'SMSC_DELIVERED',     1),
-        ('receipt:expired',       'SMSC_EXPIRED',       1),
-        ('receipt:deleted',       'SMSC_DELETED',       1),
-        ('receipt:undeliverable', 'SMSC_UNDELIVERABLE', 1),
-        ('receipt:accepted',      'SMSC_ACCEPTED',      1),
-        ('receipt:unknown',       'SMSC_UNKNOWN',       1),
-        ('receipt:rejected',      'SMSC_REJECTED',      1),
+        ('receipt:enroute',       'SMSC_ENROUTE',       2),
+        ('receipt:delivered',     'SMSC_DELIVERED',     2),
+        ('receipt:expired',       'SMSC_EXPIRED',       2),
+        ('receipt:deleted',       'SMSC_DELETED',       2),
+        ('receipt:undeliverable', 'SMSC_UNDELIVERABLE', 2),
+        ('receipt:accepted',      'SMSC_ACCEPTED',      2),
+        ('receipt:unknown',       'SMSC_UNKNOWN',       2),
+        ('receipt:rejected',      'SMSC_REJECTED',      2),
         # ('submit:{timeout:43200}','SMSC_???', 1), # in 12 hrs # smppsink is not ready for this yet
         ('submit:1',              'SMSC_FAILED',        3)
     ]
