@@ -431,15 +431,63 @@ step(compose_response, Req, St = #st{}) ->
 
 step(maybe_wsdl_req, Req, St) ->
     {QS, Req2} = cowboy_req:qs(Req),
-    case {cowboy_bstr:to_lower(QS), St#st.subpath} of
-        {<<"wsdl">>, <<>>} ->
-            step(process_wsdl_req, Req2, St);
+    ?log_debug("method: ~p, qs: ~p, subpath: ~p", [St#st.http_method, QS, St#st.subpath]),
+    case {St#st.http_method, cowboy_bstr:to_lower(QS), St#st.subpath} of
+        {get, <<>>, <<>>} ->
+            step(process_main_desc, Req2, St);
+        {get, <<"op=", _Oper/binary>>, _} ->
+            step(process_oper_desc, Req2, St);
+        {get, <<"wsdl">>, _} ->
+            step(process_wsdl_desc, Req2, St);
+        {post, _, <<"mex">>} ->
+            step(process_wsdl_desc, Req2, St);
+        {get, <<"disco">>, _} ->
+            step(process_disco_desc, Req2, St);
         _ ->
             {error, not_wsdl_req, St}
     end;
 
-step(process_wsdl_req, Req, St) ->
-    {ok, Binary} = file:read_file("./data/WSDL"),
+step(process_main_desc, Req, St) ->
+    {ok, Binary} = file:read_file("./data/service/Main.html"),
+    Headers = [{?ContentTypeHName, <<"text/html; charset=utf-8">>}],
+    {ok, Req2} = cowboy_req:reply(200, Headers, Binary, Req),
+    {ok, Req2, St};
+
+step(process_oper_desc, Req, St) ->
+    {<<"op=", Oper/binary>>, Req2} = cowboy_req:qs(Req),
+    {ok, Binary} = file:read_file("./data/service/" ++ binary_to_list(Oper) ++ ".html"),
+    Scheme = <<"http://">>,
+    {Host, Req3} = cowboy_req:host(Req2),
+    {Port, Req4} = cowboy_req:port(Req3),
+    {Path, Req5} = cowboy_req:path(Req4),
+    Location = <<Scheme/binary,
+                 Host/binary,
+                 $:, (integer_to_binary(Port))/binary,
+                 Path/binary>>,
+    Binary2 = binary:replace(Binary, <<"%%host%%">>, Host, [global]),
+    Binary3 = binary:replace(Binary2, <<"%%path%%">>, Path, [global]),
+    Binary4 = binary:replace(Binary3, <<"%%location%%">>, Location, [global]),
+    Headers = [{?ContentTypeHName, <<"text/html; charset=utf-8">>}],
+    {ok, Req6} = cowboy_req:reply(200, Headers, Binary4, Req5),
+    {ok, Req6, St};
+
+step(process_wsdl_desc, Req, St) ->
+    {ok, Binary} = file:read_file("./data/service/WSDL"),
+    Scheme = <<"http://">>,
+    {Host, Req2} = cowboy_req:host(Req),
+    {Port, Req3} = cowboy_req:port(Req2),
+    {Path, Req4} = cowboy_req:path(Req3),
+    Location = <<Scheme/binary,
+                 Host/binary,
+                 $:, (integer_to_binary(Port))/binary,
+                 Path/binary>>,
+    Binary2 = binary:replace(Binary, <<"%%location%%">>, Location, [global]),
+    Headers = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
+    {ok, Req5} = cowboy_req:reply(200, Headers, Binary2, Req4),
+    {ok, Req5, St};
+
+step(process_disco_desc, Req, St) ->
+    {ok, Binary} = file:read_file("./data/service/disco.xml"),
     Scheme = <<"http://">>,
     {Host, Req2} = cowboy_req:host(Req),
     {Port, Req3} = cowboy_req:port(Req2),
