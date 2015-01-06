@@ -1,10 +1,7 @@
 -module(soap_srv_protocol).
 
-%% Any soap method ignore blink and private fields
-
 %% TODO
 %% Add proper response msgs with codes
-%% soap:fault on 500 error
 %% check for undefined mandatory parameters
 %% Imlement independent soap_srv DTO messages
 
@@ -197,8 +194,29 @@ handle(Req, error) ->
     Resp = <<"Not found: mistake in the host or path of the service URI">>,
     {ok, Req2} = cowboy_req:reply(404, [], Resp, Req),
     {ok, Req2, error};
-handle(Req, State) ->
-    step(get_http_method, Req, State).
+handle(Req, St) ->
+    try step(get_http_method, Req, St) of
+        {ok, Req2, St2} ->
+            {ok, Req2, St2};
+        {error, Error, St2} ->
+            Reason = list_to_binary(io_lib:format("~p", [Error])),
+            Fault = construct_soap_fault(<<"Client">>, Reason, St2),
+            Resp = construct_soap_body(Fault, St2),
+            Headers = get_headers(St2#st.transport),
+            {ok, Req2} = cowboy_req:reply(400, Headers, Resp, Req),
+            {ok, Req2, St2}
+    catch
+        Class:Error ->
+            Stacktrace = erlang:get_stacktrace(),
+            ?log_error("~p:~p", [Class, Error]),
+            ?log_error("Stacktrace: ~p", [Stacktrace]),
+            Reason = list_to_binary(io_lib:format("~p", [Error])),
+            Fault = construct_soap_fault(<<"Server">>, Reason, St),
+            Resp = construct_soap_body(Fault, St),
+            Headers = get_headers(St#st.transport),
+            {ok, Req2} = cowboy_req:reply(500, Headers, Resp, Req),
+            {ok, Req2, St}
+    end.
 
 terminate(_Reason, _Req, _St) ->
     clean_body(),       %% Need to cleanup body record in proc dict
@@ -215,8 +233,8 @@ step(get_http_method, Req, St) ->
             step(get_subpath, Req2, St#st{http_method = get});
         {<<"POST">>, Req2} ->
             step(get_content_type, Req2, St#st{http_method = post});
-        {_Method, _Req2} -> %% @todo implement soap fault
-            erlang:error(method_not_supported)
+        {_Method, _Req2} ->
+            {error, method_not_supported, St}
     end;
 
 step(get_content_type, Req, St) ->
@@ -228,7 +246,8 @@ step(get_content_type, Req, St) ->
             step(get_subpath, Req2, St#st{ct = <<"text/xml">>});
         [<<"application">>, <<"x-www-form-urlencoded">> | _] ->
             step(get_subpath, Req2, St#st{ct = <<"application/x-www-form-urlencoded">>});
-        _ -> erlang:error(unexpected_content_type) %% @todo implement soap fault
+        _ ->
+            {error, unexpected_content_type, St}
     end;
 
 step(get_subpath, Req, St) ->
@@ -264,7 +283,8 @@ step(parse_xml, Req, St = #st{}) ->
         {ok, SimpleForm, _} ->
             step(get_soap_envelope, Req, St#st{xml = SimpleForm})
     catch
-        _Class:_Error -> erlang:error(bad_xml) %% @todo implement soap fault
+        _:_ ->
+            {error, malformed_xml, St}
     end;
 
 step(get_soap_envelope, Req, St = #st{}) ->
@@ -275,13 +295,11 @@ step(get_soap_envelope, Req, St = #st{}) ->
             step(get_soap_body, Req, St#st{envelope = Envelope});
         {SOAP12, _, Envelope} when St#st.transport =:= soap12 ->
             step(get_soap_body, Req, St#st{envelope = Envelope});
-        {error, Error} -> %% @todo implement soap fault
+        {error, Error} ->
             ?log_error("Xml parse error: ~p", [Error]),
-            Resp = <<"Invalid soap message format">>,
-            {ok, Req3} = cowboy_req:reply(400, [], Resp, Req),
-            {ok, Req3, undefined};
+            {error, invalid_soap_message, St};
         _ ->
-            erlang:error(unexpected_xml_format) %% @todo implement soap fault
+            {error, unexpected_xml_format, St}
     end;
 
 step(get_soap_body, Req, St = #st{transport = soap11}) ->
@@ -291,7 +309,8 @@ step(get_soap_body, Req, St = #st{transport = soap11}) ->
             step(get_action_name, Req, St#st{action_body = ActionBody,
                                              action = ActionNameNS});
         _ ->
-            erlang:error(soap_body_not_found)
+            ?log_error("Envelop w/o body: ~p", [St#st.envelope]),
+            {error, soap_body_not_found, St}
     end;
 
 step(get_soap_body, Req, St = #st{transport = soap12}) ->
@@ -301,7 +320,8 @@ step(get_soap_body, Req, St = #st{transport = soap12}) ->
             step(get_action_name, Req, St#st{action_body = ActionBody,
                                              action = ActionNameWithNS});
         _ ->
-            erlang:error(soap_body_not_found) %% @todo implement soap fault
+            ?log_error("Envelop w/o body: ~p", [St#st.envelope]),
+            {error, soap_body_not_found, St}
     end;
 
 step(get_action_name, Req, St = #st{transport = Transport}) when
@@ -309,7 +329,7 @@ step(get_action_name, Req, St = #st{transport = Transport}) when
         Transport =:= http_post ->
     case action(binary_to_list(St#st.subpath)) of
         undefined ->
-            erlang:error(action_not_implemented); %% @todo implement soap fault
+            {error, action_not_implemented, St};
         Action ->
             step(is_transport_allowed, Req, St#st{action = Action})
     end;
@@ -318,9 +338,9 @@ step(get_action_name, Req, St = #st{transport = SOAP}) when
         SOAP =:= soap11 orelse
         SOAP =:= soap12 ->
     NameSpace = "{" ++ ?NS ++ "}",
-    case action(St#st.action --  NameSpace) of
+    case action(St#st.action -- NameSpace) of
         undefined ->
-            erlang:error(action_not_implemented); %% @todo implement soap fault
+            {error, action_not_implemented, St};
         Action ->
             step(is_transport_allowed, Req, St#st{action = Action})
     end;
@@ -373,8 +393,10 @@ step(is_transport_allowed, Req, St = #st{}) ->
     ActionSpec = proplists:get_value(St#st.action, Spec),
     AllowedTransports = proplists:get_value(transport, ActionSpec),
     case lists:member(St#st.transport, AllowedTransports) of
-        true -> step(get_action_values, Req, St);
-        false -> erlang:error(transport_not_allowed) %% @todo implement soap fault
+        true ->
+            step(get_action_values, Req, St);
+        false ->
+            {error, transport_not_allowed, St}
     end;
 
 step(get_action_values, Req, St = #st{}) ->
@@ -413,7 +435,7 @@ step(maybe_wsdl_req, Req, St) ->
         {<<"wsdl">>, <<>>} ->
             step(process_wsdl_req, Req2, St);
         _ ->
-            erlang:error(not_wsdl) %% @todo implement soap fault
+            {error, not_wsdl_req, St}
     end;
 
 step(process_wsdl_req, Req, St) ->
@@ -426,12 +448,13 @@ step(process_wsdl_req, Req, St) ->
                  Host/binary,
                  $:, (integer_to_binary(Port))/binary,
                  Path/binary>>,
-    Resp = binary:replace(Binary, <<"%%location%%">>, Location, [global]),
-    {ok, Req5} = cowboy_req:reply(200, [], Resp, Req4),
+    Binary2 = binary:replace(Binary, <<"%%location%%">>, Location, [global]),
+    Headers = [{?ContentTypeHName, <<"text/xml; charset=utf-8">>}],
+    {ok, Req5} = cowboy_req:reply(200, Headers, Binary2, Req4),
     {ok, Req5, St};
 
-step(_, _, _) ->
-    erlang:error(not_implemented). %% @todo implement soap fault
+step(_Step, _Req, St) ->
+    {error, not_implemented, St}.
 
 build_result_content(Record) when is_tuple(Record) ->
     Plist = record_to_proplist(Record, ?MODULE),
@@ -510,7 +533,43 @@ construct_soap_body(Content, St) when
     <<
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     Content/binary
-    >>.
+    >>;
+construct_soap_body(Content, _St) ->
+    Content.
+
+construct_soap_fault(Domain, Reason, St) when St#st.transport =:= soap11 ->
+    <<
+    "<soap:Fault>"
+        "<faultcode>soap:", Domain/binary, "</faultcode>"
+        "<faultstring>", Reason/binary, "</faultstring>"
+    "</soap:Fault>"
+    >>;
+construct_soap_fault(Domain, Reason, St) when St#st.transport =:= soap12 ->
+    Code =
+        case Domain of
+            <<"Client">> ->
+                <<"Sender">>;
+            <<"Server">> ->
+                <<"Receiver">>;
+            _ ->
+                Domain
+        end,
+    <<
+    "<soap12:Fault>"
+        "<soap12:Code>"
+            "<soap12:Value>soap12:", Code/binary, "</soap12:Value>"
+        "</soap12:Code>"
+        "<soap12:Reason>"
+              "<soap12:Text>", Reason/binary, "</soap12:Text>"
+        "</soap12:Reason>"
+    "</soap12:Fault>"
+    >>;
+construct_soap_fault(_Domain, Reason, St) when
+        St#st.transport =:= http_get orelse
+        St#st.transport =:= http_post ->
+    Reason;
+construct_soap_fault(_Domain, Reason, _St) ->
+    Reason.
 
 construct_xml_tag(Name, undefined) ->
     construct_xml_tag(Name, <<>>);
@@ -531,6 +590,8 @@ construct_xml_tag(Name, Content) when is_list(Name) ->
     Content/binary,
     "</",(list_to_binary(Name))/binary,">">>.
 
+get_headers(undefined) ->
+    [{?ContentTypeHName, <<"text/plain">>}];
 get_headers(soap12) ->
     [{?ContentTypeHName, <<"application/soap+xml; charset=utf-8">>}];
 get_headers(Transport) when
