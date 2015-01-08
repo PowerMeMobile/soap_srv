@@ -51,9 +51,87 @@
           <h2>SendServiceSms</h2>
           <p class="intro">Sends service sms to recipient.</p>
 
-          <h3>Test</h3>
+<h3>Test</h3>
 
-          The test form is only available for requests from the local machine.
+          To test the operation using the HTTP POST protocol, click the 'Invoke' button.
+
+                      <form target="_blank" action='%%location%%/SendServiceSms' method="POST">
+
+                          <table cellspacing="0" cellpadding="4" frame="box" bordercolor="#dcdcdc" rules="none" style="border-collapse: collapse;">
+                          <tr>
+	<td class="frmHeader" background="#dcdcdc" style="border-right: 2px solid white;">Parameter</td>
+	<td class="frmHeader" background="#dcdcdc">Value</td>
+</tr>
+
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">customerID:</td>
+                            <td><input class="frmInput" type="text" size="50" name="customerID"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">userName:</td>
+                            <td><input class="frmInput" type="text" size="50" name="userName"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">userPassword:</td>
+                            <td><input class="frmInput" type="text" size="50" name="userPassword"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">originator:</td>
+                            <td><input class="frmInput" type="text" size="50" name="originator"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">serviceName:</td>
+                            <td><input class="frmInput" type="text" size="50" name="serviceName"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">serviceUrl:</td>
+                            <td><input class="frmInput" type="text" size="50" name="serviceUrl"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">recipientPhone:</td>
+                            <td><input class="frmInput" type="text" size="50" name="recipientPhone"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">messageType:</td>
+                            <td><input class="frmInput" type="text" size="50" name="messageType"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">defDate:</td>
+                            <td><input class="frmInput" type="text" size="50" name="defDate"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">blink:</td>
+                            <td><input class="frmInput" type="text" size="50" name="blink"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">flash:</td>
+                            <td><input class="frmInput" type="text" size="50" name="flash"></td>
+                          </tr>
+
+                          <tr>
+                            <td class="frmText" style="color: #000000; font-weight: normal;">Private:</td>
+                            <td><input class="frmInput" type="text" size="50" name="Private"></td>
+                          </tr>
+
+                        <tr>
+                          <td></td>
+                          <td align="right"> <input type="submit" value="Invoke" class="button"></td>
+                        </tr>
+                        </table>
+
+
+                    </form>
 
                   <span>
               <h3>SOAP 1.1</h3>
