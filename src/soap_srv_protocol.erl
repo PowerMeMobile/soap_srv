@@ -274,7 +274,7 @@ step(get_transport_type, Req, St) ->
             %% probably http_get
             step(get_action_name, Req, St#st{transport = http_get});
         _ ->
-            step(maybe_wsdl_req, Req, St)
+            step(maybe_service_desc, Req, St)
     end;
 
 step(parse_xml, Req, St = #st{}) ->
@@ -429,22 +429,21 @@ step(compose_response, Req, St = #st{}) ->
     {ok, Req2} = cowboy_req:reply(200, Headers, Resp, Req),
     {ok, Req2, undefined};
 
-step(maybe_wsdl_req, Req, St) ->
+step(maybe_service_desc, Req, St) ->
     {QS, Req2} = cowboy_req:qs(Req),
-    ?log_debug("method: ~p, qs: ~p, subpath: ~p", [St#st.http_method, QS, St#st.subpath]),
-    case {St#st.http_method, cowboy_bstr:to_lower(QS), St#st.subpath} of
-        {get, <<>>, <<>>} ->
+    ?log_debug("Service desc: Method: ~p, QS: ~p, SubPath: ~p",
+        [St#st.http_method, QS, St#st.subpath]),
+    case {St#st.http_method, cowboy_bstr:to_lower(QS)} of
+        {get, <<>>} ->
             step(process_main_desc, Req2, St);
-        {get, <<"op=", _Oper/binary>>, _} ->
+        {get, <<"op=", _Oper/binary>>} ->
             step(process_oper_desc, Req2, St);
-        {get, <<"wsdl">>, _} ->
+        {get, <<"wsdl">>} ->
             step(process_wsdl_desc, Req2, St);
-        {post, _, <<"mex">>} ->
-            step(process_wsdl_desc, Req2, St);
-        {get, <<"disco">>, _} ->
+        {get, <<"disco">>} ->
             step(process_disco_desc, Req2, St);
         _ ->
-            {error, not_wsdl_req, St}
+            {error, not_service_desc, St}
     end;
 
 step(process_main_desc, Req, St) ->
