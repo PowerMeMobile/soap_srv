@@ -583,7 +583,8 @@ inbox_operation(<<"fetch-new">>) -> fetch_new;
 inbox_operation(<<"fetch-id">>)  -> fetch_id;
 inbox_operation(<<"kill-all">>)  -> kill_all;
 inbox_operation(<<"kill-old">>)  -> kill_old;
-inbox_operation(<<"kill-id">>)   -> kill_id.
+inbox_operation(<<"kill-id">>)   -> kill_id;
+inbox_operation(_)               -> unknown.
 
 build_details(Statuses) ->
     <<
@@ -655,6 +656,7 @@ maybe_boolean(<<"true">>)  -> true;
 maybe_boolean(<<"True">>)  -> true;
 maybe_boolean(<<"false">>) -> false;
 maybe_boolean(<<"False">>) -> false;
+maybe_boolean(<<>>)        -> false;
 maybe_boolean(undefined)   -> false.
 
 reformat_addr(undefined) ->
