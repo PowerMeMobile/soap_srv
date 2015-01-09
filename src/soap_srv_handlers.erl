@@ -45,7 +45,7 @@ handle(authenticate, _Req = #'Authenticate'{user = User}) ->
     case authenticate(CustomerID, UserName, Password) of
         {ok, Customer} ->
             Originators = [Addr#addr.addr ||
-                Addr <- Customer#k1api_auth_response_customer_dto.allowed_sources],
+                Addr <- Customer#auth_customer_v1.allowed_sources],
             {ok, #'AuthResult'{
                 'Result' = ?E_SUCCESS,
                 'NetPoints' = <<"POSTPAID">>,
@@ -64,7 +64,7 @@ handle(authenticate, Req = #'HTTP_Authenticate'{}) ->
     case authenticate(CustomerID, UserName, Password) of
         {ok, Customer} ->
             Originators = [Addr#addr.addr ||
-                Addr <- Customer#k1api_auth_response_customer_dto.allowed_sources],
+                Addr <- Customer#auth_customer_v1.allowed_sources],
             {ok, #'AuthResult'{
                 'Result' = ?E_SUCCESS,
                 'NetPoints' = <<"POSTPAID">>,
@@ -313,7 +313,7 @@ handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Req2 = #send_req{
         action = send_sms,
@@ -338,7 +338,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         end;
 
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendSms'.'userName',
     Req2 = #send_req{
         action = send_sms,
@@ -363,7 +363,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Req2 = #send_req{
         action = send_sms,
@@ -388,7 +388,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     end;
 
 handle(send, Req = #'SendServiceSms'{}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'SendServiceSms'.userName,
     Req2 = #send_req{
         action = send_service_sms,
@@ -414,7 +414,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Req2 = #send_req{
         action = send_binary_sms,
@@ -440,7 +440,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     end;
 
 handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendBinarySms'.'userName',
     Req2 = #send_req{
         action = send_binary_sms,
@@ -466,28 +466,28 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     end;
 
 handle(get_sms_status, Req = #'GetSmsStatus'{user = User}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     TransactionId = Req#'GetSmsStatus'.transactionID,
     Detailed = maybe_boolean(Req#'GetSmsStatus'.detailed),
     get_sms_status(CustomerId, UserId, TransactionId, Detailed);
 
 handle(get_sms_status, Req = #'HTTP_GetSmsStatus'{}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_GetSmsStatus'.userName,
     TransactionId = Req#'HTTP_GetSmsStatus'.transactionID,
     Detailed = maybe_boolean(Req#'HTTP_GetSmsStatus'.detailed),
     get_sms_status(CustomerId, UserId, TransactionId, Detailed);
 
 handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Operation = inbox_operation(Req#'InboxProcessing'.operation),
     MessageIds = Req#'InboxProcessing'.messageId,
     inbox_processing(CustomerId, UserId, Operation, MessageIds);
 
 handle(inbox_processing, Req = #'HTTP_InboxProcessing'{}, Customer) ->
-    CustomerId = Customer#k1api_auth_response_customer_dto.uuid,
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_InboxProcessing'.userName,
     Operation = inbox_operation(Req#'HTTP_InboxProcessing'.operation),
     MessageIds = Req#'HTTP_InboxProcessing'.messageId,
@@ -518,11 +518,14 @@ send_result(#send_result{result = Result}) ->
 
 authenticate(CustomerID, UserName, Password) ->
     case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
-        {ok, #k1api_auth_response_dto{result = {customer, Customer}}} ->
-            {ok, Customer};
-        {ok, #k1api_auth_response_dto{result = {error, Error}}} ->
-            ?log_error("Authenticate response error: ~p", [Error]),
-            {error, authentication};
+        {ok, #auth_resp_v1{result = Result}} ->
+            case Result of
+                #auth_customer_v1{} ->
+                    {ok, Result};
+                #auth_error_v1{message = Error} ->
+                    ?log_error("Authenticate response error: ~p", [Error]),
+                    {error, authentication}
+            end;
         {error, Error} ->
             ?log_error("Authenticate failed with: ~p", [Error]),
             {error, Error}
