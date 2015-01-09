@@ -46,12 +46,14 @@ handle(authenticate, _Req = #'Authenticate'{user = User}) ->
         {ok, Customer} ->
             Originators = [Addr#addr.addr ||
                 Addr <- Customer#auth_customer_v1.allowed_sources],
+            Credit = credit_left(Customer#auth_customer_v1.pay_type,
+                                 Customer#auth_customer_v1.credit),
             {ok, #'AuthResult'{
                 'Result' = ?E_SUCCESS,
-                'NetPoints' = <<"POSTPAID">>,
+                'NetPoints' = Credit,
                 'Originators' = Originators,
                 'CustomerID' = CustomerID,
-                'CreditSMS' = <<"POSTPAID">>
+                'CreditSMS' = Credit
             }};
         {error, Error} ->
             {ok, #'AuthResult'{'Result' = reformat_error(Error)}}
@@ -65,12 +67,14 @@ handle(authenticate, Req = #'HTTP_Authenticate'{}) ->
         {ok, Customer} ->
             Originators = [Addr#addr.addr ||
                 Addr <- Customer#auth_customer_v1.allowed_sources],
+            Credit = credit_left(Customer#auth_customer_v1.pay_type,
+                                 Customer#auth_customer_v1.credit),
             {ok, #'AuthResult'{
                 'Result' = ?E_SUCCESS,
-                'NetPoints' = <<"POSTPAID">>,
+                'NetPoints' = Credit,
                 'Originators' = Originators,
                 'CustomerID' = CustomerID,
-                'CreditSMS' = <<"POSTPAID">>
+                'CreditSMS' = Credit
             }};
         {error, Error} ->
             {ok, #'AuthResult'{'Result' = reformat_error(Error)}}
@@ -334,7 +338,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
             send_result(Result);
         {error, Error} ->
             ?log_error("SendSms failed with: ~p", [Error]),
-             {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            send_result(#send_result{result = Error})
         end;
 
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
@@ -359,7 +363,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
             send_result(Result);
         {error, Error} ->
             ?log_error("SendSms failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            send_result(#send_result{result = Error})
     end;
 
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
@@ -384,7 +388,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
             send_result(Result);
         {error, Error} ->
             ?log_error("SendSms failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            send_result(#send_result{result = Error})
     end;
 
 handle(send, Req = #'SendServiceSms'{}, Customer) ->
@@ -410,7 +414,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
             send_result(Result);
         {error, Error} ->
             ?log_error("SendSms failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            send_result(#send_result{result = Error})
     end;
 
 handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
@@ -436,7 +440,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
             send_result(Result);
         {error, Error} ->
             ?log_error("SendSms failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            send_result(#send_result{result = Error})
     end;
 
 handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
@@ -462,22 +466,20 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
             send_result(Result);
         {error, Error} ->
             ?log_error("SendSms failed with: ~p", [Error]),
-            {ok, #'SendResult'{'Result' = reformat_error(Error)}}
+            send_result(#send_result{result = Error})
     end;
 
 handle(get_sms_status, Req = #'GetSmsStatus'{user = User}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     TransactionId = Req#'GetSmsStatus'.transactionID,
     Detailed = maybe_boolean(Req#'GetSmsStatus'.detailed),
-    get_sms_status(CustomerId, UserId, TransactionId, Detailed);
+    get_sms_status(Customer, UserId, TransactionId, Detailed);
 
 handle(get_sms_status, Req = #'HTTP_GetSmsStatus'{}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_GetSmsStatus'.userName,
     TransactionId = Req#'HTTP_GetSmsStatus'.transactionID,
     Detailed = maybe_boolean(Req#'HTTP_GetSmsStatus'.detailed),
-    get_sms_status(CustomerId, UserId, TransactionId, Detailed);
+    get_sms_status(Customer, UserId, TransactionId, Detailed);
 
 handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
@@ -503,18 +505,27 @@ handle(_, _, _) ->
 send_result(#send_result{
     result = ok,
     req_id = ReqId,
-    rejected = Rejected
+    rejected = Rejected,
+    customer = Customer,
+    credit_left = CreditLeft
 }) ->
     {ok, #'SendResult'{
         'Result' = ?E_SUCCESS,
         'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
         'TransactionID' = ReqId,
-        'NetPoints' = <<"POSTPAID">>
+        'NetPoints' = credit_left(Customer#auth_customer_v1.pay_type, CreditLeft)
     }};
 send_result(#send_result{result = Result}) ->
     {ok, #'SendResult'{
         'Result' = reformat_error(Result)
     }}.
+
+credit_left(postpaid, _) ->
+    <<"POSTPAID">>;
+credit_left(prepaid, undefined) ->
+    <<"0">>;
+credit_left(prepaid, Credit) when is_float(Credit) ->
+    integer_to_binary(round(Credit)).
 
 authenticate(CustomerID, UserName, Password) ->
     case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
@@ -531,11 +542,14 @@ authenticate(CustomerID, UserName, Password) ->
             {error, Error}
     end.
 
-get_sms_status(CustomerId, UserId, TransactionId, Detailed) ->
+get_sms_status(Customer, UserId, TransactionId, Detailed) ->
+    CustomerId = Customer#auth_customer_v1.customer_uuid,
     case alley_services_api:get_sms_status(
             CustomerId, UserId, TransactionId) of
         {ok, #sms_status_resp_v1{statuses = Statuses}} ->
             Statistics = build_statistics(Statuses),
+            Credit = credit_left(Customer#auth_customer_v1.pay_type,
+                                 Customer#auth_customer_v1.credit),
             case Detailed of
                 true ->
                     Details = build_details(Statuses),
@@ -543,13 +557,13 @@ get_sms_status(CustomerId, UserId, TransactionId, Detailed) ->
                         'Result' = ?E_SUCCESS,
                         'Statistics' = Statistics,
                         'Details' = Details,
-                        'NetPoints' = <<"POSTPAID">>
+                        'NetPoints' = Credit
                     }};
                 false ->
                     {ok, #'SmsStatus'{
                         'Result' = ?E_SUCCESS,
                         'Statistics' = Statistics,
-                        'NetPoints' = <<"POSTPAID">>
+                        'NetPoints' = Credit
                     }}
             end;
         {error, Error} ->
