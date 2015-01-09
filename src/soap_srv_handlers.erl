@@ -532,10 +532,9 @@ authenticate(CustomerID, UserName, Password) ->
     end.
 
 get_sms_status(CustomerId, UserId, TransactionId, Detailed) ->
-    Addr = alley_services_utils:addr_to_dto(<<>>),
-    case alley_services_api:get_delivery_status(
-            CustomerId, UserId, TransactionId, Addr) of
-        {ok, #k1api_sms_delivery_status_response_dto{statuses = Statuses}} ->
+    case alley_services_api:get_sms_status(
+            CustomerId, UserId, TransactionId) of
+        {ok, #sms_status_resp_v1{statuses = Statuses}} ->
             Statistics = build_statistics(Statuses),
             case Detailed of
                 true ->
@@ -596,10 +595,10 @@ build_details(Statuses) ->
     "</details>"
     >>.
 
-detailed_status_tag(Status = #k1api_sms_status_dto{}) ->
-    StatusName = Status#k1api_sms_status_dto.status,
-    Number = Status#k1api_sms_status_dto.address,
-    Timestamp = Status#k1api_sms_status_dto.timestamp,
+detailed_status_tag(Status = #sms_status_v1{}) ->
+    StatusName = Status#sms_status_v1.status,
+    Number = Status#sms_status_v1.address,
+    Timestamp = Status#sms_status_v1.timestamp,
     ISO8601 = ac_datetime:unixepoch_to_iso8601(Timestamp),
 
     Content =
@@ -651,7 +650,7 @@ aggregate_statistics(Statuses) ->
 
 aggregate_statistics([], Dict) ->
     dict:to_list(Dict);
-aggregate_statistics([#k1api_sms_status_dto{status = Status} | Rest], Dict) ->
+aggregate_statistics([#sms_status_v1{status = Status} | Rest], Dict) ->
     Dict1 = dict:update_counter(Status, 1, Dict),
     aggregate_statistics(Rest, Dict1).
 
