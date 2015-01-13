@@ -208,8 +208,7 @@ handle(Req, St) ->
     catch
         Class:Error ->
             Stacktrace = erlang:get_stacktrace(),
-            ?log_error("~p:~p", [Class, Error]),
-            ?log_error("Stacktrace: ~p", [Stacktrace]),
+            ?log_error("Exception: ~p:~p Stacktrace: ~p", [Class, Error, Stacktrace]),
             Reason = list_to_binary(io_lib:format("~p", [Error])),
             Fault = construct_soap_fault(<<"Server">>, Reason, St),
             Resp = construct_soap_body(Fault, St),
@@ -411,10 +410,9 @@ step(handle, Req, St = #st{}) ->
         {ok, Result} when is_tuple(Result) ->
             step(compose_response, Req, St#st{result = Result})
     catch
-        Class:Error -> %% @todo implement soap fault
+        Class:Error ->
             Stacktrace = erlang:get_stacktrace(),
-            ?log_error("~p:~p", [Class, Error]),
-            ?log_error("Stacktrace: ~p", [Stacktrace]),
+            ?log_error("Exception: ~p:~p Stacktrace: ~p", [Class, Error, Stacktrace]),
             Explanation = list_to_binary(io_lib:format("~p", [Error])),
             Result = #'CommonResult'{'Result' = Explanation},
             step(compose_response, Req, St#st{result = Result})
