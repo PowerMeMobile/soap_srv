@@ -445,14 +445,17 @@ step(maybe_service_desc, Req, St) ->
     end;
 
 step(process_main_desc, Req, St) ->
-    {ok, Binary} = file:read_file("./data/service/Main.html"),
+    Filename = filename:join(code:priv_dir(?APP), "service/Main.html"),
+    {ok, Binary} = file:read_file(Filename),
     Headers = [{?ContentTypeHName, <<"text/html; charset=utf-8">>}],
     {ok, Req2} = cowboy_req:reply(200, Headers, Binary, Req),
     {ok, Req2, St};
 
 step(process_oper_desc, Req, St) ->
     {<<"op=", Oper/binary>>, Req2} = cowboy_req:qs(Req),
-    {ok, Binary} = file:read_file("./data/service/" ++ binary_to_list(Oper) ++ ".html"),
+    Filename = filename:join(code:priv_dir(?APP),
+        "service/" ++ binary_to_list(Oper) ++ ".html"),
+    {ok, Binary} = file:read_file(Filename),
     Scheme = <<"http://">>,
     {Host, Req3} = cowboy_req:host(Req2),
     {Port, Req4} = cowboy_req:port(Req3),
@@ -469,7 +472,8 @@ step(process_oper_desc, Req, St) ->
     {ok, Req6, St};
 
 step(process_wsdl_desc, Req, St) ->
-    {ok, Binary} = file:read_file("./data/service/WSDL"),
+    Filename = filename:join(code:priv_dir(?APP), "service/WSDL"),
+    {ok, Binary} = file:read_file(Filename),
     Scheme = <<"http://">>,
     {Host, Req2} = cowboy_req:host(Req),
     {Port, Req3} = cowboy_req:port(Req2),
@@ -484,7 +488,8 @@ step(process_wsdl_desc, Req, St) ->
     {ok, Req5, St};
 
 step(process_disco_desc, Req, St) ->
-    {ok, Binary} = file:read_file("./data/service/disco.xml"),
+    Filename = filename:join(code:priv_dir(?APP), "service/disco.xml"),
+    {ok, Binary} = file:read_file(Filename),
     Scheme = <<"http://">>,
     {Host, Req2} = cowboy_req:host(Req),
     {Port, Req3} = cowboy_req:port(Req2),
