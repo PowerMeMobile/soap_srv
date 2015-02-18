@@ -255,13 +255,21 @@ handle(check_params, Req = #'SendSms2'{}, Customer) ->
     try base64:decode(Req#'SendSms2'.recipientPhonesFile) of
         Recipients ->
             Req2 = Req#'SendSms2'{recipientPhonesFile = Recipients},
-            DefDate = Req2#'SendSms2'.defDate,
-            case parse_def_date(DefDate) of
-                {ok, ParsedDefDate} ->
-                    Req3 = Req2#'SendSms2'{defDate = ParsedDefDate},
-                    handle(send, Req3, Customer);
-                {error, invalid} ->
-                    send_result(#send_result{result = invalid_def_date})
+            SmsText =  Req#'SendSms2'.smsText,
+            case SmsText of
+                <<>> ->
+                    send_result(#send_result{result = no_message_body});
+                undefined ->
+                    send_result(#send_result{result = no_message_body});
+                _ ->
+                    DefDate = Req2#'SendSms2'.defDate,
+                    case parse_def_date(DefDate) of
+                        {ok, ParsedDefDate} ->
+                            Req3 = Req2#'SendSms2'{defDate = ParsedDefDate},
+                            handle(send, Req3, Customer);
+                        {error, invalid} ->
+                            send_result(#send_result{result = invalid_def_date})
+                    end
             end
     catch
         _:_ ->
@@ -271,13 +279,20 @@ handle(check_params, Req = #'SendSms2'{}, Customer) ->
     end;
 
 handle(check_params, Req = #'SendServiceSms'{}, Customer) ->
-    DefDate =  Req#'SendServiceSms'.defDate,
-    case parse_def_date(DefDate) of
-        {ok, ParsedDefDate} ->
-            Req2 = Req#'SendServiceSms'{defDate = ParsedDefDate},
-            handle(send, Req2, Customer);
-        {error, invalid} ->
-            send_result(#send_result{result = invalid_def_date})
+    Name = Req#'SendServiceSms'.serviceName,
+    Url = Req#'SendServiceSms'.serviceUrl,
+    case is_binary(Name) andalso is_binary(Url) of
+        true ->
+            DefDate =  Req#'SendServiceSms'.defDate,
+            case parse_def_date(DefDate) of
+                {ok, ParsedDefDate} ->
+                    Req2 = Req#'SendServiceSms'{defDate = ParsedDefDate},
+                    handle(send, Req2, Customer);
+                {error, invalid} ->
+                    send_result(#send_result{result = invalid_def_date})
+            end;
+        false ->
+            send_result(#send_result{result = bad_service_name_or_url})
     end;
 
 handle(check_params, Req = #'SendBinarySms'{}, Customer) ->
@@ -327,8 +342,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         customer = Customer,
         recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
         originator = reformat_addr(Req#'SendSms'.originator),
-        text = Req#'SendSms'.smsText,
-        type = Req#'SendSms'.messageType,
+        message = reformat_numbers(Req#'SendSms'.smsText, Req#'SendSms'.messageType),
         def_date =  Req#'SendSms'.defDate,
         flash = maybe_boolean(Req#'SendSms'.flash)
     },
@@ -344,6 +358,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendSms'.'userName',
+    Message = reformat_numbers(Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.messageType),
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
@@ -352,8 +367,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         customer = Customer,
         recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
         originator = reformat_addr(Req#'HTTP_SendSms'.originator),
-        text = Req#'HTTP_SendSms'.smsText,
-        type = Req#'HTTP_SendSms'.messageType,
+        message = Message,
         def_date =  Req#'HTTP_SendSms'.defDate,
         flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
     },
@@ -369,6 +383,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
+    Message = reformat_numbers(Req#'SendSms2'.smsText, Req#'SendSms2'.messageType),
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
@@ -377,8 +392,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         customer = Customer,
         recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
         originator = reformat_addr(Req#'SendSms2'.originator),
-        text = Req#'SendSms2'.smsText,
-        type = Req#'SendSms2'.messageType,
+        message = Message,
         def_date =  Req#'SendSms2'.defDate,
         flash = maybe_boolean(Req#'SendSms2'.flash)
     },
@@ -394,6 +408,8 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
 handle(send, Req = #'SendServiceSms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'SendServiceSms'.userName,
+    Message = reformat_service_sms(
+        Req#'SendServiceSms'.serviceName, Req#'SendServiceSms'.serviceUrl),
     Req2 = #send_req{
         action = send_service_sms,
         customer_id = CustomerId,
@@ -402,9 +418,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         customer = Customer,
         recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
         originator = reformat_addr(Req#'SendServiceSms'.originator),
-        s_name = Req#'SendServiceSms'.serviceName,
-        s_url = Req#'SendServiceSms'.serviceUrl,
-        type = Req#'SendServiceSms'.messageType,
+        message = Message,
         def_date =  Req#'SendServiceSms'.defDate,
         flash = maybe_boolean(Req#'SendServiceSms'.flash)
     },
@@ -420,6 +434,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
 handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
+    Message = ac_hexdump:hexdump_to_binary(Req#'SendBinarySms'.binaryBody),
     Req2 = #send_req{
         action = send_binary_sms,
         customer_id = CustomerId,
@@ -428,7 +443,9 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         customer = Customer,
         recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
         originator = reformat_addr(Req#'SendBinarySms'.originator),
-        binary_body = Req#'SendBinarySms'.binaryBody,
+        message = Message,
+        encoding = default,
+        encoded_size = size(Message),
         def_date = Req#'SendBinarySms'.defDate,
         data_coding = Req#'SendBinarySms'.data_coding,
         esm_class = Req#'SendBinarySms'.esm_class,
@@ -446,6 +463,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
 handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendBinarySms'.'userName',
+    Message = ac_hexdump:hexdump_to_binary(Req#'HTTP_SendBinarySms'.binaryBody),
     Req2 = #send_req{
         action = send_binary_sms,
         customer_id = CustomerId,
@@ -454,7 +472,9 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         customer = Customer,
         recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
         originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
-        binary_body = Req#'HTTP_SendBinarySms'.binaryBody,
+        message = Message,
+        encoding = default,
+        encoded_size = size(Message),
         def_date = Req#'HTTP_SendBinarySms'.defDate,
         data_coding = Req#'HTTP_SendBinarySms'.data_coding,
         esm_class = Req#'HTTP_SendBinarySms'.esm_class,
@@ -736,3 +756,11 @@ parse_def_date(Date) ->
         _:_ ->
             {error, invalid}
     end.
+
+reformat_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
+    alley_services_utils:convert_arabic_numbers(Text, to_arabic);
+reformat_numbers(Text, _) ->
+    Text.
+
+reformat_service_sms(Name, Url) ->
+    <<"<%SERVICEMESSAGE:", Name/binary, ";", Url/binary, "%>">>.
