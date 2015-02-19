@@ -358,7 +358,6 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         {<<"protocol_id">>, 0}
     ],
     Req2 = #send_req{
-        action = send_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
@@ -392,7 +391,6 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         {<<"protocol_id">>, 0}
     ],
     Req2 = #send_req{
-        action = send_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
@@ -426,7 +424,6 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         {<<"protocol_id">>, 0}
     ],
     Req2 = #send_req{
-        action = send_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
@@ -462,7 +459,6 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         {<<"destination_port">>, 2948}
     ],
     Req2 = #send_req{
-        action = send_service_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
@@ -497,7 +493,6 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         {<<"protocol_id">>, ProtocolId}
     ],
     Req2 = #send_req{
-        action = send_binary_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
@@ -532,7 +527,6 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         {<<"protocol_id">>, ProtocolId}
     ],
     Req2 = #send_req{
-        action = send_binary_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
