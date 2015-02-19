@@ -238,7 +238,7 @@ handle(check_params, Req = #'SendSms'{}, Customer) ->
         undefined ->
             send_result(#send_result{result = no_message_body});
         _ ->
-            DefDate =  Req#'SendSms'.defDate,
+            DefDate = Req#'SendSms'.defDate,
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'SendSms'{defDate = ParsedDefDate},
@@ -256,7 +256,7 @@ handle(check_params, Req = #'HTTP_SendSms'{}, Customer) ->
         undefined ->
             send_result(#send_result{result = no_message_body});
         _ ->
-            DefDate =  Req#'HTTP_SendSms'.defDate,
+            DefDate = Req#'HTTP_SendSms'.defDate,
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'HTTP_SendSms'{defDate = ParsedDefDate},
@@ -270,7 +270,7 @@ handle(check_params, Req = #'SendSms2'{}, Customer) ->
     try base64:decode(Req#'SendSms2'.recipientPhonesFile) of
         Recipients ->
             Req2 = Req#'SendSms2'{recipientPhonesFile = Recipients},
-            SmsText =  Req#'SendSms2'.smsText,
+            SmsText = Req#'SendSms2'.smsText,
             case SmsText of
                 <<>> ->
                     send_result(#send_result{result = no_message_body});
@@ -298,7 +298,7 @@ handle(check_params, Req = #'SendServiceSms'{}, Customer) ->
     Url = Req#'SendServiceSms'.serviceUrl,
     case is_binary(Name) andalso is_binary(Url) of
         true ->
-            DefDate =  Req#'SendServiceSms'.defDate,
+            DefDate = Req#'SendServiceSms'.defDate,
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'SendServiceSms'{defDate = ParsedDefDate},
@@ -311,14 +311,14 @@ handle(check_params, Req = #'SendServiceSms'{}, Customer) ->
     end;
 
 handle(check_params, Req = #'SendBinarySms'{}, Customer) ->
-    BinaryBody =  Req#'SendBinarySms'.binaryBody,
+    BinaryBody = Req#'SendBinarySms'.binaryBody,
     case BinaryBody of
         <<>> ->
             send_result(#send_result{result = no_message_body});
         undefined ->
             send_result(#send_result{result = no_message_body});
         _ ->
-            DefDate =  Req#'SendBinarySms'.defDate,
+            DefDate = Req#'SendBinarySms'.defDate,
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'SendBinarySms'{defDate = ParsedDefDate},
@@ -329,14 +329,14 @@ handle(check_params, Req = #'SendBinarySms'{}, Customer) ->
     end;
 
 handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
-    BinaryBody =  Req#'HTTP_SendBinarySms'.binaryBody,
+    BinaryBody = Req#'HTTP_SendBinarySms'.binaryBody,
     case BinaryBody of
         <<>> ->
             send_result(#send_result{result = no_message_body});
         undefined ->
             send_result(#send_result{result = no_message_body});
         _ ->
-            DefDate =  Req#'HTTP_SendBinarySms'.defDate,
+            DefDate = Req#'HTTP_SendBinarySms'.defDate,
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'HTTP_SendBinarySms'{defDate = ParsedDefDate},
@@ -352,6 +352,11 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
     Message = reformat_numbers(
         Req#'SendSms'.smsText, Req#'SendSms'.messageType),
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    Flash = reformat_boolean(Req#'SendSms'.flash),
+    Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
+        {<<"esm_class">>, 3},
+        {<<"protocol_id">>, 0}
+    ],
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
@@ -363,8 +368,8 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         message = Message,
         encoding = Encoding,
         encoded_size = Size,
-        def_date =  Req#'SendSms'.defDate,
-        flash = reformat_boolean(Req#'SendSms'.flash)
+        smpp_params = Params,
+        def_date = Req#'SendSms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -381,6 +386,11 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     Message = reformat_numbers(
         Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.messageType),
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    Flash = reformat_boolean(Req#'HTTP_SendSms'.flash),
+    Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
+        {<<"esm_class">>, 3},
+        {<<"protocol_id">>, 0}
+    ],
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
@@ -392,8 +402,8 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         message = Message,
         encoding = Encoding,
         encoded_size = Size,
-        def_date =  Req#'HTTP_SendSms'.defDate,
-        flash = reformat_boolean(Req#'HTTP_SendSms'.flash)
+        smpp_params = Params,
+        def_date = Req#'HTTP_SendSms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -410,6 +420,11 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     Message = reformat_numbers(
         Req#'SendSms2'.smsText, Req#'SendSms2'.messageType),
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    Flash = reformat_boolean(Req#'SendSms2'.flash),
+    Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
+        {<<"esm_class">>, 3},
+        {<<"protocol_id">>, 0}
+    ],
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
@@ -421,8 +436,8 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         message = Message,
         encoding = Encoding,
         encoded_size = Size,
-        def_date =  Req#'SendSms2'.defDate,
-        flash = reformat_boolean(Req#'SendSms2'.flash)
+        smpp_params = Params,
+        def_date = Req#'SendSms2'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -439,6 +454,13 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
     Message = reformat_service_sms(
         Req#'SendServiceSms'.serviceName, Req#'SendServiceSms'.serviceUrl),
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    Params = common_smpp_params(Customer) ++ [
+        {<<"esm_class">>, 64},
+        {<<"protocol_id">>, 0},
+        {<<"data_coding">>, 245},
+        {<<"source_port">>, 9200},
+        {<<"destination_port">>, 2948}
+    ],
     Req2 = #send_req{
         action = send_service_sms,
         customer_id = CustomerId,
@@ -450,8 +472,8 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         message = Message,
         encoding = Encoding,
         encoded_size = Size,
-        def_date =  Req#'SendServiceSms'.defDate,
-        flash = reformat_boolean(Req#'SendServiceSms'.flash)
+        smpp_params = Params,
+        def_date = Req#'SendServiceSms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -466,6 +488,14 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Message = ac_hexdump:hexdump_to_binary(Req#'SendBinarySms'.binaryBody),
+    DC = reformat_integer(Req#'SendBinarySms'.data_coding),
+    ESMClass = reformat_integer(Req#'SendBinarySms'.esm_class),
+    ProtocolId = reformat_integer(Req#'SendBinarySms'.'PID'),
+    Params = common_smpp_params(Customer) ++ [
+        {<<"data_coding">>, DC},
+        {<<"esm_class">>, ESMClass},
+        {<<"protocol_id">>, ProtocolId}
+    ],
     Req2 = #send_req{
         action = send_binary_sms,
         customer_id = CustomerId,
@@ -477,10 +507,8 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         message = Message,
         encoding = default,
         encoded_size = size(Message),
-        def_date = Req#'SendBinarySms'.defDate,
-        data_coding = Req#'SendBinarySms'.data_coding,
-        esm_class = Req#'SendBinarySms'.esm_class,
-        protocol_id = Req#'SendBinarySms'.'PID'
+        smpp_params = Params,
+        def_date = Req#'SendBinarySms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -495,6 +523,14 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendBinarySms'.'userName',
     Message = ac_hexdump:hexdump_to_binary(Req#'HTTP_SendBinarySms'.binaryBody),
+    DC = reformat_integer(Req#'HTTP_SendBinarySms'.data_coding),
+    ESMClass = reformat_integer(Req#'HTTP_SendBinarySms'.esm_class),
+    ProtocolId = reformat_integer(Req#'HTTP_SendBinarySms'.'PID'),
+    Params = common_smpp_params(Customer) ++ [
+        {<<"data_coding">>, DC},
+        {<<"esm_class">>, ESMClass},
+        {<<"protocol_id">>, ProtocolId}
+    ],
     Req2 = #send_req{
         action = send_binary_sms,
         customer_id = CustomerId,
@@ -506,10 +542,8 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         message = Message,
         encoding = default,
         encoded_size = size(Message),
-        def_date = Req#'HTTP_SendBinarySms'.defDate,
-        data_coding = Req#'HTTP_SendBinarySms'.data_coding,
-        esm_class = Req#'HTTP_SendBinarySms'.esm_class,
-        protocol_id = Req#'HTTP_SendBinarySms'.'PID'
+        smpp_params = Params,
+        def_date = Req#'HTTP_SendBinarySms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -728,6 +762,13 @@ reformat_boolean(<<"False">>) -> false;
 reformat_boolean(<<>>)        -> false;
 reformat_boolean(undefined)   -> false.
 
+reformat_integer(undefined) ->
+    0;
+reformat_integer(<<>>) ->
+    0;
+reformat_integer(Binary) ->
+    binary_to_integer(Binary).
+
 reformat_addr(undefined) ->
     reformat_addr(<<"">>);
 reformat_addr(Addr) ->
@@ -798,3 +839,23 @@ reformat_numbers(Text, _) ->
 
 reformat_service_sms(Name, Url) ->
     <<"<%SERVICEMESSAGE:", Name/binary, ";", Url/binary, "%>">>.
+
+flash(false, _) ->
+    [];
+flash(true, default) ->
+    [{<<"data_coding">>, 240}];
+flash(true, ucs2) ->
+    [{<<"data_coding">>, 248}].
+
+common_smpp_params(Customer) ->
+    ReceiptsAllowed = Customer#auth_customer_v1.receipts_allowed,
+    NoRetry = Customer#auth_customer_v1.no_retry,
+    Validity = alley_services_utils:fmt_validity(
+        Customer#auth_customer_v1.default_validity),
+    [
+        {<<"registered_delivery">>, ReceiptsAllowed},
+        {<<"service_type">>, <<>>},
+        {<<"no_retry">>, NoRetry},
+        {<<"validity_period">>, Validity},
+        {<<"priority_flag">>, 0}
+    ].
