@@ -7,24 +7,39 @@
 
 -export([handle/1]).
 
--define(E_SUCCESS, <<"OK">>).
--define(E_AUTHENTICATION, <<"404.2 FAILURE (User is unknown)">>).
--define(E_INTERNAL,        <<"500 FAILURE (Internal server error)">>).
--define(E_NOT_IMPLEMENTED, <<"501 FAILURE (Not implemented)">>).
--define(E_INVALID_RECIPIENTS, <<"400.1 FAILURE (Invalid recipients format)">>).
--define(E_TIMEOUT, <<"504 FAILURE (Request timeout)">>).
--define(E_ORIGINATOR_NOT_FOUND, <<"600.1 Originator for customerID is not found">>).
--define(E_NO_RECIPIENTS, <<"600.4 Phone not specified">>).
--define(E_NO_DEST_ADDRS, <<"FAILURE: All recipient numbers in your message "
-    "are either Rejected or Blacklisted">>).
--define(E_INVALID_DEF_DATE, <<"Def Date format is incorrect. "
-    "Correct format is YYYYMMDDHHMMSS">>).
--define(E_NO_MESSAGE_BODY, <<"Message Content Is Empty">>).
--define(E_INVALID_REQUEST_ID, <<"SMS ID for status request is incorrect or not specified">>).
--define(E_EMPTY_REQUEST_ID, <<"605.7 The action you requested cannot be performed, "
-    "because one of your the required request parameters ('TransactionID') was not supplied.">>).
--define(E_SERVICE_NAME_OR_URL_EXPECTED, <<"Service name and url is expected">>).
--define(E_CREDIT_LIMIT_EXCEEDED, <<"Customer's postpaid credit limit is exceeded">>).
+-define(E_SUCCESS,
+    <<"OK">>).
+-define(E_AUTHENTICATION,
+    <<"404.2 FAILURE (User is unknown)">>).
+-define(E_INTERNAL,
+    <<"500 FAILURE (Internal server error)">>).
+-define(E_NOT_IMPLEMENTED,
+    <<"501 FAILURE (Not implemented)">>).
+-define(E_INVALID_RECIPIENTS,
+    <<"400.1 FAILURE (Invalid recipients format)">>).
+-define(E_TIMEOUT,
+    <<"504 FAILURE (Request timeout)">>).
+-define(E_ORIGINATOR_NOT_FOUND,
+    <<"600.1 Originator for customerID is not found">>).
+-define(E_NO_RECIPIENTS,
+    <<"600.4 Phone not specified">>).
+-define(E_NO_DEST_ADDRS,
+    <<"FAILURE: All recipient numbers in your message "
+      "are either Rejected or Blacklisted">>).
+-define(E_INVALID_DEF_DATE,
+    <<"Def Date format is incorrect. Correct format is YYYYMMDDHHMMSS">>).
+-define(E_NO_MESSAGE_BODY,
+    <<"Message Content Is Empty">>).
+-define(E_INVALID_REQUEST_ID,
+    <<"SMS ID for status request is incorrect or not specified">>).
+-define(E_EMPTY_REQUEST_ID,
+    <<"605.7 The action you requested cannot be performed, "
+      "because one of your the required request parameters "
+      "('TransactionID') was not supplied.">>).
+-define(E_SERVICE_NAME_OR_URL_EXPECTED,
+     <<"Service name and url is expected">>).
+-define(E_CREDIT_LIMIT_EXCEEDED,
+    <<"Customer's postpaid credit limit is exceeded">>).
 
 %% ===================================================================
 %% API
@@ -548,7 +563,8 @@ credit_left(prepaid, Credit) when is_float(Credit) ->
     integer_to_binary(round(Credit)).
 
 authenticate(CustomerID, UserName, Password) ->
-    case alley_services_auth:authenticate(CustomerID, UserName, soap, Password) of
+    case alley_services_auth:authenticate(
+            CustomerID, UserName, soap, Password) of
         {ok, #auth_resp_v1{result = Result}} ->
             case Result of
                 #auth_customer_v1{} ->
@@ -648,7 +664,8 @@ build_statistics(Statuses) ->
     Agregated = aggregate_statistics(Statuses),
     <<
     "<statistics xmlns=\"\">",
-    (list_to_binary([status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
+    (list_to_binary(
+        [status_tag(Status, Counter) || {Status, Counter} <- Agregated]))/binary,
     "</statistics>"
     >>.
 
