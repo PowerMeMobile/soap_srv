@@ -364,7 +364,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         encoding = Encoding,
         encoded_size = Size,
         def_date =  Req#'SendSms'.defDate,
-        flash = maybe_boolean(Req#'SendSms'.flash)
+        flash = reformat_boolean(Req#'SendSms'.flash)
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -393,7 +393,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         encoding = Encoding,
         encoded_size = Size,
         def_date =  Req#'HTTP_SendSms'.defDate,
-        flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
+        flash = reformat_boolean(Req#'HTTP_SendSms'.flash)
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -422,7 +422,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         encoding = Encoding,
         encoded_size = Size,
         def_date =  Req#'SendSms2'.defDate,
-        flash = maybe_boolean(Req#'SendSms2'.flash)
+        flash = reformat_boolean(Req#'SendSms2'.flash)
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -451,7 +451,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         encoding = Encoding,
         encoded_size = Size,
         def_date =  Req#'SendServiceSms'.defDate,
-        flash = maybe_boolean(Req#'SendServiceSms'.flash)
+        flash = reformat_boolean(Req#'SendServiceSms'.flash)
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -523,13 +523,13 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
 handle(get_sms_status, Req = #'GetSmsStatus'{user = User}, Customer) ->
     UserId = User#user.'Name',
     TransactionId = Req#'GetSmsStatus'.transactionID,
-    Detailed = maybe_boolean(Req#'GetSmsStatus'.detailed),
+    Detailed = reformat_boolean(Req#'GetSmsStatus'.detailed),
     get_sms_status(Customer, UserId, TransactionId, Detailed);
 
 handle(get_sms_status, Req = #'HTTP_GetSmsStatus'{}, Customer) ->
     UserId = Req#'HTTP_GetSmsStatus'.userName,
     TransactionId = Req#'HTTP_GetSmsStatus'.transactionID,
-    Detailed = maybe_boolean(Req#'HTTP_GetSmsStatus'.detailed),
+    Detailed = reformat_boolean(Req#'HTTP_GetSmsStatus'.detailed),
     get_sms_status(Customer, UserId, TransactionId, Detailed);
 
 handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
@@ -721,12 +721,12 @@ aggregate_statistics([#sms_status_v1{status = Status} | Rest], Dict) ->
     Dict1 = dict:update_counter(Status, 1, Dict),
     aggregate_statistics(Rest, Dict1).
 
-maybe_boolean(<<"true">>)  -> true;
-maybe_boolean(<<"True">>)  -> true;
-maybe_boolean(<<"false">>) -> false;
-maybe_boolean(<<"False">>) -> false;
-maybe_boolean(<<>>)        -> false;
-maybe_boolean(undefined)   -> false.
+reformat_boolean(<<"true">>)  -> true;
+reformat_boolean(<<"True">>)  -> true;
+reformat_boolean(<<"false">>) -> false;
+reformat_boolean(<<"False">>) -> false;
+reformat_boolean(<<>>)        -> false;
+reformat_boolean(undefined)   -> false.
 
 reformat_addr(undefined) ->
     reformat_addr(<<"">>);
