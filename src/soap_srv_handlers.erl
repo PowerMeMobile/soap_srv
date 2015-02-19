@@ -754,6 +754,7 @@ parse_def_date(<<>>) ->
     {ok, undefined};
 parse_def_date(Date) ->
     try
+        %% YYYYMMDDHHMMSS in UTC
         {YearB, Date2} = split_binary(Date, 4),
         {MonB, Date3} = split_binary(Date2, 2),
         {DayB, Date4} = split_binary(Date3, 2),
