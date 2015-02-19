@@ -349,15 +349,20 @@ handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
+    Message = reformat_numbers(
+        Req#'SendSms'.smsText, Req#'SendSms'.messageType),
+    {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
         customer = Customer,
-        recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
         originator = reformat_addr(Req#'SendSms'.originator),
-        message = reformat_numbers(Req#'SendSms'.smsText, Req#'SendSms'.messageType),
+        recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
+        message = Message,
+        encoding = Encoding,
+        encoded_size = Size,
         def_date =  Req#'SendSms'.defDate,
         flash = maybe_boolean(Req#'SendSms'.flash)
     },
@@ -373,16 +378,20 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendSms'.'userName',
-    Message = reformat_numbers(Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.messageType),
+    Message = reformat_numbers(
+        Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.messageType),
+    {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
         customer = Customer,
-        recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
         originator = reformat_addr(Req#'HTTP_SendSms'.originator),
+        recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
         message = Message,
+        encoding = Encoding,
+        encoded_size = Size,
         def_date =  Req#'HTTP_SendSms'.defDate,
         flash = maybe_boolean(Req#'HTTP_SendSms'.flash)
     },
@@ -398,16 +407,20 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
-    Message = reformat_numbers(Req#'SendSms2'.smsText, Req#'SendSms2'.messageType),
+    Message = reformat_numbers(
+        Req#'SendSms2'.smsText, Req#'SendSms2'.messageType),
+    {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Req2 = #send_req{
         action = send_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
         customer = Customer,
-        recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
         originator = reformat_addr(Req#'SendSms2'.originator),
+        recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
         message = Message,
+        encoding = Encoding,
+        encoded_size = Size,
         def_date =  Req#'SendSms2'.defDate,
         flash = maybe_boolean(Req#'SendSms2'.flash)
     },
@@ -425,15 +438,18 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
     UserId = Req#'SendServiceSms'.userName,
     Message = reformat_service_sms(
         Req#'SendServiceSms'.serviceName, Req#'SendServiceSms'.serviceUrl),
+    {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Req2 = #send_req{
         action = send_service_sms,
         customer_id = CustomerId,
         user_id = UserId,
         client_type = soap,
         customer = Customer,
-        recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
         originator = reformat_addr(Req#'SendServiceSms'.originator),
+        recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
         message = Message,
+        encoding = Encoding,
+        encoded_size = Size,
         def_date =  Req#'SendServiceSms'.defDate,
         flash = maybe_boolean(Req#'SendServiceSms'.flash)
     },
