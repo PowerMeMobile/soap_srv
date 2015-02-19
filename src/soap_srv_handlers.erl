@@ -367,7 +367,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
         message = Message,
         encoding = Encoding,
-        encoded_size = Size,
+        size = Size,
         smpp_params = Params,
         def_date = Req#'SendSms'.defDate
     },
@@ -401,7 +401,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
         message = Message,
         encoding = Encoding,
-        encoded_size = Size,
+        size = Size,
         smpp_params = Params,
         def_date = Req#'HTTP_SendSms'.defDate
     },
@@ -435,7 +435,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
         message = Message,
         encoding = Encoding,
-        encoded_size = Size,
+        size = Size,
         smpp_params = Params,
         def_date = Req#'SendSms2'.defDate
     },
@@ -471,7 +471,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
         message = Message,
         encoding = Encoding,
-        encoded_size = Size,
+        size = Size,
         smpp_params = Params,
         def_date = Req#'SendServiceSms'.defDate
     },
@@ -506,7 +506,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         originator = reformat_addr(Req#'SendBinarySms'.originator),
         message = Message,
         encoding = default,
-        encoded_size = size(Message),
+        size = size(Message),
         smpp_params = Params,
         def_date = Req#'SendBinarySms'.defDate
     },
@@ -541,7 +541,7 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
         message = Message,
         encoding = default,
-        encoded_size = size(Message),
+        size = size(Message),
         smpp_params = Params,
         def_date = Req#'HTTP_SendBinarySms'.defDate
     },
