@@ -354,20 +354,23 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Flash = reformat_boolean(Req#'SendSms'.flash),
     Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
-        {<<"esm_class">>, 3},
-        {<<"protocol_id">>, 0}
+        {esm_class, 3},
+        {protocol_id, 0}
     ],
     Req2 = #send_req{
         customer_id = CustomerId,
         user_id = UserId,
-        client_type = soap,
+        interface = soap,
         customer = Customer,
         originator = reformat_addr(Req#'SendSms'.originator),
         recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
+
+        req_type = one_to_many,
         message = Message,
         encoding = Encoding,
         size = Size,
-        smpp_params = Params,
+        params = Params,
+
         def_date = Req#'SendSms'.defDate
     },
     case alley_services_mt:send(Req2) of
@@ -387,20 +390,23 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Flash = reformat_boolean(Req#'HTTP_SendSms'.flash),
     Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
-        {<<"esm_class">>, 3},
-        {<<"protocol_id">>, 0}
+        {esm_class, 3},
+        {protocol_id, 0}
     ],
     Req2 = #send_req{
         customer_id = CustomerId,
         user_id = UserId,
-        client_type = soap,
+        interface = soap,
         customer = Customer,
         originator = reformat_addr(Req#'HTTP_SendSms'.originator),
         recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
+
+        req_type = one_to_many,
         message = Message,
         encoding = Encoding,
         size = Size,
-        smpp_params = Params,
+        params = Params,
+
         def_date = Req#'HTTP_SendSms'.defDate
     },
     case alley_services_mt:send(Req2) of
@@ -420,20 +426,23 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Flash = reformat_boolean(Req#'SendSms2'.flash),
     Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
-        {<<"esm_class">>, 3},
-        {<<"protocol_id">>, 0}
+        {esm_class, 3},
+        {protocol_id, 0}
     ],
     Req2 = #send_req{
         customer_id = CustomerId,
         user_id = UserId,
-        client_type = soap,
+        interface = soap,
         customer = Customer,
         originator = reformat_addr(Req#'SendSms2'.originator),
         recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
+
+        req_type = one_to_many,
         message = Message,
         encoding = Encoding,
         size = Size,
-        smpp_params = Params,
+        params = Params,
+
         def_date = Req#'SendSms2'.defDate
     },
     case alley_services_mt:send(Req2) of
@@ -452,23 +461,26 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         Req#'SendServiceSms'.serviceName, Req#'SendServiceSms'.serviceUrl),
     {Encoding, Size} = alley_services_utils:encoding_size(Message),
     Params = common_smpp_params(Customer) ++ [
-        {<<"esm_class">>, 64},
-        {<<"protocol_id">>, 0},
-        {<<"data_coding">>, 245},
-        {<<"source_port">>, 9200},
-        {<<"destination_port">>, 2948}
+        {esm_class, 64},
+        {protocol_id, 0},
+        {data_coding, 245},
+        {source_port, 9200},
+        {destination_port, 2948}
     ],
     Req2 = #send_req{
         customer_id = CustomerId,
         user_id = UserId,
-        client_type = soap,
+        interface = soap,
         customer = Customer,
         originator = reformat_addr(Req#'SendServiceSms'.originator),
         recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
+
+        req_type = one_to_many,
         message = Message,
         encoding = Encoding,
         size = Size,
-        smpp_params = Params,
+        params = Params,
+
         def_date = Req#'SendServiceSms'.defDate
     },
     case alley_services_mt:send(Req2) of
@@ -488,21 +500,24 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     ESMClass = reformat_integer(Req#'SendBinarySms'.esm_class),
     ProtocolId = reformat_integer(Req#'SendBinarySms'.'PID'),
     Params = common_smpp_params(Customer) ++ [
-        {<<"data_coding">>, DC},
-        {<<"esm_class">>, ESMClass},
-        {<<"protocol_id">>, ProtocolId}
+        {data_coding, DC},
+        {esm_class, ESMClass},
+        {protocol_id, ProtocolId}
     ],
     Req2 = #send_req{
         customer_id = CustomerId,
         user_id = UserId,
-        client_type = soap,
+        interface = soap,
         customer = Customer,
         recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
         originator = reformat_addr(Req#'SendBinarySms'.originator),
+
+        req_type = one_to_many,
         message = Message,
         encoding = default,
         size = size(Message),
-        smpp_params = Params,
+        params = Params,
+
         def_date = Req#'SendBinarySms'.defDate
     },
     case alley_services_mt:send(Req2) of
@@ -522,21 +537,24 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     ESMClass = reformat_integer(Req#'HTTP_SendBinarySms'.esm_class),
     ProtocolId = reformat_integer(Req#'HTTP_SendBinarySms'.'PID'),
     Params = common_smpp_params(Customer) ++ [
-        {<<"data_coding">>, DC},
-        {<<"esm_class">>, ESMClass},
-        {<<"protocol_id">>, ProtocolId}
+        {data_coding, DC},
+        {esm_class, ESMClass},
+        {protocol_id, ProtocolId}
     ],
     Req2 = #send_req{
         customer_id = CustomerId,
         user_id = UserId,
-        client_type = soap,
+        interface = soap,
         customer = Customer,
         recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
         originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
+
+        req_type = one_to_many,
         message = Message,
         encoding = default,
         size = size(Message),
-        smpp_params = Params,
+        params = Params,
+
         def_date = Req#'HTTP_SendBinarySms'.defDate
     },
     case alley_services_mt:send(Req2) of
@@ -837,9 +855,9 @@ reformat_service_sms(Name, Url) ->
 flash(false, _) ->
     [];
 flash(true, default) ->
-    [{<<"data_coding">>, 240}];
+    [{data_coding, 240}];
 flash(true, ucs2) ->
-    [{<<"data_coding">>, 248}].
+    [{data_coding, 248}].
 
 common_smpp_params(Customer) ->
     ReceiptsAllowed = Customer#auth_customer_v1.receipts_allowed,
@@ -847,9 +865,9 @@ common_smpp_params(Customer) ->
     Validity = alley_services_utils:fmt_validity(
         Customer#auth_customer_v1.default_validity),
     [
-        {<<"registered_delivery">>, ReceiptsAllowed},
-        {<<"service_type">>, <<>>},
-        {<<"no_retry">>, NoRetry},
-        {<<"validity_period">>, Validity},
-        {<<"priority_flag">>, 0}
+        {registered_delivery, ReceiptsAllowed},
+        {service_type, <<>>},
+        {no_retry, NoRetry},
+        {validity_period, Validity},
+        {priority_flag, 0}
     ].
