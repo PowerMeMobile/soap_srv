@@ -358,10 +358,10 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         {protocol_id, 0}
     ],
     Req2 = #send_req{
+        customer = Customer,
         customer_id = CustomerId,
         user_id = UserId,
         interface = soap,
-        customer = Customer,
         originator = reformat_addr(Req#'SendSms'.originator),
         recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
 
@@ -394,10 +394,10 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         {protocol_id, 0}
     ],
     Req2 = #send_req{
+        customer = Customer,
         customer_id = CustomerId,
         user_id = UserId,
         interface = soap,
-        customer = Customer,
         originator = reformat_addr(Req#'HTTP_SendSms'.originator),
         recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
 
@@ -430,10 +430,10 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         {protocol_id, 0}
     ],
     Req2 = #send_req{
+        customer = Customer,
         customer_id = CustomerId,
         user_id = UserId,
         interface = soap,
-        customer = Customer,
         originator = reformat_addr(Req#'SendSms2'.originator),
         recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
 
@@ -468,10 +468,10 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         {destination_port, 2948}
     ],
     Req2 = #send_req{
+        customer = Customer,
         customer_id = CustomerId,
         user_id = UserId,
         interface = soap,
-        customer = Customer,
         originator = reformat_addr(Req#'SendServiceSms'.originator),
         recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
 
@@ -505,12 +505,12 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         {protocol_id, ProtocolId}
     ],
     Req2 = #send_req{
+        customer = Customer,
         customer_id = CustomerId,
         user_id = UserId,
         interface = soap,
-        customer = Customer,
-        recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
         originator = reformat_addr(Req#'SendBinarySms'.originator),
+        recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
 
         req_type = one_to_many,
         message = Message,
@@ -542,12 +542,12 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         {protocol_id, ProtocolId}
     ],
     Req2 = #send_req{
+        customer = Customer,
         customer_id = CustomerId,
         user_id = UserId,
         interface = soap,
-        customer = Customer,
-        recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
         originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
+        recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
 
         req_type = one_to_many,
         message = Message,
