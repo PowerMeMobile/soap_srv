@@ -19,8 +19,10 @@ import xmltodict
 import hexdump
 import time as time
 
-HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
-#HOST = 'http://mm.powermemobile.com/mm/soap/messenger.asmx'
+SOAP_HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
+#SOAP_HOST = 'http://mm.powermemobile.com/mm/soap/messenger.asmx'
+
+KELLY_HOST = 'http://localhost:8080'
 
 CUSTOMER_ID = 3
 USER_ID     = 'user'
@@ -57,17 +59,23 @@ def request(request):
 #
 
 def send_sms(request, customerID, userName, userPassword, originator, smsText, recipientPhone, messageType, defDate, blink, flash, Private):
-    url = HOST + '/HTTP_SendSms'
+    url = SOAP_HOST + '/HTTP_SendSms'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'originator': originator, 'smsText': smsText, 'recipientPhone': recipientPhone, 'messageType': messageType, \
     'defDate': defDate, 'blink': str(blink), 'flash': str(flash), 'Private': str(Private)}
     return request.make(url, params)
 
 def get_sms_status(request, customerID, userName, userPassword, transactionID, detailed):
-    url = HOST + '/HTTP_GetSmsStatus'
+    url = SOAP_HOST + '/HTTP_GetSmsStatus'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'transactionID': transactionID, 'detailed': str(detailed)}
     return request.make(url, params)
+
+def get_batch_info(_request, transactionID):
+    url = KELLY_HOST + '/v1/batches/' + transactionID
+    req = requests.get(url)
+    print("{0}".format(req.request.url))
+    return req.json()
 
 #
 # Check encodings
@@ -81,12 +89,10 @@ def check_message_parts_count(request, message, encoding, count):
     assert res['SendResult']['TransactionID'] != None
     tid = res['SendResult']['TransactionID']
 
-    res = get_sms_status(request, CUSTOMER_ID, USER_ID, PASSWORD, tid, False)
-    assert res['SmsStatus']['Result'] == 'OK'
-    stats = res['SmsStatus']['Statistics']['statistics']
-    # w/o namespace value, which is first
-    stats2 = stats.values()[1:]
-    assert sum(map(lambda d: int(d['#text']), stats2)) == count
+    time.sleep(1)
+
+    res = get_batch_info(request, tid)
+    assert res['messages'] == count
 
 def test_check_encodings(request):
     latin1_160 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ'
