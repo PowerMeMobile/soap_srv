@@ -110,6 +110,22 @@ def test_HTTP_Authenticate_succ(request):
     assert res['AuthResult']['CreditSMS'] == 'POSTPAID'
     assert res['AuthResult']['CustomerID'] == str(CUSTOMER_ID)
 
+def test_HTTP_Authenticate_lower_succ(request):
+    res = authenticate(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD.lower())
+    assert res['AuthResult']['Result'] == 'OK'
+    assert res['AuthResult']['Originators'] != []
+    assert res['AuthResult']['NetPoints'] == 'POSTPAID'
+    assert res['AuthResult']['CreditSMS'] == 'POSTPAID'
+    assert res['AuthResult']['CustomerID'] == str(CUSTOMER_ID)
+
+def test_HTTP_Authenticate_upper_succ(request):
+    res = authenticate(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD.upper())
+    assert res['AuthResult']['Result'] == 'OK'
+    assert res['AuthResult']['Originators'] != []
+    assert res['AuthResult']['NetPoints'] == 'POSTPAID'
+    assert res['AuthResult']['CreditSMS'] == 'POSTPAID'
+    assert res['AuthResult']['CustomerID'] == str(CUSTOMER_ID)
+
 #
 # HTTP_KeepAlive
 #

@@ -402,6 +402,22 @@ def test_HTTP_Authenticate_succ(client):
     assert res['HTTP_AuthenticateResult']['CreditSMS'] == 'POSTPAID'
     assert res['HTTP_AuthenticateResult']['CustomerID'] == CUSTOMER_ID
 
+def test_HTTP_Authenticate_lower_succ(client):
+    res = client.HTTP_Authenticate(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD.lower())
+    assert res['HTTP_AuthenticateResult']['Result'] == 'OK'
+    assert res['HTTP_AuthenticateResult']['Originators'] != []
+    assert res['HTTP_AuthenticateResult']['NetPoints'] == 'POSTPAID'
+    assert res['HTTP_AuthenticateResult']['CreditSMS'] == 'POSTPAID'
+    assert res['HTTP_AuthenticateResult']['CustomerID'] == CUSTOMER_ID
+
+def test_HTTP_Authenticate_upper_succ(client):
+    res = client.HTTP_Authenticate(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD.upper())
+    assert res['HTTP_AuthenticateResult']['Result'] == 'OK'
+    assert res['HTTP_AuthenticateResult']['Originators'] != []
+    assert res['HTTP_AuthenticateResult']['NetPoints'] == 'POSTPAID'
+    assert res['HTTP_AuthenticateResult']['CreditSMS'] == 'POSTPAID'
+    assert res['HTTP_AuthenticateResult']['CustomerID'] == CUSTOMER_ID
+
 #
 # HTTP_KeepAlive
 #
