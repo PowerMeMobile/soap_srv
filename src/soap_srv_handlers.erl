@@ -349,9 +349,9 @@ handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
-    Message = reformat_numbers(
-        Req#'SendSms'.smsText, Req#'SendSms'.messageType),
-    {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    {Encoding, NumType} = reformat_message_type(Req#'SendSms'.messageType),
+    Message = alley_services_utils:convert_arabic_numbers(Req#'SendSms'.smsText, NumType),
+    Size = alley_services_utils:chars_size(Encoding, Message),
     Flash = reformat_boolean(Req#'SendSms'.flash),
     Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
         {esm_class, 3},
@@ -385,9 +385,9 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendSms'.'userName',
-    Message = reformat_numbers(
-        Req#'HTTP_SendSms'.smsText, Req#'HTTP_SendSms'.messageType),
-    {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    {Encoding, NumType} = reformat_message_type(Req#'HTTP_SendSms'.messageType),
+    Message = alley_services_utils:convert_arabic_numbers(Req#'HTTP_SendSms'.smsText, NumType),
+    Size = alley_services_utils:chars_size(Encoding, Message),
     Flash = reformat_boolean(Req#'HTTP_SendSms'.flash),
     Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
         {esm_class, 3},
@@ -421,9 +421,9 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
-    Message = reformat_numbers(
-        Req#'SendSms2'.smsText, Req#'SendSms2'.messageType),
-    {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    {Encoding, NumType} = reformat_message_type(Req#'SendSms2'.messageType),
+    Message = alley_services_utils:convert_arabic_numbers(Req#'SendSms2'.smsText, NumType),
+    Size = alley_services_utils:chars_size(Encoding, Message),
     Flash = reformat_boolean(Req#'SendSms2'.flash),
     Params = flash(Flash, Encoding) ++ common_smpp_params(Customer) ++ [
         {esm_class, 3},
@@ -457,9 +457,10 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
 handle(send, Req = #'SendServiceSms'{}, Customer) ->
     CustomerId = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'SendServiceSms'.userName,
+    {Encoding, _NumType} = reformat_message_type(Req#'SendServiceSms'.messageType),
     Message = reformat_service_sms(
         Req#'SendServiceSms'.serviceName, Req#'SendServiceSms'.serviceUrl),
-    {Encoding, Size} = alley_services_utils:encoding_size(Message),
+    Size = alley_services_utils:chars_size(Encoding, Message),
     Params = common_smpp_params(Customer) ++ [
         {esm_class, 64},
         {protocol_id, 0},
@@ -844,10 +845,12 @@ parse_def_date(Date) ->
             {error, invalid}
     end.
 
-reformat_numbers(Text, <<"ArabicWithArabicNumbers">>) ->
-    alley_services_utils:convert_arabic_numbers(Text, to_arabic);
-reformat_numbers(Text, _) ->
-    Text.
+reformat_message_type(<<"Latin">>) ->
+    {default, to_latin};
+reformat_message_type(<<"ArabicWithArabicNumbers">>) ->
+    {ucs2, to_arabic};
+reformat_message_type(<<"ArabicWithLatinNumbers">>) ->
+    {ucs2, to_latin}.
 
 reformat_service_sms(Name, Url) ->
     <<"<%SERVICEMESSAGE:", Name/binary, ";", Url/binary, "%>">>.

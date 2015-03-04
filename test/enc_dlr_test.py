@@ -107,22 +107,25 @@ def test_check_encodings(request):
     utf8_135 = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШ'
     utf8_201 = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНО'
     utf8_202 = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОП'
-    checks = [
+    latin1_checks = [
         (latin1_160, 'Latin', 1),
         (latin1_161, 'Latin', 2),
         (latin1_306, 'Latin', 2),
         (latin1_307, 'Latin', 3),
         (latin1_459, 'Latin', 3),
-        (latin1_460, 'Latin', 4),
-        (utf8_70,    'Latin', 1),
-        (utf8_71,    'Latin', 2),
-        (utf8_134,   'Latin', 2),
-        (utf8_135,   'Latin', 3),
-        (utf8_201,   'Latin', 3),
-        (utf8_202,   'Latin', 4)
+        (latin1_460, 'Latin', 4)
     ]
-
-    for (message, encoding, count) in checks:
+    utf8_checks = [
+        (utf8_70,    'ArabicWithLatinNumbers', 1),
+        (utf8_71,    'ArabicWithLatinNumbers', 2),
+        (utf8_134,   'ArabicWithLatinNumbers', 2),
+        (utf8_135,   'ArabicWithLatinNumbers', 3),
+        (utf8_201,   'ArabicWithLatinNumbers', 3),
+        (utf8_202,   'ArabicWithLatinNumbers', 4)
+    ]
+    for (message, encoding, count) in latin1_checks:
+        check_message_parts_count(request, message, encoding, count)
+    for (message, encoding, count) in utf8_checks:
         check_message_parts_count(request, message, encoding, count)
 
 #
