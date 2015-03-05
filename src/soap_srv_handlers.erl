@@ -371,7 +371,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         size = Size,
         params = Params,
 
-        def_date = Req#'SendSms'.defDate
+        def_time = Req#'SendSms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -407,7 +407,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         size = Size,
         params = Params,
 
-        def_date = Req#'HTTP_SendSms'.defDate
+        def_time = Req#'HTTP_SendSms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -443,7 +443,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         size = Size,
         params = Params,
 
-        def_date = Req#'SendSms2'.defDate
+        def_time = Req#'SendSms2'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -482,7 +482,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         size = Size,
         params = Params,
 
-        def_date = Req#'SendServiceSms'.defDate
+        def_time = Req#'SendServiceSms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -519,7 +519,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         size = size(Message),
         params = Params,
 
-        def_date = Req#'SendBinarySms'.defDate
+        def_time = Req#'SendBinarySms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -556,7 +556,7 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         size = size(Message),
         params = Params,
 
-        def_date = Req#'HTTP_SendBinarySms'.defDate
+        def_time = Req#'HTTP_SendBinarySms'.defDate
     },
     case alley_services_mt:send(Req2) of
         {ok, Result} ->
@@ -838,7 +838,7 @@ parse_def_date(Date) ->
         Min = binary_to_integer(MinB),
         Sec = binary_to_integer(SecB),
         DateTime = {{Year, Mon, Day}, {Hour, Min, Sec}},
-        RefDate = ac_datetime:datetime_to_timestamp(DateTime),
+        RefDate = ac_datetime:datetime_to_unixepoch(DateTime),
         {ok, RefDate}
     catch
         _:_ ->
