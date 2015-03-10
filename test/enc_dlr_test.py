@@ -18,6 +18,7 @@ import requests
 import xmltodict
 import hexdump
 import time as time
+import datetime
 
 SOAP_HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
 #SOAP_HOST = 'http://mm.powermemobile.com/mm/soap/messenger.asmx'
@@ -163,3 +164,20 @@ def test_check_sink_delivery_statuses(request):
 
     for (command, status, timeout) in checks:
         check_sink_delivery_status(request, command, status, timeout)
+
+#
+# Check deferred status
+#
+
+def test_check_deferred_status(request):
+    defdate = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y%m%d%H%M%S')
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, 'Hello', SINK_RECIPIENT, 'Latin', defdate, False, False, False)
+    assert res['SendResult']['Result'] == 'OK'
+    assert res['SendResult']['TransactionID'] != None
+    tid = res['SendResult']['TransactionID']
+
+    time.sleep(2)
+
+    res = get_sms_status(request, CUSTOMER_ID, USER_ID, PASSWORD, tid, False)
+    assert res['SmsStatus']['Result'] == 'OK'
+    assert res['SmsStatus']['Statistics']['statistics']['SMSC_DEFERRED']
