@@ -365,7 +365,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         originator = reformat_addr(Req#'SendSms'.originator),
         recipients = reformat_addrs(Req#'SendSms'.recipientPhone),
 
-        req_type = one_to_many,
+        req_type = single,
         message = Message,
         encoding = Encoding,
         size = Size,
@@ -401,7 +401,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
         originator = reformat_addr(Req#'HTTP_SendSms'.originator),
         recipients = reformat_addrs(Req#'HTTP_SendSms'.recipientPhone),
 
-        req_type = one_to_many,
+        req_type = single,
         message = Message,
         encoding = Encoding,
         size = Size,
@@ -437,7 +437,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
         originator = reformat_addr(Req#'SendSms2'.originator),
         recipients = reformat_addrs(Req#'SendSms2'.recipientPhonesFile),
 
-        req_type = one_to_many,
+        req_type = single,
         message = Message,
         encoding = Encoding,
         size = Size,
@@ -476,7 +476,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
         originator = reformat_addr(Req#'SendServiceSms'.originator),
         recipients = reformat_addrs(Req#'SendServiceSms'.recipientPhone),
 
-        req_type = one_to_many,
+        req_type = single,
         message = Message,
         encoding = Encoding,
         size = Size,
@@ -513,7 +513,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
         originator = reformat_addr(Req#'SendBinarySms'.originator),
         recipients = reformat_addrs(Req#'SendBinarySms'.recipientPhone),
 
-        req_type = one_to_many,
+        req_type = single,
         message = Message,
         encoding = default,
         size = size(Message),
@@ -550,7 +550,7 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
         originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
         recipients = reformat_addrs(Req#'HTTP_SendBinarySms'.recipientPhone),
 
-        req_type = one_to_many,
+        req_type = single,
         message = Message,
         encoding = default,
         size = size(Message),
