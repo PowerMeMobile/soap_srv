@@ -838,8 +838,8 @@ parse_def_date(Date) ->
         Min = binary_to_integer(MinB),
         Sec = binary_to_integer(SecB),
         DateTime = {{Year, Mon, Day}, {Hour, Min, Sec}},
-        RefDate = ac_datetime:datetime_to_timestamp(DateTime),
-        {ok, RefDate}
+        DefDate = ac_datetime:datetime_to_timestamp(DateTime),
+        {ok, DefDate}
     catch
         _:_ ->
             {error, invalid}
