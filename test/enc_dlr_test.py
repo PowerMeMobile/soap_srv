@@ -21,8 +21,6 @@ import time as time
 import datetime
 
 SOAP_HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
-#SOAP_HOST = 'http://mm.powermemobile.com/mm/soap/messenger.asmx'
-
 KELLY_HOST = 'http://localhost:8080'
 
 CUSTOMER_ID = 10003

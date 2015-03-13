@@ -17,7 +17,6 @@ import xmltodict
 import hexdump
 
 HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
-#HOST = 'http://mm.powermemobile.com/mm/soap/messenger.asmx'
 
 CUSTOMER_ID = 10003
 USER_ID     = 'user'

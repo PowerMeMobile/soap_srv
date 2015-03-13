@@ -18,7 +18,6 @@ SOAP11 = 'soapenv'
 SOAP12 = 'soap12env'
 
 WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?WSDL'
-#WSDL = 'http://mm.powermemobile.com/mm/soap/messenger.asmx?WSDL'
 
 CUSTOMER_ID = 10003
 USER_ID     = 'user'
