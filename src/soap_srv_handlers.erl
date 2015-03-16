@@ -632,7 +632,7 @@ authenticate(CustomerID, UserName, Password) ->
             case Result of
                 #auth_customer_v1{} ->
                     {ok, Result};
-                #auth_error_v1{message = Error} ->
+                #auth_error_v1{code = Error} ->
                     ?log_error("Authenticate response error: ~p", [Error]),
                     {error, authentication}
             end;
