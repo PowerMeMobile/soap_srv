@@ -1,0 +1,12 @@
+$ tsung -f send_sms.xml start
+Starting Tsung
+"Log directory is: /home/ten0s/.tsung/log/20150330-1748"
+$ cd /home/ten0s/.tsung/log/20150330-1748
+$ tsung_stats.pl
+creating subdirectory data
+creating subdirectory gnuplot_scripts
+creating subdirectory images
+No data for Bosh
+No data for Event
+No data for Async
+$ open report.html

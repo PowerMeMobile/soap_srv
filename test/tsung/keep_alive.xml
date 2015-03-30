@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<!DOCTYPE tsung SYSTEM "/opt/tsung-1.5.1/share/tsung/tsung-1.0.dtd">
+<tsung loglevel="notice" version="1.0">
+
+  <clients>
+    <client host="localhost" use_controller_vm="false" maxusers="5000"/>
+  </clients>
+
+  <servers>
+    <server host="10.10.0.152" port="8088" type="tcp"></server>
+  </servers>
+
+  <load>
+<!--
+    <arrivalphase phase="1" duration="30" unit="second">
+      <users interarrival="1" unit="second"></users>
+    </arrivalphase>
+-->
+
+    <arrivalphase phase="2" duration="30" unit="second">
+      <users maxnumber="10000" arrivalrate="100" unit="second"></users>
+    </arrivalphase>
+  </load>
+
+  <sessions>
+    <session name="HTTP_KeepAlive" probability="50" type="ts_http">
+      <request tag="get">
+        <http url="/bmsgw/soap/messenger.asmx/HTTP_KeepAlive?customerID=10003&amp;userName=user&amp;userPassword=password"
+              method="GET" version="1.1">
+        </http>
+      </request>
+
+      <request tag="post">
+        <http url="/bmsgw/soap/messenger.asmx/HTTP_KeepAlive"
+              method="POST" version="1.1"
+              contents='customerID=10003&amp;userName=user&amp;userPassword=password'>
+        </http>
+      </request>
+
+      <request tag="soap11">
+        <http url="/bmsgw/soap/messenger.asmx"
+              method="POST" version="1.1"
+              contents_from_file='contents/http_keep_alive.soap11.xml'>
+          <http_header name="SOAPAction" value="http://pmmsoapmessenger.com/HTTP_KeepAlive"/>
+          <http_header name="Content-Type" value="text/xml; charset=utf-8"/>
+        </http>
+      </request>
+
+      <request tag="soap12">
+        <http url="/bmsgw/soap/messenger.asmx"
+              method="POST" version="1.1"
+              contents_from_file='contents/http_keep_alive.soap12.xml'>
+          <http_header name="Content-Type" value="application/soap+xml; charset=utf-8"/>
+        </http>
+      </request>
+    </session>
+
+    <session name="KeepAlive" probability="50" type="ts_http">
+      <request tag="soap11">
+        <http url="/bmsgw/soap/messenger.asmx"
+              method="POST" version="1.1"
+              contents_from_file='contents/keep_alive.soap11.xml'>
+          <http_header name="SOAPAction" value="http://pmmsoapmessenger.com/KeepAlive"/>
+          <http_header name="Content-Type" value="text/xml; charset=utf-8"/>
+        </http>
+      </request>
+
+      <request tag="soap12">
+        <http url="/bmsgw/soap/messenger.asmx"
+              method="POST" version="1.1"
+              contents_from_file='contents/keep_alive.soap12.xml'>
+          <http_header name="Content-Type" value="application/soap+xml; charset=utf-8"/>
+        </http>
+      </request>
+    </session>
+
+  </sessions>
+</tsung>

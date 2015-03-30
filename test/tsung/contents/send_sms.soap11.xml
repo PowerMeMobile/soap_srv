@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <SendSms xmlns="http://pmmsoapmessenger.com/">
+      <user>
+        <CustomerID>10003</CustomerID>
+        <Name>user</Name>
+        <Language>en</Language>
+        <Password>password</Password>
+      </user>
+      <originator>SMS</originator>
+      <smsText>Hello</smsText>
+      <recipientPhone>375296543210</recipientPhone>
+      <messageType>Latin</messageType>
+      <defDate></defDate>
+      <blink>false</blink>
+      <flash>false</flash>
+      <Private>false</Private>
+    </SendSms>
+  </soap:Body>
+</soap:Envelope>
