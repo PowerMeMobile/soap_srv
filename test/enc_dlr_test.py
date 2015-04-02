@@ -14,14 +14,32 @@
 # $ python runtests.py -v
 
 import pytest
+
+import os
 import requests
 import xmltodict
 import hexdump
 import time as time
 import datetime
 
-SOAP_HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
-KELLY_HOST = 'http://localhost:8080'
+SOAP_HOST = os.getenv('SOAP_HOST')
+if SOAP_HOST == None or SOAP_HOST == '':
+    SOAP_HOST = '127.0.0.1'
+
+SOAP_PORT = os.getenv('SOAP_PORT')
+if SOAP_PORT == None or SOAP_PORT == '':
+    SOAP_PORT = '8088'
+
+KELLY_HOST = os.getenv('KELLY_HOST')
+if KELLY_HOST == None or KELLY_HOST == '':
+    KELLY_HOST = SOAP_HOST
+
+KELLY_PORT = os.getenv('KELLY_PORT')
+if KELLY_PORT == None or KELLY_PORT == '':
+    KELLY_PORT = '8080'
+
+SOAP_SERVER = 'http://{0}:{1}/bmsgw/soap/messenger.asmx'.format(SOAP_HOST, SOAP_PORT)
+KELLY_SERVER = 'http://{0}:{1}'.format(KELLY_HOST, KELLY_PORT)
 
 CUSTOMER_ID = 10003
 USER_ID     = 'user'
@@ -58,20 +76,20 @@ def request(request):
 #
 
 def send_sms(request, customerID, userName, userPassword, originator, smsText, recipientPhone, messageType, defDate, blink, flash, Private):
-    url = SOAP_HOST + '/HTTP_SendSms'
+    url = SOAP_SERVER + '/HTTP_SendSms'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'originator': originator, 'smsText': smsText, 'recipientPhone': recipientPhone, 'messageType': messageType, \
     'defDate': defDate, 'blink': str(blink), 'flash': str(flash), 'Private': str(Private)}
     return request.make(url, params)
 
 def get_sms_status(request, customerID, userName, userPassword, transactionID, detailed):
-    url = SOAP_HOST + '/HTTP_GetSmsStatus'
+    url = SOAP_SERVER + '/HTTP_GetSmsStatus'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'transactionID': transactionID, 'detailed': str(detailed)}
     return request.make(url, params)
 
 def get_batch_info(_request, transactionID):
-    url = KELLY_HOST + '/v1/batches/' + transactionID
+    url = KELLY_SERVER + '/v1/batches/' + transactionID
     req = requests.get(url)
     print("{0}".format(req.request.url))
     return req.json()

@@ -12,11 +12,21 @@
 # $ python runtests.py -v
 
 import pytest
+
+import os
 import requests
 import xmltodict
 import hexdump
 
-HOST = 'http://localhost:8088/bmsgw/soap/messenger.asmx'
+SOAP_HOST = os.getenv('SOAP_HOST')
+if SOAP_HOST == None or SOAP_HOST == '':
+    SOAP_HOST = '127.0.0.1'
+
+SOAP_PORT = os.getenv('SOAP_PORT')
+if SOAP_PORT == None or SOAP_PORT == '':
+    SOAP_PORT = '8088'
+
+SOAP_SERVER = 'http://{0}:{1}/bmsgw/soap/messenger.asmx'.format(SOAP_HOST, SOAP_PORT)
 
 CUSTOMER_ID = 10003
 USER_ID     = 'user'
@@ -60,31 +70,31 @@ def request(request):
 #
 
 def authenticate(request, customerID, userName, userPassword):
-    url = HOST + '/HTTP_Authenticate'
+    url = SOAP_SERVER + '/HTTP_Authenticate'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword}
     return request.make(url, params)
 
 def keep_alive(request, customerID, userName, userPassword):
-    url = HOST + '/HTTP_KeepAlive'
+    url = SOAP_SERVER + '/HTTP_KeepAlive'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword}
     return request.make(url, params)
 
 def send_sms(request, customerID, userName, userPassword, originator, smsText, recipientPhone, messageType, defDate, blink, flash, Private):
-    url = HOST + '/HTTP_SendSms'
+    url = SOAP_SERVER + '/HTTP_SendSms'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'originator': originator, 'smsText': smsText, 'recipientPhone': recipientPhone, 'messageType': messageType, \
     'defDate': defDate, 'blink': str(blink), 'flash': str(flash), 'Private': str(Private)}
     return request.make(url, params)
 
 def send_binary_sms(request, customerID, userName, userPassword, originator, binaryBody, recipientPhone, defDate, data_coding, esm_class, PID):
-    url = HOST + '/HTTP_SendBinarySms'
+    url = SOAP_SERVER + '/HTTP_SendBinarySms'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'originator': originator, 'binaryBody': binaryBody, 'recipientPhone': recipientPhone, 'defDate': defDate, \
     'data_coding': data_coding, 'esm_class': esm_class, 'PID': PID}
     return request.make(url, params)
 
 def get_sms_status(request, customerID, userName, userPassword, transactionID, detailed):
-    url = HOST + '/HTTP_GetSmsStatus'
+    url = SOAP_SERVER + '/HTTP_GetSmsStatus'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
     'transactionID': transactionID, 'detailed': str(detailed)}
     return request.make(url, params)

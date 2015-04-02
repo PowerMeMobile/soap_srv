@@ -12,12 +12,22 @@
 # $ python runtests.py -v
 
 import pytest
+
+import os
 import hexdump
 
 SOAP11 = 'soapenv'
 SOAP12 = 'soap12env'
 
-WSDL = 'http://localhost:8088/bmsgw/soap/messenger.asmx?WSDL'
+SOAP_HOST = os.getenv('SOAP_HOST')
+if SOAP_HOST == None or SOAP_HOST == '':
+    SOAP_HOST = '127.0.0.1'
+
+SOAP_PORT = os.getenv('SOAP_PORT')
+if SOAP_PORT == None or SOAP_PORT == '':
+    SOAP_PORT = '8088'
+
+WSDL = 'http://{0}:{1}/bmsgw/soap/messenger.asmx?WSDL'.format(SOAP_HOST, SOAP_PORT)
 
 CUSTOMER_ID = 10003
 USER_ID     = 'user'
