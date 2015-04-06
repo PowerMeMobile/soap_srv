@@ -17,7 +17,6 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    alley_services_db:init_mnesia(),
     {ok, SupervisorPid} = soap_srv_sup:start_link(),
     soap_srv_protocol:init(),
     soap_srv_test_echo_handler:init(),
