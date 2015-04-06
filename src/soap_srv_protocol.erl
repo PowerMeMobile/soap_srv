@@ -3,7 +3,6 @@
 %% TODO
 %% Add proper response msgs with codes
 %% check for undefined mandatory parameters
-%% Imlement independent soap_srv DTO messages
 
 -behaviour(cowboy_http_handler).
 
@@ -37,7 +36,6 @@
 
 -define(Handler, soap_srv_handlers).
 
--define(PATH, "/bmsgw/soap/messenger.asmx").
 -define(NS, "http://pmmsoapmessenger.com/").
 
 -define(ContentTypeHName, <<"Content-Type">>).
@@ -133,9 +131,10 @@ update_dispatch_rules() ->
 %% ===================================================================
 
 dispatch_rules() ->
+    {ok, Path} = application:get_env(?APP, root_path),
     DispatchRaw =
         [{'_', [
-            {?PATH ++ "/[...]", ?MODULE, []},
+            {Path ++ "/[...]", ?MODULE, []},
             {'_', ?MODULE, error}]
         }],
     cowboy_router:compile(DispatchRaw).
@@ -250,11 +249,18 @@ step(get_content_type, Req, St) ->
     end;
 
 step(get_subpath, Req, St) ->
+    {ok, RootPath} = application:get_env(?APP, root_path),
+    RootPathBin = list_to_binary(RootPath),
     {ReqPath, Req2} = cowboy_req:path(Req),
-    case ReqPath of
-        <<?PATH>> ->
+    PrefLen = binary:longest_common_prefix([RootPathBin, ReqPath]),
+    PathLen = byte_size(ReqPath),
+    ReqPath2 = binary:part(ReqPath, {PathLen, PrefLen-PathLen}),
+    case ReqPath2 of
+        <<>> ->
             step(get_transport_type, Req2, St#st{subpath = <<>>});
-        <<?PATH, $/, SubPath/binary>> ->
+        <<"/">> ->
+            step(get_transport_type, Req2, St#st{subpath = <<>>});
+        <<"/", SubPath/binary>> ->
             step(get_transport_type, Req2, St#st{subpath = SubPath})
     end;
 
@@ -691,6 +697,8 @@ get_qs_vals(Req) ->
         [{cowboy_bstr:to_lower(K), V} || {K, V} <- QsVals],
     {QsValsLowerCase, Req3}.
 
+action("/" ++ Action) ->
+    action(Action);
 action("Authenticate")         -> 'Authenticate';
 action("GetSmsStatus")         -> 'GetSmsStatus';
 action("KeepAlive")            -> 'KeepAlive';
