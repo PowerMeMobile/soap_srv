@@ -1,15 +1,4 @@
-# setup python's virtualenv as described here
-# https://gist.github.com/ten0s/98e7d88476ec75351d75
-
-# $ . env/bin/activate
-# $ py.test http_test.py
-# $ py.test http_test.py -k test_HTTP_Authenticate_succ
-# $ py.test --pdb
-# $ py.test -v
-
-# make standalone test script and then run it in verbose mode
-# $ py.test --genscript=runtests.py
-# $ python runtests.py -v
+# -*- coding: utf-8 -*-
 
 import pytest
 
