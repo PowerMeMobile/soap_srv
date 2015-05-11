@@ -347,7 +347,7 @@ handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     {Encoding, NumType} = reformat_message_type(Req#'SendSms'.messageType),
     Message = alley_services_utils:convert_arabic_numbers(Req#'SendSms'.smsText, NumType),
@@ -359,7 +359,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
     ],
     Req2 = #send_req{
         customer = Customer,
-        customer_id = CustomerId,
+        customer_uuid = CustomerUuid,
         user_id = UserId,
         interface = soap,
         originator = reformat_addr(Req#'SendSms'.originator),
@@ -383,7 +383,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         end;
 
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendSms'.'userName',
     {Encoding, NumType} = reformat_message_type(Req#'HTTP_SendSms'.messageType),
     Message = alley_services_utils:convert_arabic_numbers(Req#'HTTP_SendSms'.smsText, NumType),
@@ -395,7 +395,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     ],
     Req2 = #send_req{
         customer = Customer,
-        customer_id = CustomerId,
+        customer_uuid = CustomerUuid,
         user_id = UserId,
         interface = soap,
         originator = reformat_addr(Req#'HTTP_SendSms'.originator),
@@ -419,7 +419,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     {Encoding, NumType} = reformat_message_type(Req#'SendSms2'.messageType),
     Message = alley_services_utils:convert_arabic_numbers(Req#'SendSms2'.smsText, NumType),
@@ -431,7 +431,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     ],
     Req2 = #send_req{
         customer = Customer,
-        customer_id = CustomerId,
+        customer_uuid = CustomerUuid,
         user_id = UserId,
         interface = soap,
         originator = reformat_addr(Req#'SendSms2'.originator),
@@ -455,7 +455,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     end;
 
 handle(send, Req = #'SendServiceSms'{}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'SendServiceSms'.userName,
     {Encoding, _NumType} = reformat_message_type(Req#'SendServiceSms'.messageType),
     Message = reformat_service_sms(
@@ -470,7 +470,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
     ],
     Req2 = #send_req{
         customer = Customer,
-        customer_id = CustomerId,
+        customer_uuid = CustomerUuid,
         user_id = UserId,
         interface = soap,
         originator = reformat_addr(Req#'SendServiceSms'.originator),
@@ -494,7 +494,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Message = ac_hexdump:hexdump_to_binary(Req#'SendBinarySms'.binaryBody),
     DC = reformat_integer(Req#'SendBinarySms'.data_coding),
@@ -507,7 +507,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     ],
     Req2 = #send_req{
         customer = Customer,
-        customer_id = CustomerId,
+        customer_uuid = CustomerUuid,
         user_id = UserId,
         interface = soap,
         originator = reformat_addr(Req#'SendBinarySms'.originator),
@@ -531,7 +531,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     end;
 
 handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_SendBinarySms'.'userName',
     Message = ac_hexdump:hexdump_to_binary(Req#'HTTP_SendBinarySms'.binaryBody),
     DC = reformat_integer(Req#'HTTP_SendBinarySms'.data_coding),
@@ -544,7 +544,7 @@ handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     ],
     Req2 = #send_req{
         customer = Customer,
-        customer_id = CustomerId,
+        customer_uuid = CustomerUuid,
         user_id = UserId,
         interface = soap,
         originator = reformat_addr(Req#'HTTP_SendBinarySms'.originator),
@@ -580,18 +580,18 @@ handle(get_sms_status, Req = #'HTTP_GetSmsStatus'{}, Customer) ->
     get_sms_status(Customer, UserId, TransactionId, Detailed);
 
 handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Operation = inbox_operation(Req#'InboxProcessing'.operation),
-    MessageIds = Req#'InboxProcessing'.messageId,
-    inbox_processing(CustomerId, UserId, Operation, MessageIds);
+    MsgIds = Req#'InboxProcessing'.messageId,
+    inbox_processing(CustomerUuid, UserId, Operation, MsgIds);
 
 handle(inbox_processing, Req = #'HTTP_InboxProcessing'{}, Customer) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_InboxProcessing'.userName,
     Operation = inbox_operation(Req#'HTTP_InboxProcessing'.operation),
-    MessageIds = Req#'HTTP_InboxProcessing'.messageId,
-    inbox_processing(CustomerId, UserId, Operation, MessageIds);
+    MsgIds = Req#'HTTP_InboxProcessing'.messageId,
+    inbox_processing(CustomerUuid, UserId, Operation, MsgIds);
 
 handle(_, _, _) ->
     erlang:error(method_not_implemented).
@@ -642,9 +642,9 @@ authenticate(CustomerID, UserName, Password) ->
     end.
 
 get_sms_status(Customer, UserId, TransactionId, Detailed) ->
-    CustomerId = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     case alley_services_api:get_sms_status(
-            CustomerId, UserId, TransactionId) of
+            CustomerUuid, UserId, TransactionId) of
         {ok, #sms_status_resp_v1{statuses = Statuses}} ->
             Statistics = build_statistics(Statuses),
             Credit = credit_left(Customer#auth_customer_v1.pay_type,
@@ -670,9 +670,9 @@ get_sms_status(Customer, UserId, TransactionId, Detailed) ->
             {ok, #'SmsStatus'{'Result' = reformat_error(Error)}}
     end.
 
-inbox_processing(_CustomerId, _UserId, _Operation, _MessageIds) ->
-    %% case alley_services_api:process_inbox(CustomerId, UserId,
-    %%         Operation, MessageIds) of
+inbox_processing(_CustomerUuid, _UserId, _Operation, _MsgIds) ->
+    %% case alley_services_api:process_inbox(CustomerUuid, UserId,
+    %%         Operation, MsgIds) of
     %%     {ok, #k1api_process_inbox_response_dto{result = Result}} ->
     %%         handle_inbox_response(Result);
     %%     {error, Reason} ->
