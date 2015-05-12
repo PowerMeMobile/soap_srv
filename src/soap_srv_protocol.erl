@@ -62,7 +62,8 @@
     'GetSmsStatus',
     'SmsStatus',
     'HTTP_InboxProcessing',
-    'InboxProcessing'
+    'InboxProcessing',
+    'InlineResult'
 ]).
 
 -type action() ::
@@ -518,6 +519,8 @@ build_result_content(Record) when is_tuple(Record) ->
 
 build_result_content([], Acc) ->
     list_to_binary(lists:reverse(Acc));
+build_result_content([{'InlineBody', Value}], []) ->
+    Value;
 build_result_content([{Key, Value} | Tail], Acc) when
         is_list(Value) andalso Value =/= [] ->
     ComposedElements = list_to_binary(
@@ -532,6 +535,10 @@ build_result_content([{Key, Value} | Tail], Acc) ->
     Tag = construct_xml_tag(Key, Value),
     build_result_content(Tail, [Tag | Acc]).
 
+wrap_result(Content, St = #st{result = #'InlineResult'{}}) when
+        St#st.transport =:= http_post orelse
+        St#st.transport =:= http_get ->
+    Content;
 wrap_result(Content, St) when
         St#st.transport =:= http_post orelse
         St#st.transport =:= http_get ->

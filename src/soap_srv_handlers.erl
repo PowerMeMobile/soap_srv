@@ -40,6 +40,8 @@
      <<"Service name and url is expected">>).
 -define(E_CREDIT_LIMIT_EXCEEDED,
     <<"Customer's postpaid credit limit is exceeded">>).
+-define(E_INBOX_BAD_OPERATION,
+    <<"Non-supported Inbox operation is specified!">>).
 
 %% ===================================================================
 %% API
@@ -213,7 +215,8 @@ handle(authenticate, Req = #'InboxProcessing'{user = User}) ->
         {ok, Customer} ->
             handle(inbox_processing, Req, Customer);
         {error, Error} ->
-            {ok, #'CommonResult'{'Result' = reformat_error(Error)}}
+            Operation = Req#'InboxProcessing'.operation,
+            handle_inbox_error_response(Operation, Error)
     end;
 
 handle(authenticate, Req = #'HTTP_InboxProcessing'{}) ->
@@ -224,7 +227,8 @@ handle(authenticate, Req = #'HTTP_InboxProcessing'{}) ->
         {ok, Customer} ->
             handle(inbox_processing, Req, Customer);
         {error, Error} ->
-            {ok, #'CommonResult'{'Result' = reformat_error(Error)}}
+            Operation = Req#'HTTP_InboxProcessing'.operation,
+            handle_inbox_error_response(Operation, Error)
     end;
 
 handle(_, _) ->
@@ -583,14 +587,14 @@ handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
     CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
     Operation = inbox_operation(Req#'InboxProcessing'.operation),
-    MsgIds = Req#'InboxProcessing'.messageId,
+    MsgIds = inbox_msg_ids(Req#'InboxProcessing'.messageId),
     inbox_processing(CustomerUuid, UserId, Operation, MsgIds);
 
 handle(inbox_processing, Req = #'HTTP_InboxProcessing'{}, Customer) ->
     CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_InboxProcessing'.userName,
     Operation = inbox_operation(Req#'HTTP_InboxProcessing'.operation),
-    MsgIds = Req#'HTTP_InboxProcessing'.messageId,
+    MsgIds = inbox_msg_ids(Req#'HTTP_InboxProcessing'.messageId),
     inbox_processing(CustomerUuid, UserId, Operation, MsgIds);
 
 handle(_, _, _) ->
@@ -670,36 +674,127 @@ get_sms_status(Customer, UserId, TransactionId, Detailed) ->
             {ok, #'SmsStatus'{'Result' = reformat_error(Error)}}
     end.
 
-inbox_processing(_CustomerUuid, _UserId, _Operation, _MsgIds) ->
-    %% case alley_services_api:process_inbox(CustomerUuid, UserId,
-    %%         Operation, MsgIds) of
-    %%     {ok, #k1api_process_inbox_response_dto{result = Result}} ->
-    %%         handle_inbox_response(Result);
-    %%     {error, Reason} ->
-    %%         {ok, #'CommonResult'{'Result' = Reason}}
-    %% end.
-    {ok, #'CommonResult'{'Result' = ?E_NOT_IMPLEMENTED}}.
+inbox_processing(CustomerUuid, UserId, Operation, MsgIds) ->
+    case alley_services_api:process_inbox(CustomerUuid, UserId,
+            Operation, MsgIds) of
+        {ok, #inbox_resp_v1{result = Result}} ->
+            handle_inbox_response(Result);
+        {error, Error} ->
+            handle_inbox_error_response(Operation, Error)
+    end.
 
 %% ===================================================================
 %% Internal
 %% ===================================================================
 
-%% handle_inbox_response({messages, _Messages}) ->
-%%     {ok, #'CommonResult'{'Result' = <<"messages">>}};
-%% handle_inbox_response({deleted, _Deleted}) ->
-%%     {ok, #'CommonResult'{'Result' = <<"deleted">>}};
-%% handle_inbox_response({error, Error}) ->
-%%     {ok, #'CommonResult'{'Result' = Error}}.
+handle_inbox_response({info, Info}) ->
+    New   = Info#inbox_info_v1.new,
+    Total = Info#inbox_info_v1.total,
+    Result =
+    <<
+    "<inboxinfo>",
+    "<result>OK</result>",
+    "<new>", (integer_to_binary(New))/binary, "</new>"
+    "<total>", (integer_to_binary(Total))/binary, "</total>",
+    "<credits>POSTPAID</credits>",
+    "</inboxinfo>"
+    >>,
+    {ok, #'InlineResult'{'InlineBody' = Result}};
 
-inbox_operation(<<"list-all">>)  -> list_all;
-inbox_operation(<<"list-new">>)  -> list_new;
-inbox_operation(<<"fetch-all">>) -> fetch_all;
-inbox_operation(<<"fetch-new">>) -> fetch_new;
-inbox_operation(<<"fetch-id">>)  -> fetch_id;
-inbox_operation(<<"kill-all">>)  -> kill_all;
-inbox_operation(<<"kill-old">>)  -> kill_old;
-inbox_operation(<<"kill-id">>)   -> kill_id;
-inbox_operation(_)               -> unknown.
+handle_inbox_response({messages, Messages}) ->
+    Result =
+    <<
+    "<inboxlist>",
+    "<result>OK</result>",
+    "<credits>POSTPAID</credits>",
+    (list_to_binary(
+        [build_inbox_message(M) || M <- Messages]))/binary,
+    "</inboxlist>"
+    >>,
+    {ok, #'InlineResult'{'InlineBody' = Result}};
+
+handle_inbox_response({deleted, Deleted}) ->
+    Result =
+    <<
+    "<inboxdel>",
+    "<result>OK</result>"
+    "<deleted>", (integer_to_binary(Deleted))/binary, "</deleted>",
+    "<credits>POSTPAID</credits>",
+    "</inboxdel>"
+    >>,
+    {ok, #'InlineResult'{'InlineBody' = Result}}.
+
+handle_inbox_error_response(_Oper, bad_operation) ->
+    Result =
+    <<
+    "<inbox>",
+    "<result>", (reformat_error(bad_operation))/binary, "</result>",
+    "</inbox>"
+    >>,
+    {ok, #'InlineResult'{'InlineBody' = Result}};
+handle_inbox_error_response(Oper, Error) ->
+    Tag =
+        case inbox_operation(Oper) of
+            get_info ->
+                <<"inboxinfo">>;
+            Op when Op =:= list_all; Op =:= list_new;
+                    Op =:= fetch_all; Op =:= fetch_new; Op =:= fetch_id ->
+                <<"inboxlist">>;
+            Op when Op =:= delete_all; Op =:= delete_read; Op =:= delete_id ->
+                <<"inboxdel">>;
+            Other ->
+                handle_inbox_error_response(Other, bad_operation)
+        end,
+    Result =
+    <<
+    "<", Tag/binary, ">",
+    "<result>", (reformat_error(Error))/binary, "</result>",
+    "</", Tag/binary, ">"
+    >>,
+    {ok, #'InlineResult'{'InlineBody' = Result}}.
+
+
+inbox_operation(Oper) ->
+    case bstr:lower(Oper) of
+        <<"stats">>     -> get_info;
+        <<"list-all">>  -> list_all;
+        <<"list-new">>  -> list_new;
+        <<"fetch-all">> -> fetch_all;
+        <<"fetch-new">> -> fetch_new;
+        <<"fetch-id">>  -> fetch_id;
+        <<"kill-all">>  -> delete_all;
+        <<"kill-old">>  -> delete_read;
+        <<"kill-id">>   -> delete_id;
+        Other -> Other
+    end.
+
+inbox_msg_ids(<<>>) ->
+    undefined;
+inbox_msg_ids(undefined) ->
+    undefined;
+inbox_msg_ids(MsgIds) ->
+    binary:split(MsgIds, <<",">>, [trim, global]).
+
+build_inbox_message(Msg) ->
+    MsgId = Msg#inbox_msg_info_v1.id,
+    New = if Msg#inbox_msg_info_v1.new =:= true -> 1; true -> 0 end,
+    From = Msg#inbox_msg_info_v1.from#addr.addr,
+    To = Msg#inbox_msg_info_v1.to#addr.addr,
+    %% TODO: Make special formatter and ?? convert to localtime ??
+    Timestamp = <<"20", (ac_datetime:timestamp_to_utc_string(Msg#inbox_msg_info_v1.timestamp))/binary>>,
+    Size = Msg#inbox_msg_info_v1.size,
+    Text = Msg#inbox_msg_info_v1.text,
+    <<
+    "<message id=\"", MsgId/binary, "\" new=\"", (integer_to_binary(New))/binary, "\">",
+    "<from>", From/binary, "</from>",
+    "<to>", To/binary, "</to>",
+    "<timestamp>", Timestamp/binary, "</timestamp>",
+    "<size>", (integer_to_binary(Size))/binary, "</size>",
+    "<msgtype>SMS</msgtype>",
+    "<text>", Text/binary, "</text>",
+    "<subject/>",
+    "</message>"
+    >>.
 
 build_details(Statuses) ->
     <<
@@ -815,6 +910,8 @@ reformat_error(invalid_request_id) ->
     ?E_INVALID_REQUEST_ID;
 reformat_error(timeout) ->
     ?E_TIMEOUT;
+reformat_error(bad_operation) ->
+    ?E_INBOX_BAD_OPERATION;
 reformat_error(Result) ->
     atom_to_binary(Result, utf8).
 

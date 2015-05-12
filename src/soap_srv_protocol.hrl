@@ -166,4 +166,8 @@
     'CreditMMS' :: binary()
 }).
 
+-record('InlineResult', {
+    'InlineBody' :: binary()
+}).
+
 -endif. % soap_srv_protocol.hrl
