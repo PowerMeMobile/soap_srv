@@ -92,7 +92,7 @@ def get_sms_status(request, customerID, userName, userPassword, transactionID, d
 # HTTP_Authenticate
 #
 
-def test_HTTP_Authenticate_bad_user_fail(request):
+def test_HTTP_Authenticate_bad_password_fail(request):
     res = authenticate(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD)
     assert res['AuthResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['AuthResult']['Originators'] == None
@@ -128,7 +128,7 @@ def test_HTTP_Authenticate_upper_succ(request):
 # HTTP_KeepAlive
 #
 
-def test_HTTP_KeepAlive_bad_user_fail(request):
+def test_HTTP_KeepAlive_bad_password_fail(request):
     res = keep_alive(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD)
     assert res['CommonResult']['Result'] == '404.2 FAILURE (User is unknown)'
 
@@ -142,7 +142,7 @@ def test_HTTP_KeepAlive_succ(request):
 
 # messageType=Latin|ArabicWithArabicNumbers|ArabicWithLatinNumbers
 
-def test_HTTP_SendSms_bad_user_fail(request):
+def test_HTTP_SendSms_bad_password_fail(request):
     res = send_sms(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['SendResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['SendResult']['RejectedNumbers'] == None
@@ -195,7 +195,7 @@ def test_HTTP_SendSms_succ(request):
 # HTTP_SendBinarySms
 #
 
-def test_HTTP_SendBinarySms_bad_user_fail(request):
+def test_HTTP_SendBinarySms_bad_password_fail(request):
     res = send_binary_sms(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, originator=ORIGINATOR, binaryBody='7465737420746573742074657374207465737420', recipientPhone=RECIPIENT, defDate='', data_coding='4', esm_class='', PID='')
     assert res['SendResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['SendResult']['RejectedNumbers'] == None
@@ -248,7 +248,7 @@ def test_HTTP_SendBinarySms_succ(request):
 # HTTP_GetSmsStatus
 #
 
-def test_HTTP_GetSmsStatus_bad_user_fail(request):
+def test_HTTP_GetSmsStatus_bad_password_fail(request):
     res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, transactionID=TRANSACTION_ID, detailed=False)
     assert res['SmsStatus']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['SmsStatus']['NetPoints'] == '0'
