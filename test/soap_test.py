@@ -230,7 +230,7 @@ def test_SendBinarySms_succ(client):
 # SendServiceSms
 #
 
-def test_SendServiceSms_bad_user_fail(client):
+def test_SendServiceSms_bad_password_fail(client):
     res = client.SendServiceSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, originator=ORIGINATOR, serviceName='google', serviceUrl='http://google.com', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['SendServiceSmsResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['SendServiceSmsResult']['RejectedNumbers'] == []
@@ -384,7 +384,7 @@ def test_GetSmsStatus_detailed_true_succ(client):
 # HTTP_Authenticate
 #
 
-def test_HTTP_Authenticate_bad_user_fail(client):
+def test_HTTP_Authenticate_bad_password_fail(client):
     res = client.HTTP_Authenticate(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD)
     assert res['HTTP_AuthenticateResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['HTTP_AuthenticateResult']['Originators'] == []
@@ -420,7 +420,7 @@ def test_HTTP_Authenticate_upper_succ(client):
 # HTTP_KeepAlive
 #
 
-def test_HTTP_KeepAlive_bad_user_fail(client):
+def test_HTTP_KeepAlive_bad_password_fail(client):
     res = client.HTTP_KeepAlive(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD)
     assert res['HTTP_KeepAliveResult']['Result'] == '404.2 FAILURE (User is unknown)'
 
@@ -434,7 +434,7 @@ def test_HTTP_KeepAlive_fail(client):
 
 # messageType=Latin|ArabicWithArabicNumbers|ArabicWithLatinNumbers
 
-def test_HTTP_SendSms_bad_user_fail(client):
+def test_HTTP_SendSms_bad_password_fail(client):
     res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['HTTP_SendSmsResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['HTTP_SendSmsResult']['RejectedNumbers'] == []
@@ -487,7 +487,7 @@ def test_HTTP_SendSms_succ(client):
 # HTTP_SendBinarySms
 #
 
-def test_HTTP_SendBinarySms_bad_user_fail(client):
+def test_HTTP_SendBinarySms_bad_password_fail(client):
     res = client.HTTP_SendBinarySms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, originator=ORIGINATOR, binaryBody='7465737420746573742074657374207465737420', recipientPhone=RECIPIENT, defDate='', data_coding='4', esm_class='', PID='')
     assert res['HTTP_SendBinarySmsResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['HTTP_SendBinarySmsResult']['RejectedNumbers'] == []
@@ -540,7 +540,7 @@ def test_HTTP_SendBinarySms_succ(client):
 # HTTP_GetSmsStatus
 #
 
-def test_HTTP_GetSmsStatus_bad_user_fail(client):
+def test_HTTP_GetSmsStatus_bad_password_fail(client):
     res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, transactionID=TRANSACTION_ID, detailed=False)
     assert res['HTTP_GetSmsStatusResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == '0'
