@@ -70,22 +70,22 @@ def keep_alive(request, customerID, userName, userPassword):
 
 def send_sms(request, customerID, userName, userPassword, originator, smsText, recipientPhone, messageType, defDate, blink, flash, Private):
     url = SOAP_SERVER + '/HTTP_SendSms'
-    params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
-    'originator': originator, 'smsText': smsText, 'recipientPhone': recipientPhone, 'messageType': messageType, \
-    'defDate': defDate, 'blink': str(blink), 'flash': str(flash), 'Private': str(Private)}
+    params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword,
+              'originator': originator, 'smsText': smsText, 'recipientPhone': recipientPhone, 'messageType': messageType,
+              'defDate': defDate, 'blink': str(blink).lower(), 'flash': str(flash).lower(), 'Private': str(Private).lower()}
     return request.make(url, params)
 
 def send_binary_sms(request, customerID, userName, userPassword, originator, binaryBody, recipientPhone, defDate, data_coding, esm_class, PID):
     url = SOAP_SERVER + '/HTTP_SendBinarySms'
-    params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
-    'originator': originator, 'binaryBody': binaryBody, 'recipientPhone': recipientPhone, 'defDate': defDate, \
-    'data_coding': data_coding, 'esm_class': esm_class, 'PID': PID}
+    params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword,
+              'originator': originator, 'binaryBody': binaryBody, 'recipientPhone': recipientPhone, 'defDate': defDate,
+              'data_coding': data_coding, 'esm_class': esm_class, 'PID': PID}
     return request.make(url, params)
 
 def get_sms_status(request, customerID, userName, userPassword, transactionID, detailed):
     url = SOAP_SERVER + '/HTTP_GetSmsStatus'
     params = {'customerID': str(customerID), 'userName': userName, 'userPassword': userPassword, \
-    'transactionID': transactionID, 'detailed': str(detailed)}
+              'transactionID': transactionID, 'detailed': str(detailed).lower()}
     return request.make(url, params)
 
 #
