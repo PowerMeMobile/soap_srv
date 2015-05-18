@@ -692,7 +692,7 @@ handle_inbox_response({info, Info}) ->
     Total = Info#inbox_info_v1.total,
     Result =
     <<
-    "<inboxinfo>",
+    "<inboxinfo xmlns=\"\">",
     "<result>OK</result>",
     "<new>", (integer_to_binary(New))/binary, "</new>"
     "<total>", (integer_to_binary(Total))/binary, "</total>",
@@ -704,7 +704,7 @@ handle_inbox_response({info, Info}) ->
 handle_inbox_response({messages, Messages}) ->
     Result =
     <<
-    "<inboxlist>",
+    "<inboxlist xmlns=\"\">",
     "<result>OK</result>",
     "<credits>POSTPAID</credits>",
     (list_to_binary(
@@ -716,7 +716,7 @@ handle_inbox_response({messages, Messages}) ->
 handle_inbox_response({deleted, Deleted}) ->
     Result =
     <<
-    "<inboxdel>",
+    "<inboxdel xmlns=\"\">",
     "<result>OK</result>"
     "<deleted>", (integer_to_binary(Deleted))/binary, "</deleted>",
     "<credits>POSTPAID</credits>",
@@ -727,7 +727,7 @@ handle_inbox_response({deleted, Deleted}) ->
 handle_inbox_error_response(_Oper, bad_operation) ->
     Result =
     <<
-    "<inbox>",
+    "<inbox xmlns=\"\">",
     "<result>", (reformat_error(bad_operation))/binary, "</result>",
     "</inbox>"
     >>,
@@ -747,12 +747,11 @@ handle_inbox_error_response(Oper, Error) ->
         end,
     Result =
     <<
-    "<", Tag/binary, ">",
+    "<", Tag/binary, " xmlns=\"\">",
     "<result>", (reformat_error(Error))/binary, "</result>",
     "</", Tag/binary, ">"
     >>,
     {ok, #'InlineResult'{'InlineBody' = Result}}.
-
 
 inbox_operation(Oper) ->
     case bstr:lower(Oper) of
