@@ -77,9 +77,6 @@ def send_inbound_via_smppsim(src_addr, dst_addr, message):
     req = requests.get(url, params=params)
     assert req.status_code == 200
 
-def unsecure(text):
-    return text
-
 #
 # Requests
 #
@@ -464,15 +461,15 @@ def test_HTTP_InboxProcessing_fetch_all_succ(request):
     res = inbox_fetch_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
     ilist = res['inboxlist']
     assert ilist['result'] == 'OK'
-    assert unsecure(ilist['credits']) == 'POSTPAID'
+    assert ilist['credits'] == 'POSTPAID'
 
     msg = ilist['message']
     assert msg['@new'] == '1'
-    assert unsecure(msg['from']) == RECIPIENT
-    assert unsecure(msg['to']) == SHORT_CODE
-    assert unsecure(msg['msgtype']) == 'SMS'
-    assert unsecure(msg['size']) == str(len(body))
-    assert unsecure(msg['text']) == body
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -494,15 +491,15 @@ def test_HTTP_InboxProcessing_fetch_new_succ(request):
     res = inbox_fetch_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
     ilist = res['inboxlist']
     assert ilist['result'] == 'OK'
-    assert unsecure(ilist['credits']) == 'POSTPAID'
+    assert ilist['credits'] == 'POSTPAID'
 
     msg = ilist['message']
     assert msg['@new'] == '1'
-    assert unsecure(msg['from']) == RECIPIENT
-    assert unsecure(msg['to']) == SHORT_CODE
-    assert unsecure(msg['msgtype']) == 'SMS'
-    assert unsecure(msg['size']) == str(len(body))
-    assert unsecure(msg['text']) == body
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -520,15 +517,15 @@ def test_HTTP_InboxProcessing_fetch_id(request):
     res = inbox_fetch_id(request, CUSTOMER_ID, USER_ID, PASSWORD, msg_id)
     ilist = res['inboxlist']
     assert ilist['result'] == 'OK'
-    assert unsecure(ilist['credits']) == 'POSTPAID'
+    assert ilist['credits'] == 'POSTPAID'
 
     msg = ilist['message']
     assert msg['@new'] == '1'
-    assert unsecure(msg['from']) == RECIPIENT
-    assert unsecure(msg['to']) == SHORT_CODE
-    assert unsecure(msg['msgtype']) == 'SMS'
-    assert unsecure(msg['size']) == str(len(body))
-    assert unsecure(msg['text']) == body
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -541,18 +538,18 @@ def test_HTTP_InboxProcessing_kill_all(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     info = res['inboxinfo']
-    assert unsecure(info['total']) == '1'
-    assert unsecure(info['new']) == '1'
+    assert info['total'] == '1'
+    assert info['new'] == '1'
 
     res = inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
     idel = res['inboxdel']
     assert idel['result'] == 'OK'
-    assert unsecure(idel['deleted']) == '1'
+    assert idel['deleted'] == '1'
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '0'
-    assert unsecure(iinfo['new']) == '0'
+    assert iinfo['total'] == '0'
+    assert iinfo['new'] == '0'
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -566,8 +563,8 @@ def test_HTTP_InboxProcessing_kill_id(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '2'
-    assert unsecure(iinfo['new']) == '2'
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
 
     res = inbox_list_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
     msg = res['inboxlist']['message']
@@ -576,12 +573,12 @@ def test_HTTP_InboxProcessing_kill_id(request):
     res = inbox_kill_id(request, CUSTOMER_ID, USER_ID, PASSWORD, msg_id)
     idel = res['inboxdel']
     assert idel['result'] == 'OK'
-    assert unsecure(idel['deleted']) == '1'
+    assert idel['deleted'] == '1'
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     info = res['inboxinfo']
-    assert unsecure(info['total']) == '1'
-    assert unsecure(info['new']) == '1'
+    assert info['total'] == '1'
+    assert info['new'] == '1'
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -595,8 +592,8 @@ def test_HTTP_InboxProcessing_kill_old(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '2'
-    assert unsecure(iinfo['new']) == '2'
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
 
     res = inbox_list_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
     msg = res['inboxlist']['message']
@@ -607,12 +604,12 @@ def test_HTTP_InboxProcessing_kill_old(request):
     res = inbox_kill_old(request, CUSTOMER_ID, USER_ID, PASSWORD)
     idel = res['inboxdel']
     assert idel['result'] == 'OK'
-    assert unsecure(idel['deleted']) == '1'
+    assert idel['deleted'] == '1'
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '1'
-    assert unsecure(iinfo['new']) == '1'
+    assert iinfo['total'] == '1'
+    assert iinfo['new'] == '1'
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -621,8 +618,8 @@ def test_HTTP_InboxProcessing_check_fetch_and_statuses(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '0'
-    assert unsecure(iinfo['new']) == '0'
+    assert iinfo['total'] == '0'
+    assert iinfo['new'] == '0'
 
     body = "Msg"
     send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
@@ -632,16 +629,16 @@ def test_HTTP_InboxProcessing_check_fetch_and_statuses(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '3'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '3'
 
     # doesn't change read statuses
     inbox_list_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '3'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '3'
 
     # doesn't change read statuses
     res = inbox_list_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
@@ -650,40 +647,40 @@ def test_HTTP_InboxProcessing_check_fetch_and_statuses(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '3'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '3'
 
     # changes read status
     inbox_fetch_id(request, CUSTOMER_ID, USER_ID, PASSWORD, msg_id)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '2'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '2'
 
     # changes read statuses
     inbox_fetch_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '0'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '0'
 
     send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
     time.sleep(1)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '4'
-    assert unsecure(iinfo['new']) == '1'
+    assert iinfo['total'] == '4'
+    assert iinfo['new'] == '1'
 
     # changes read statuses
     inbox_fetch_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '4'
-    assert unsecure(iinfo['new']) == '0'
+    assert iinfo['total'] == '4'
+    assert iinfo['new'] == '0'
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -692,8 +689,8 @@ def test_HTTP_InboxProcessing_check_kill_and_statuses(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '0'
-    assert unsecure(iinfo['new']) == '0'
+    assert iinfo['total'] == '0'
+    assert iinfo['new'] == '0'
 
     body = "Msg"
     send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
@@ -703,8 +700,8 @@ def test_HTTP_InboxProcessing_check_kill_and_statuses(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '3'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '3'
 
     # doesn't change read statuses
     res = inbox_list_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
@@ -714,34 +711,34 @@ def test_HTTP_InboxProcessing_check_kill_and_statuses(request):
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '3'
-    assert unsecure(iinfo['new']) == '3'
+    assert iinfo['total'] == '3'
+    assert iinfo['new'] == '3'
 
     inbox_kill_id(request, CUSTOMER_ID, USER_ID, PASSWORD, msg_id1)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '2'
-    assert unsecure(iinfo['new']) == '2'
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
 
     # changes read status
     inbox_fetch_id(request, CUSTOMER_ID, USER_ID, PASSWORD, msg_id2)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '2'
-    assert unsecure(iinfo['new']) == '1'
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '1'
 
     inbox_kill_old(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '1'
-    assert unsecure(iinfo['new']) == '1'
+    assert iinfo['total'] == '1'
+    assert iinfo['new'] == '1'
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
     res = inbox_stats(request, CUSTOMER_ID, USER_ID, PASSWORD)
     iinfo = res['inboxinfo']
-    assert unsecure(iinfo['total']) == '0'
-    assert unsecure(iinfo['new']) == '0'
+    assert iinfo['total'] == '0'
+    assert iinfo['new'] == '0'
