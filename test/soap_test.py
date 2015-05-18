@@ -4,6 +4,9 @@ import pytest
 
 import os
 import hexdump
+import requests
+import xmltodict
+import time as time
 
 SOAP11 = 'soapenv'
 SOAP12 = 'soap12env'
@@ -16,7 +19,16 @@ SOAP_PORT = os.getenv('SOAP_PORT')
 if SOAP_PORT == None or SOAP_PORT == '':
     SOAP_PORT = '8088'
 
+SMPPSIM_HOST = os.getenv('SMPPSIM_HOST')
+if SMPPSIM_HOST == None or SMPPSIM_HOST == '':
+    SMPPSIM_HOST = ONEAPI_HOST
+
+SMPPSIM_PORT = os.getenv('SMPPSIM_PORT')
+if SMPPSIM_PORT == None or SMPPSIM_PORT == '':
+    SMPPSIM_PORT = '8071'
+
 WSDL = 'http://{0}:{1}/bmsgw/soap/messenger.asmx?WSDL'.format(SOAP_HOST, SOAP_PORT)
+SMPPSIM_SERVER = 'http://{0}:{1}'.format(SMPPSIM_HOST, SMPPSIM_PORT)
 
 CUSTOMER_ID = 10003
 USER_ID     = 'user'
@@ -38,6 +50,7 @@ BAD_USER = {
 }
 
 ORIGINATOR = '375296660005'
+SHORT_CODE = '0051'
 RECIPIENT = '375296543210'
 BAD_RECIPIENT = '999999999999'
 RECIPIENT_BASE64 = 'Mzc1Mjk2NTQzMjEw'
@@ -78,6 +91,24 @@ def client(request):
     client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Details'] = {'details':details}
 
     return client
+
+#
+# Utils
+#
+
+def send_inbound_via_smppsim(src_addr, dst_addr, message):
+    url = SMPPSIM_SERVER + '/inject_mo'
+    params = {'short_message':message,
+              'source_addr':src_addr, 'source_addr_ton':'1', 'source_addr_npi':'1',
+              'destination_addr':dst_addr, 'dest_addr_ton':'6', 'dest_addr_npi':'0'}
+    req = requests.get(url, params=params)
+    assert req.status_code == 200
+
+def strip_soap_body(res, method, tag):
+    # ugly workaround for <s:sequence><s:any/></s:sequence>, but works :(
+    # strip 'soap[12]:Envelop' and 'soap[12]:Body'
+    xml = xmltodict.parse(res[method + 'Result'][tag].as_xml()).items()[0][1].items()[3][1]
+    return  xml[method + 'Response'][method + 'Result'][tag]
 
 #
 # Authenticate
@@ -381,6 +412,279 @@ def test_GetSmsStatus_detailed_true_succ(client):
     assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
 
 #
+# InboxProcessing
+#
+
+def test_InboxProcessing_bad_operation_fail(client):
+    res = client.InboxProcessing(user=USER, operation='bad-operation', messageId=None)
+    info = strip_soap_body(res, 'InboxProcessing', 'inbox')
+    assert info['result'] == 'Non-supported Inbox operation is specified!'
+
+def test_InboxProcessing_stats_bad_password_fail(client):
+    res = client.InboxProcessing(user=BAD_USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_InboxProcessing_list_all_bad_password_fail(client):
+    res = client.InboxProcessing(user=BAD_USER, operation='list-all', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_InboxProcessing_kill_old_bad_password_fail(client):
+    res = client.InboxProcessing(user=BAD_USER, operation='kill-old', messageId=None)
+    idel = strip_soap_body(res, 'InboxProcessing', 'inboxdel')
+    assert idel['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_InboxProcessing_stats_empty_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['result'] == 'OK'
+    assert iinfo['credits'] == 'POSTPAID'
+    assert iinfo['new'] == '0'
+    assert iinfo['total'] == '0'
+
+def test_InboxProcessing_stats_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, "Msg")
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['result'] == 'OK'
+    assert iinfo['credits'] == 'POSTPAID'
+    assert iinfo['total'] == '1'
+    assert iinfo['new'] == '1'
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_list_all_empty_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    res = client.InboxProcessing(user=USER, operation='list-all', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_InboxProcessing_list_all_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='list-all', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == None
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_list_new_empty_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    res = client.InboxProcessing(user=USER, operation='list-new', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_InboxProcessing_list_new_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='list-new', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == None
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_fetch_all_empty_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    res = client.InboxProcessing(user=USER, operation='fetch-all', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_InboxProcessing_fetch_all_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='fetch-all', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_fetch_new_empty_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    res = client.InboxProcessing(user=USER, operation='fetch-new', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_InboxProcessing_fetch_new_succ(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='fetch-new', messageId=None)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_fetch_id(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='list-new', messageId=None)
+    msg = strip_soap_body(res, 'InboxProcessing', 'inboxlist')['message']
+    msg_id = msg['@id']
+
+    res = client.InboxProcessing(user=USER, operation='fetch-id', messageId=msg_id)
+    ilist = strip_soap_body(res, 'InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_kill_all(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    info = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert info['total'] == '1'
+    assert info['new'] == '1'
+
+    res = client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+    idel = strip_soap_body(res, 'InboxProcessing', 'inboxdel')
+    assert idel['result'] == 'OK'
+    assert idel['deleted'] == '1'
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '0'
+    assert iinfo['new'] == '0'
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_kill_id(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
+
+    res = client.InboxProcessing(user=USER, operation='list-new', messageId=None)
+    msg = strip_soap_body(res, 'InboxProcessing', 'inboxlist')['message']
+    msg_id = msg[0]['@id']
+
+    res = client.InboxProcessing(user=USER, operation='kill-id', messageId=msg_id)
+    idel = strip_soap_body(res, 'InboxProcessing', 'inboxdel')
+    assert idel['result'] == 'OK'
+    assert idel['deleted'] == '1'
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    info = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert info['total'] == '1'
+    assert info['new'] == '1'
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+def test_InboxProcessing_kill_old(client):
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
+
+    res = client.InboxProcessing(user=USER, operation='list-new', messageId=None)
+    msg = strip_soap_body(res, 'InboxProcessing', 'inboxlist')['message']
+    msg_id = msg[0]['@id']
+
+    res = client.InboxProcessing(user=USER, operation='fetch-id', messageId=msg_id)
+
+    res = client.InboxProcessing(user=USER, operation='kill-old', messageId=None)
+    idel = strip_soap_body(res, 'InboxProcessing', 'inboxdel')
+    assert idel['result'] == 'OK'
+    assert idel['deleted'] == '1'
+
+    res = client.InboxProcessing(user=USER, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '1'
+    assert iinfo['new'] == '1'
+
+    client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
+
+#
 # HTTP_Authenticate
 #
 
@@ -570,3 +874,276 @@ def test_HTTP_GetSmsStatus_detailed_true_succ(client):
     StatusU = str(res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
     assert hexdump.restore(StatusU).lower() == u'delivered'.encode('utf-16be')
     assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
+
+#
+# HTTP_InboxProcessing
+#
+
+def test_HTTP_InboxProcessing_bad_operation_fail(client):
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='bad-operation', messageId=None)
+    info = strip_soap_body(res, 'HTTP_InboxProcessing', 'inbox')
+    assert info['result'] == 'Non-supported Inbox operation is specified!'
+
+def test_HTTP_InboxProcessing_stats_bad_password_fail(client):
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_HTTP_InboxProcessing_list_all_bad_password_fail(client):
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, operation='list-all', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_HTTP_InboxProcessing_kill_old_bad_password_fail(client):
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, operation='kill-old', messageId=None)
+    idel = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxdel')
+    assert idel['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_HTTP_InboxProcessing_stats_empty_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['result'] == 'OK'
+    assert iinfo['credits'] == 'POSTPAID'
+    assert iinfo['new'] == '0'
+    assert iinfo['total'] == '0'
+
+def test_HTTP_InboxProcessing_stats_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, "Msg")
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['result'] == 'OK'
+    assert iinfo['credits'] == 'POSTPAID'
+    assert iinfo['total'] == '1'
+    assert iinfo['new'] == '1'
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_list_all_empty_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-all', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_HTTP_InboxProcessing_list_all_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-all', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == None
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_list_new_empty_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-new', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_HTTP_InboxProcessing_list_new_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-new', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == None
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_fetch_all_empty_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='fetch-all', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_HTTP_InboxProcessing_fetch_all_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='fetch-all', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_fetch_new_empty_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='fetch-new', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+def test_HTTP_InboxProcessing_fetch_new_succ(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='fetch-new', messageId=None)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_fetch_id(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-new', messageId=None)
+    msg = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')['message']
+    msg_id = msg['@id']
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='fetch-id', messageId=msg_id)
+    ilist = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')
+    assert ilist['result'] == 'OK'
+    assert ilist['credits'] == 'POSTPAID'
+
+    msg = ilist['message']
+    assert msg['@new'] == '1'
+    assert msg['from'] == RECIPIENT
+    assert msg['to'] == SHORT_CODE
+    assert msg['msgtype'] == 'SMS'
+    assert msg['size'] == str(len(body))
+    assert msg['text'] == body
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_kill_all(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    info = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert info['total'] == '1'
+    assert info['new'] == '1'
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+    idel = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxdel')
+    assert idel['result'] == 'OK'
+    assert idel['deleted'] == '1'
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '0'
+    assert iinfo['new'] == '0'
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_kill_id(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-new', messageId=None)
+    msg = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')['message']
+    msg_id = msg[0]['@id']
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-id', messageId=msg_id)
+    idel = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxdel')
+    assert idel['result'] == 'OK'
+    assert idel['deleted'] == '1'
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    info = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert info['total'] == '1'
+    assert info['new'] == '1'
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+def test_HTTP_InboxProcessing_kill_old(client):
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+    body = "Msg"
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, body)
+    time.sleep(1)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '2'
+    assert iinfo['new'] == '2'
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='list-new', messageId=None)
+    msg = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxlist')['message']
+    msg_id = msg[0]['@id']
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='fetch-id', messageId=msg_id)
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-old', messageId=None)
+    idel = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxdel')
+    assert idel['result'] == 'OK'
+    assert idel['deleted'] == '1'
+
+    res = client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='stats', messageId=None)
+    iinfo = strip_soap_body(res, 'HTTP_InboxProcessing', 'inboxinfo')
+    assert iinfo['total'] == '1'
+    assert iinfo['new'] == '1'
+
+    client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
