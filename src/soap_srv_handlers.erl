@@ -783,10 +783,11 @@ build_inbox_message(Msg) ->
     New = if Msg#inbox_msg_info_v1.new =:= true -> 1; true -> 0 end,
     From = Msg#inbox_msg_info_v1.from#addr.addr,
     To = Msg#inbox_msg_info_v1.to#addr.addr,
-    %% TODO: Make special formatter and ?? convert to localtime ??
-    Timestamp = <<"20", (ac_datetime:timestamp_to_utc_string(Msg#inbox_msg_info_v1.timestamp))/binary>>,
+    Timestamp = utc_timestamp_to_binary(Msg#inbox_msg_info_v1.timestamp),
     Size = Msg#inbox_msg_info_v1.size,
-    Text = Msg#inbox_msg_info_v1.text,
+    TextUtf8 = Msg#inbox_msg_info_v1.text,
+    TextUtf16 = ac_hexdump:binary_to_hexdump(
+        unicode:characters_to_binary(TextUtf8, utf8, {utf16, big}), to_lower),
     <<
     "<message id=\"", MsgId/binary, "\" new=\"", (integer_to_binary(New))/binary, "\">",
     "<from>", From/binary, "</from>",
@@ -794,10 +795,15 @@ build_inbox_message(Msg) ->
     "<timestamp>", Timestamp/binary, "</timestamp>",
     "<size>", (integer_to_binary(Size))/binary, "</size>",
     "<msgtype>SMS</msgtype>",
-    "<text>", Text/binary, "</text>",
+    "<textU>", TextUtf16/binary, "</textU>",
     "<subject/>",
     "</message>"
     >>.
+
+utc_timestamp_to_binary(Timestamp) ->
+    <<"20", (ac_datetime:datetime_to_utc_string(
+                 calendar:universal_time_to_local_time(
+                     ac_datetime:timestamp_to_datetime(Timestamp))))/binary>>.
 
 build_details(Statuses) ->
     <<

@@ -110,6 +110,9 @@ def strip_soap_body(res, method, tag):
     xml = xmltodict.parse(res[method + 'Result'][tag].as_xml()).items()[0][1].items()[3][1]
     return  xml[method + 'Response'][method + 'Result'][tag]
 
+def from_hex_utf16be(string):
+    return string.decode('hex').decode('utf-16be')
+
 #
 # Authenticate
 #
@@ -483,7 +486,7 @@ def test_InboxProcessing_list_all_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == None
+    assert msg['textU'] == None
 
     client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
 
@@ -510,7 +513,7 @@ def test_InboxProcessing_list_new_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == None
+    assert msg['textU'] == None
 
     client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
 
@@ -540,7 +543,7 @@ def test_InboxProcessing_fetch_all_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
 
@@ -570,7 +573,7 @@ def test_InboxProcessing_fetch_new_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
 
@@ -596,7 +599,7 @@ def test_InboxProcessing_fetch_id(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     client.InboxProcessing(user=USER, operation='kill-all', messageId=None)
 
@@ -947,7 +950,7 @@ def test_HTTP_InboxProcessing_list_all_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == None
+    assert msg['textU'] == None
 
     client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
 
@@ -974,7 +977,7 @@ def test_HTTP_InboxProcessing_list_new_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == None
+    assert msg['textU'] == None
 
     client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
 
@@ -1004,7 +1007,7 @@ def test_HTTP_InboxProcessing_fetch_all_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
 
@@ -1034,7 +1037,7 @@ def test_HTTP_InboxProcessing_fetch_new_succ(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
 
@@ -1060,7 +1063,7 @@ def test_HTTP_InboxProcessing_fetch_id(client):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
 

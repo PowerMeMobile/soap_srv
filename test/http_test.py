@@ -7,6 +7,7 @@ import requests
 import xmltodict
 import hexdump
 import time as time
+import datetime
 
 SOAP_HOST = os.getenv('SOAP_HOST')
 if SOAP_HOST == None or SOAP_HOST == '':
@@ -76,6 +77,9 @@ def send_inbound_via_smppsim(src_addr, dst_addr, message):
               'destination_addr':dst_addr, 'dest_addr_ton':'6', 'dest_addr_npi':'0'}
     req = requests.get(url, params=params)
     assert req.status_code == 200
+
+def from_hex_utf16be(string):
+    return string.decode('hex').decode('utf-16be')
 
 #
 # Requests
@@ -412,7 +416,7 @@ def test_HTTP_InboxProcessing_list_all_succ(request):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == None
+    assert msg['textU'] == None
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -439,7 +443,7 @@ def test_HTTP_InboxProcessing_list_new_succ(request):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == None
+    assert msg['textU'] == None
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -469,7 +473,7 @@ def test_HTTP_InboxProcessing_fetch_all_succ(request):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -499,7 +503,7 @@ def test_HTTP_InboxProcessing_fetch_new_succ(request):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -525,7 +529,7 @@ def test_HTTP_InboxProcessing_fetch_id(request):
     assert msg['to'] == SHORT_CODE
     assert msg['msgtype'] == 'SMS'
     assert msg['size'] == str(len(body))
-    assert msg['text'] == body
+    assert from_hex_utf16be(msg['textU']) == body
 
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
 
@@ -742,3 +746,19 @@ def test_HTTP_InboxProcessing_check_kill_and_statuses(request):
     iinfo = res['inboxinfo']
     assert iinfo['total'] == '0'
     assert iinfo['new'] == '0'
+
+def test_HTTP_InboxProcessing_check_timestamp_is_local_time(request):
+    inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
+
+    send_inbound_via_smppsim(RECIPIENT, SHORT_CODE, "Msg")
+    time.sleep(1)
+
+    res = inbox_list_new(request, CUSTOMER_ID, USER_ID, PASSWORD)
+    msg = res['inboxlist']['message']
+    timestamp = msg['timestamp']
+
+    received = datetime.datetime.strptime(timestamp, '%Y%m%d%H%M%S')
+    now = datetime.datetime.now()
+    assert (now - received) < datetime.timedelta(minutes=1)
+
+    inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)
