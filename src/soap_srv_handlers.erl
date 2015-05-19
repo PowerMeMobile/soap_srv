@@ -588,14 +588,18 @@ handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
     UserId = User#user.'Name',
     Operation = inbox_operation(Req#'InboxProcessing'.operation),
     MsgIds = inbox_msg_ids(Req#'InboxProcessing'.messageId),
-    inbox_processing(CustomerUuid, UserId, Operation, MsgIds);
+    Credit = credit_left(Customer#auth_customer_v1.pay_type,
+                         Customer#auth_customer_v1.credit),
+    inbox_processing(CustomerUuid, UserId, Operation, MsgIds, Credit);
 
 handle(inbox_processing, Req = #'HTTP_InboxProcessing'{}, Customer) ->
     CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = Req#'HTTP_InboxProcessing'.userName,
     Operation = inbox_operation(Req#'HTTP_InboxProcessing'.operation),
     MsgIds = inbox_msg_ids(Req#'HTTP_InboxProcessing'.messageId),
-    inbox_processing(CustomerUuid, UserId, Operation, MsgIds);
+    Credit = credit_left(Customer#auth_customer_v1.pay_type,
+                         Customer#auth_customer_v1.credit),
+    inbox_processing(CustomerUuid, UserId, Operation, MsgIds, Credit);
 
 handle(_, _, _) ->
     erlang:error(method_not_implemented).
@@ -674,11 +678,11 @@ get_sms_status(Customer, UserId, TransactionId, Detailed) ->
             {ok, #'SmsStatus'{'Result' = reformat_error(Error)}}
     end.
 
-inbox_processing(CustomerUuid, UserId, Operation, MsgIds) ->
+inbox_processing(CustomerUuid, UserId, Operation, MsgIds, Credit) ->
     case alley_services_api:process_inbox(CustomerUuid, UserId,
             Operation, MsgIds) of
         {ok, #inbox_resp_v1{result = Result}} ->
-            handle_inbox_response(Result);
+            handle_inbox_response(Result, Credit);
         {error, Error} ->
             handle_inbox_error_response(Operation, Error)
     end.
@@ -687,39 +691,39 @@ inbox_processing(CustomerUuid, UserId, Operation, MsgIds) ->
 %% Internal
 %% ===================================================================
 
-handle_inbox_response({info, Info}) ->
+handle_inbox_response({info, Info}, Credit) ->
     New   = Info#inbox_info_v1.new,
     Total = Info#inbox_info_v1.total,
     Result =
     <<
     "<inboxinfo xmlns=\"\">",
     "<result>OK</result>",
+    "<credits>", Credit/binary, "</credits>",
     "<new>", (integer_to_binary(New))/binary, "</new>"
     "<total>", (integer_to_binary(Total))/binary, "</total>",
-    "<credits>POSTPAID</credits>",
     "</inboxinfo>"
     >>,
     {ok, #'InlineResult'{'InlineBody' = Result}};
 
-handle_inbox_response({messages, Messages}) ->
+handle_inbox_response({messages, Messages}, Credit) ->
     Result =
     <<
     "<inboxlist xmlns=\"\">",
     "<result>OK</result>",
-    "<credits>POSTPAID</credits>",
+    "<credits>", Credit/binary, "</credits>",
     (list_to_binary(
         [build_inbox_message(M) || M <- Messages]))/binary,
     "</inboxlist>"
     >>,
     {ok, #'InlineResult'{'InlineBody' = Result}};
 
-handle_inbox_response({deleted, Deleted}) ->
+handle_inbox_response({deleted, Deleted}, Credit) ->
     Result =
     <<
     "<inboxdel xmlns=\"\">",
     "<result>OK</result>"
+    "<credits>", Credit/binary, "</credits>",
     "<deleted>", (integer_to_binary(Deleted))/binary, "</deleted>",
-    "<credits>POSTPAID</credits>",
     "</inboxdel>"
     >>,
     {ok, #'InlineResult'{'InlineBody' = Result}}.
