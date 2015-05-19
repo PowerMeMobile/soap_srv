@@ -5,7 +5,6 @@ import pytest
 import os
 import requests
 import xmltodict
-import hexdump
 import time as time
 import datetime
 

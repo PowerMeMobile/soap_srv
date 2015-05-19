@@ -3,7 +3,6 @@
 import pytest
 
 import os
-import hexdump
 import requests
 import xmltodict
 import time as time
@@ -411,7 +410,7 @@ def test_GetSmsStatus_detailed_true_succ(client):
     assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00640065006c006900760065007200650064'}, {'number': u'375296543210'}]
     StatusU = str(res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
-    assert hexdump.restore(StatusU).lower() == u'delivered'.encode('utf-16be')
+    assert from_hex_utf16be(StatusU) == 'delivered'
     assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
 
 #
@@ -875,7 +874,7 @@ def test_HTTP_GetSmsStatus_detailed_true_succ(client):
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00640065006c006900760065007200650064'}, {'number': u'375296543210'}]
     StatusU = str(res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
-    assert hexdump.restore(StatusU).lower() == u'delivered'.encode('utf-16be')
+    assert from_hex_utf16be(StatusU) == 'delivered'
     assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
 
 #

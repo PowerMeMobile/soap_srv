@@ -5,7 +5,6 @@ import pytest
 import os
 import requests
 import xmltodict
-import hexdump
 import time as time
 import datetime
 
@@ -341,7 +340,7 @@ def test_HTTP_GetSmsStatus_detailed_true_succ(request):
     assert res['SmsStatus']['Statistics']['statistics']['SMSC_DELIVERED']['#text'] == "1"
     ## [{'StatusU': u'00440065006c006900760065007200650064'}, {'number': u'375296543210'}]
     StatusU = str(res['SmsStatus']['Details']['details']['SMSC_DELIVERED']['StatusU'])
-    assert hexdump.restore(StatusU).lower() == u'delivered'.encode('utf-16be')
+    assert from_hex_utf16be(StatusU) == 'delivered'
     assert res['SmsStatus']['Details']['details']['SMSC_DELIVERED']['number'] == '375296543210'
 
 #
