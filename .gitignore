@@ -5,4 +5,7 @@ rel/soap_srv/
 test/__pycache__/
 test/env/
 test/*.pyc
+test/*.ipynb
+test/tsung/latest.log
+test/tsung/log/
 TAGS
