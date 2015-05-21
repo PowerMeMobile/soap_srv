@@ -12,27 +12,28 @@
 
   <load>
 <!--
-    <arrivalphase phase="1" duration="30" unit="second">
-      <users interarrival="1" unit="second"></users>
+    <arrivalphase phase="1" duration="10" unit="second">
+      <users interarrival="5" unit="second"></users>
     </arrivalphase>
 -->
 
-    <arrivalphase phase="2" duration="30" unit="second">
-      <users maxnumber="10000" arrivalrate="100" unit="second"></users>
+    <arrivalphase phase="2" duration="10" unit="minute">
+      <users arrivalrate="50" unit="second"></users>
     </arrivalphase>
+
   </load>
 
   <sessions>
-    <session name="HTTP_KeepAlive" probability="50" type="ts_http">
+    <session name="HTTP_Authenticate" probability="50" type="ts_http">
 
       <request tag="get">
-        <http url="/bmsgw/soap/messenger.asmx/HTTP_KeepAlive?customerID=10003&amp;userName=user&amp;userPassword=password"
+        <http url="/bmsgw/soap/messenger.asmx/HTTP_Authenticate?customerID=10003&amp;userName=user&amp;userPassword=password"
               method="GET" version="1.1">
         </http>
       </request>
 
       <request tag="post">
-        <http url="/bmsgw/soap/messenger.asmx/HTTP_KeepAlive"
+        <http url="/bmsgw/soap/messenger.asmx/HTTP_Authenticate"
               method="POST" version="1.1"
               contents='customerID=10003&amp;userName=user&amp;userPassword=password'>
         </http>
@@ -41,8 +42,8 @@
       <request tag="soap11">
         <http url="/bmsgw/soap/messenger.asmx"
               method="POST" version="1.1"
-              contents_from_file='contents/http_keep_alive.soap11.xml'>
-          <http_header name="SOAPAction" value="http://pmmsoapmessenger.com/HTTP_KeepAlive"/>
+              contents_from_file='contents/http_authenticate.soap11.xml'>
+          <http_header name="SOAPAction" value="http://pmmsoapmessenger.com/HTTP_Authenticate"/>
           <http_header name="Content-Type" value="text/xml; charset=utf-8"/>
         </http>
       </request>
@@ -50,20 +51,20 @@
       <request tag="soap12">
         <http url="/bmsgw/soap/messenger.asmx"
               method="POST" version="1.1"
-              contents_from_file='contents/http_keep_alive.soap12.xml'>
+              contents_from_file='contents/http_authenticate.soap12.xml'>
           <http_header name="Content-Type" value="application/soap+xml; charset=utf-8"/>
         </http>
       </request>
 
     </session>
 
-    <session name="KeepAlive" probability="50" type="ts_http">
+    <session name="Authenticate" probability="50" type="ts_http">
 
       <request tag="soap11">
         <http url="/bmsgw/soap/messenger.asmx"
               method="POST" version="1.1"
-              contents_from_file='contents/keep_alive.soap11.xml'>
-          <http_header name="SOAPAction" value="http://pmmsoapmessenger.com/KeepAlive"/>
+              contents_from_file='contents/authenticate.soap11.xml'>
+          <http_header name="SOAPAction" value="http://pmmsoapmessenger.com/Authenticate"/>
           <http_header name="Content-Type" value="text/xml; charset=utf-8"/>
         </http>
       </request>
@@ -71,7 +72,7 @@
       <request tag="soap12">
         <http url="/bmsgw/soap/messenger.asmx"
               method="POST" version="1.1"
-              contents_from_file='contents/keep_alive.soap12.xml'>
+              contents_from_file='contents/authenticate.soap12.xml'>
           <http_header name="Content-Type" value="application/soap+xml; charset=utf-8"/>
         </http>
       </request>
