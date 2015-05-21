@@ -779,13 +779,13 @@ inbox_msg_ids(MsgIds) ->
     binary:split(MsgIds, <<",">>, [trim, global]).
 
 build_inbox_message(Msg) ->
-    MsgId = Msg#inbox_msg_info_v1.id,
-    New = if Msg#inbox_msg_info_v1.new =:= true -> 1; true -> 0 end,
-    From = Msg#inbox_msg_info_v1.from#addr.addr,
-    To = Msg#inbox_msg_info_v1.to#addr.addr,
-    Timestamp = utc_timestamp_to_binary(Msg#inbox_msg_info_v1.timestamp),
+    MsgId = Msg#inbox_msg_info_v1.msg_id,
+    New = if Msg#inbox_msg_info_v1.state =:= new -> 1; true -> 0 end,
+    From = Msg#inbox_msg_info_v1.src_addr#addr.addr,
+    To = Msg#inbox_msg_info_v1.dst_addr#addr.addr,
+    Timestamp = utc_timestamp_to_binary(Msg#inbox_msg_info_v1.rcv_time),
     Size = Msg#inbox_msg_info_v1.size,
-    TextUtf8 = Msg#inbox_msg_info_v1.text,
+    TextUtf8 = Msg#inbox_msg_info_v1.body,
     TextUtf16 = ac_hexdump:binary_to_hexdump(
         unicode:characters_to_binary(TextUtf8, utf8, {utf16, big}), to_lower),
     <<
