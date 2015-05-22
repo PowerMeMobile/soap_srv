@@ -28,8 +28,9 @@ SOAP_SERVER = 'http://{0}:{1}/bmsgw/soap/messenger.asmx'.format(SOAP_HOST, SOAP_
 SMPPSIM_SERVER = 'http://{0}:{1}'.format(SMPPSIM_HOST, SMPPSIM_PORT)
 
 CUSTOMER_ID = 10003
-USER_ID     = 'user'
-PASSWORD    = 'password'
+USER_ID = 'user'
+USER_ID_NO_INBOX = 'user_no_inbox'
+PASSWORD = 'password'
 BAD_PASSWORD = 'intentionally wrong password'
 
 ORIGINATOR = '375296660005'
@@ -366,6 +367,21 @@ def test_HTTP_InboxProcessing_kill_old_bad_password_fail(request):
     res = inbox_kill_old(request, CUSTOMER_ID, USER_ID, BAD_PASSWORD)
     idel = res['inboxdel']
     assert idel['result'] == '404.2 FAILURE (User is unknown)'
+
+def test_HTTP_InboxProcessing_stats_inbox_not_activated_fail(request):
+    res = inbox_stats(request, CUSTOMER_ID, USER_ID_NO_INBOX, PASSWORD)
+    iinfo = res['inboxinfo']
+    assert iinfo['result'] == 'Inbox is not activated'
+
+def test_HTTP_InboxProcessing_list_all_inbox_not_activated_fail(request):
+    res = inbox_list_all(request, CUSTOMER_ID, USER_ID_NO_INBOX, PASSWORD)
+    ilist = res['inboxlist']
+    assert ilist['result'] == 'Inbox is not activated'
+
+def test_HTTP_InboxProcessing_kill_old_inbox_not_activated_fail(request):
+    res = inbox_kill_old(request, CUSTOMER_ID, USER_ID_NO_INBOX, PASSWORD)
+    idel = res['inboxdel']
+    assert idel['result'] == 'Inbox is not activated'
 
 def test_HTTP_InboxProcessing_stats_empty_succ(request):
     inbox_kill_all(request, CUSTOMER_ID, USER_ID, PASSWORD)

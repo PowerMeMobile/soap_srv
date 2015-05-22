@@ -42,6 +42,8 @@
     <<"Customer's postpaid credit limit is exceeded">>).
 -define(E_INBOX_BAD_OPERATION,
     <<"Non-supported Inbox operation is specified!">>).
+-define(E_INBOX_NOT_ACTIVATED,
+    <<"Inbox is not activated">>).
 
 %% ===================================================================
 %% API
@@ -213,7 +215,7 @@ handle(authenticate, Req = #'InboxProcessing'{user = User}) ->
     Password = User#user.'Password',
     case authenticate(CustomerId, UserId, Password) of
         {ok, Customer} ->
-            handle(inbox_processing, Req, Customer);
+            handle(check_inbox_activated, Req, Customer);
         {error, Error} ->
             Operation = Req#'InboxProcessing'.operation,
             handle_inbox_error_response(Operation, Error)
@@ -225,7 +227,7 @@ handle(authenticate, Req = #'HTTP_InboxProcessing'{}) ->
     Password = Req#'HTTP_InboxProcessing'.userPassword,
     case authenticate(CustomerId, UserId, Password) of
         {ok, Customer} ->
-            handle(inbox_processing, Req, Customer);
+            handle(check_inbox_activated, Req, Customer);
         {error, Error} ->
             Operation = Req#'HTTP_InboxProcessing'.operation,
             handle_inbox_error_response(Operation, Error)
@@ -583,6 +585,24 @@ handle(get_sms_status, Req = #'HTTP_GetSmsStatus'{}, Customer) ->
     Detailed = reformat_boolean(Req#'HTTP_GetSmsStatus'.detailed),
     get_sms_status(Customer, UserId, TransactionId, Detailed);
 
+handle(check_inbox_activated, Req = #'InboxProcessing'{}, Customer) ->
+    case lists:keyfind(<<"inbox">>, #feature_v1.name, Customer#auth_customer_v1.features) of
+        #feature_v1{value = <<"true">>} ->
+            handle(inbox_processing, Req, Customer);
+        _Other ->
+            Operation = Req#'InboxProcessing'.operation,
+            handle_inbox_error_response(Operation, inbox_not_activated)
+    end;
+
+handle(check_inbox_activated, Req = #'HTTP_InboxProcessing'{}, Customer) ->
+    case lists:keyfind(<<"inbox">>, #feature_v1.name, Customer#auth_customer_v1.features) of
+        #feature_v1{value = <<"true">>} ->
+            handle(inbox_processing, Req, Customer);
+        _Other ->
+            Operation = Req#'HTTP_InboxProcessing'.operation,
+            handle_inbox_error_response(Operation, inbox_not_activated)
+    end;
+
 handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
     CustomerUuid = Customer#auth_customer_v1.customer_uuid,
     UserId = User#user.'Name',
@@ -921,6 +941,8 @@ reformat_error(timeout) ->
     ?E_TIMEOUT;
 reformat_error(bad_operation) ->
     ?E_INBOX_BAD_OPERATION;
+reformat_error(inbox_not_activated) ->
+    ?E_INBOX_NOT_ACTIVATED;
 reformat_error(Result) ->
     atom_to_binary(Result, utf8).
 
