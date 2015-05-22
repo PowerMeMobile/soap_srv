@@ -892,12 +892,13 @@ aggregate_statistics([#sms_status_v1{status = Status} | Rest], Dict) ->
     Dict1 = dict:update_counter(Status, 1, Dict),
     aggregate_statistics(Rest, Dict1).
 
-reformat_boolean(<<"true">>)  -> true;
-reformat_boolean(<<"True">>)  -> true;
-reformat_boolean(<<"false">>) -> false;
-reformat_boolean(<<"False">>) -> false;
-reformat_boolean(<<>>)        -> false;
-reformat_boolean(undefined)   -> false.
+reformat_boolean(Value) when is_binary(Value) ->
+    case bstr:lower(Value) of
+        <<"true">>  -> true;
+        <<"false">> -> false;
+        _           -> false
+    end;
+reformat_boolean(undefined) -> false.
 
 reformat_integer(undefined) ->
     0;
