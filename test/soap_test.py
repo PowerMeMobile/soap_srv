@@ -377,7 +377,7 @@ def test_SendSms2_succ(client):
 #
 
 def test_GetSmsStatus_bad_user_fail(client):
-    res = client.GetSmsStatus(user=BAD_USER, transactionID=TRANSACTION_ID, detailed=False)
+    res = client.GetSmsStatus(user=BAD_USER, transactionID='', detailed=False)
     assert res['GetSmsStatusResult']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['GetSmsStatusResult']['NetPoints'] == '0'
 
@@ -392,26 +392,26 @@ def test_GetSmsStatus_wrong_transaction_id_fail(client):
     assert res['GetSmsStatusResult']['NetPoints'] == '0'
 
 def test_GetSmsStatus_detailed_false_succ(client):
-    res = client.GetSmsStatus(user=USER, transactionID=TRANSACTION_ID, detailed=False)
-    assert res['GetSmsStatusResult']['Result'] == 'OK'
-    assert res['GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
-    assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
-
-def test_GetSmsStatus_detailed_false_succ(client):
-    res = client.GetSmsStatus(user=USER, transactionID=TRANSACTION_ID, detailed=False)
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    trans_id = res['SendSmsResult']['TransactionID']
+    time.sleep(2)
+    res = client.GetSmsStatus(user=USER, transactionID=trans_id, detailed=False)
     assert res['GetSmsStatusResult']['Result'] == 'OK'
     assert res['GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
 
 def test_GetSmsStatus_detailed_true_succ(client):
-    res = client.GetSmsStatus(user=USER, transactionID=TRANSACTION_ID, detailed=True)
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    trans_id = res['SendSmsResult']['TransactionID']
+    time.sleep(2)
+    res = client.GetSmsStatus(user=USER, transactionID=trans_id, detailed=True)
     assert res['GetSmsStatusResult']['Result'] == 'OK'
     assert res['GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00640065006c006900760065007200650064'}, {'number': u'375296543210'}]
     StatusU = str(res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
     assert from_hex_utf16be(StatusU) == 'delivered'
-    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
+    assert res['GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == RECIPIENT
 
 #
 # InboxProcessing
@@ -862,20 +862,26 @@ def test_HTTP_GetSmsStatus_wrong_transaction_id_fail(client):
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == '0'
 
 def test_HTTP_GetSmsStatus_detailed_false_succ(client):
-    res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=TRANSACTION_ID, detailed=False)
+    res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    trans_id = res['HTTP_SendSmsResult']['TransactionID']
+    time.sleep(2)
+    res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=trans_id, detailed=False)
     assert res['HTTP_GetSmsStatusResult']['Result'] == 'OK'
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
 
 def test_HTTP_GetSmsStatus_detailed_true_succ(client):
-    res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=TRANSACTION_ID, detailed=True)
+    res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    trans_id = res['HTTP_SendSmsResult']['TransactionID']
+    time.sleep(2)
+    res = client.HTTP_GetSmsStatus(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=trans_id, detailed=True)
     assert res['HTTP_GetSmsStatusResult']['Result'] == 'OK'
     assert res['HTTP_GetSmsStatusResult']['NetPoints'] == 'POSTPAID'
     assert res['HTTP_GetSmsStatusResult']['Statistics']['statistics']['SMSC_DELIVERED'] == 1
     ## [{'StatusU': u'00640065006c006900760065007200650064'}, {'number': u'375296543210'}]
     StatusU = str(res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][0]['StatusU'])
     assert from_hex_utf16be(StatusU) == 'delivered'
-    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == '375296543210'
+    assert res['HTTP_GetSmsStatusResult']['Details']['details']['SMSC_DELIVERED'][1]['number'] == RECIPIENT
 
 #
 # HTTP_InboxProcessing

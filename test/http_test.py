@@ -40,7 +40,6 @@ BAD_RECIPIENT = '999999999999'
 RECIPIENT_BASE64 = 'Mzc1Mjk2NTQzMjEw'
 BAD_RECIPIENT_BASE64 = 'OTk5OTk5OTk5OTk5'
 
-TRANSACTION_ID = '85ccccbf-f854-4898-86b1-5072d3e33da1'
 BAD_TRANSACTION_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
 #
@@ -314,7 +313,7 @@ def test_HTTP_SendBinarySms_succ(request):
 #
 
 def test_HTTP_GetSmsStatus_bad_password_fail(request):
-    res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, transactionID=TRANSACTION_ID, detailed=False)
+    res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=BAD_PASSWORD, transactionID='', detailed=False)
     assert res['SmsStatus']['Result'] == '404.2 FAILURE (User is unknown)'
     assert res['SmsStatus']['NetPoints'] == '0'
 
@@ -329,13 +328,18 @@ def test_HTTP_GetSmsStatus_wrong_transaction_id_fail(request):
     assert res['SmsStatus']['NetPoints'] == '0'
 
 def test_HTTP_GetSmsStatus_detailed_false_succ(request):
-    res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=TRANSACTION_ID, detailed=False)
+    res = send_sms(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    trans_id = res['SendResult']['TransactionID']
+    time.sleep(2)
+    res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=trans_id, detailed=False)
     assert res['SmsStatus']['Result'] == 'OK'
     assert res['SmsStatus']['NetPoints'] == 'POSTPAID'
     assert res['SmsStatus']['Statistics']['statistics']['SMSC_DELIVERED']['#text'] == "1"
-
 def test_HTTP_GetSmsStatus_detailed_true_succ(request):
-    res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=TRANSACTION_ID, detailed=True)
+    res = send_sms(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    trans_id = res['SendResult']['TransactionID']
+    time.sleep(2)
+    res = get_sms_status(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, transactionID=trans_id, detailed=True)
     assert res['SmsStatus']['Result'] == 'OK'
     assert res['SmsStatus']['NetPoints'] == 'POSTPAID'
     assert res['SmsStatus']['Statistics']['statistics']['SMSC_DELIVERED']['#text'] == "1"
