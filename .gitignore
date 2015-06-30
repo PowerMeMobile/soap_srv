@@ -1,11 +1,11 @@
 ebin/
 deps/
-.eunit/
 rel/soap_srv/
+.eunit/
 test/__pycache__/
 test/env/
 test/*.pyc
-test/*.ipynb
+test/*ipynb*
 test/tsung/latest.log
 test/tsung/log/
 TAGS
