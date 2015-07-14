@@ -64,9 +64,9 @@ handle(authenticate, _Req = #'Authenticate'{user = User}) ->
     case authenticate(CustomerID, UserName, Password) of
         {ok, Customer} ->
             Originators = [Addr#addr.addr ||
-                Addr <- Customer#auth_customer_v1.allowed_sources],
-            Credit = credit_left(Customer#auth_customer_v1.pay_type,
-                                 Customer#auth_customer_v1.credit),
+                Addr <- Customer#auth_customer_v2.allowed_sources],
+            Credit = credit_left(Customer#auth_customer_v2.pay_type,
+                                 Customer#auth_customer_v2.credit),
             {ok, #'AuthResult'{
                 'Result' = ?E_SUCCESS,
                 'NetPoints' = Credit,
@@ -85,9 +85,9 @@ handle(authenticate, Req = #'HTTP_Authenticate'{}) ->
     case authenticate(CustomerID, UserName, Password) of
         {ok, Customer} ->
             Originators = [Addr#addr.addr ||
-                Addr <- Customer#auth_customer_v1.allowed_sources],
-            Credit = credit_left(Customer#auth_customer_v1.pay_type,
-                                 Customer#auth_customer_v1.credit),
+                Addr <- Customer#auth_customer_v2.allowed_sources],
+            Credit = credit_left(Customer#auth_customer_v2.pay_type,
+                                 Customer#auth_customer_v2.credit),
             {ok, #'AuthResult'{
                 'Result' = ?E_SUCCESS,
                 'NetPoints' = Credit,
@@ -353,7 +353,7 @@ handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = User#user.'Name',
     {Encoding, NumType} = reformat_message_type(Req#'SendSms'.messageType),
     Message = alley_services_utils:convert_arabic_numbers(Req#'SendSms'.smsText, NumType),
@@ -389,7 +389,7 @@ handle(send, Req = #'SendSms'{user = User}, Customer) ->
         end;
 
 handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = Req#'HTTP_SendSms'.'userName',
     {Encoding, NumType} = reformat_message_type(Req#'HTTP_SendSms'.messageType),
     Message = alley_services_utils:convert_arabic_numbers(Req#'HTTP_SendSms'.smsText, NumType),
@@ -425,7 +425,7 @@ handle(send, Req = #'HTTP_SendSms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendSms2'{user = User}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = User#user.'Name',
     {Encoding, NumType} = reformat_message_type(Req#'SendSms2'.messageType),
     Message = alley_services_utils:convert_arabic_numbers(Req#'SendSms2'.smsText, NumType),
@@ -461,7 +461,7 @@ handle(send, Req = #'SendSms2'{user = User}, Customer) ->
     end;
 
 handle(send, Req = #'SendServiceSms'{}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = Req#'SendServiceSms'.userName,
     {Encoding, _NumType} = reformat_message_type(Req#'SendServiceSms'.messageType),
     Message = reformat_service_sms(
@@ -500,7 +500,7 @@ handle(send, Req = #'SendServiceSms'{}, Customer) ->
     end;
 
 handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = User#user.'Name',
     Message = ac_hexdump:hexdump_to_binary(Req#'SendBinarySms'.binaryBody),
     DC = reformat_integer(Req#'SendBinarySms'.data_coding),
@@ -537,7 +537,7 @@ handle(send, Req = #'SendBinarySms'{user = User}, Customer) ->
     end;
 
 handle(send, Req = #'HTTP_SendBinarySms'{}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = Req#'HTTP_SendBinarySms'.'userName',
     Message = ac_hexdump:hexdump_to_binary(Req#'HTTP_SendBinarySms'.binaryBody),
     DC = reformat_integer(Req#'HTTP_SendBinarySms'.data_coding),
@@ -586,7 +586,7 @@ handle(get_sms_status, Req = #'HTTP_GetSmsStatus'{}, Customer) ->
     get_sms_status(Customer, UserId, TransactionId, Detailed);
 
 handle(check_inbox_activated, Req = #'InboxProcessing'{}, Customer) ->
-    case lists:keyfind(<<"inbox">>, #feature_v1.name, Customer#auth_customer_v1.features) of
+    case lists:keyfind(<<"inbox">>, #feature_v1.name, Customer#auth_customer_v2.features) of
         #feature_v1{value = <<"true">>} ->
             handle(inbox_processing, Req, Customer);
         _Other ->
@@ -595,7 +595,7 @@ handle(check_inbox_activated, Req = #'InboxProcessing'{}, Customer) ->
     end;
 
 handle(check_inbox_activated, Req = #'HTTP_InboxProcessing'{}, Customer) ->
-    case lists:keyfind(<<"inbox">>, #feature_v1.name, Customer#auth_customer_v1.features) of
+    case lists:keyfind(<<"inbox">>, #feature_v1.name, Customer#auth_customer_v2.features) of
         #feature_v1{value = <<"true">>} ->
             handle(inbox_processing, Req, Customer);
         _Other ->
@@ -604,21 +604,21 @@ handle(check_inbox_activated, Req = #'HTTP_InboxProcessing'{}, Customer) ->
     end;
 
 handle(inbox_processing, Req = #'InboxProcessing'{user = User}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = User#user.'Name',
     Operation = inbox_operation(Req#'InboxProcessing'.operation),
     MsgIds = inbox_msg_ids(Req#'InboxProcessing'.messageId),
-    Credit = credit_left(Customer#auth_customer_v1.pay_type,
-                         Customer#auth_customer_v1.credit),
+    Credit = credit_left(Customer#auth_customer_v2.pay_type,
+                         Customer#auth_customer_v2.credit),
     inbox_processing(CustomerUuid, UserId, Operation, MsgIds, Credit);
 
 handle(inbox_processing, Req = #'HTTP_InboxProcessing'{}, Customer) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     UserId = Req#'HTTP_InboxProcessing'.userName,
     Operation = inbox_operation(Req#'HTTP_InboxProcessing'.operation),
     MsgIds = inbox_msg_ids(Req#'HTTP_InboxProcessing'.messageId),
-    Credit = credit_left(Customer#auth_customer_v1.pay_type,
-                         Customer#auth_customer_v1.credit),
+    Credit = credit_left(Customer#auth_customer_v2.pay_type,
+                         Customer#auth_customer_v2.credit),
     inbox_processing(CustomerUuid, UserId, Operation, MsgIds, Credit);
 
 handle(_, _, _) ->
@@ -639,7 +639,7 @@ send_result(#send_result{
         'Result' = ?E_SUCCESS,
         'RejectedNumbers' = [Addr#addr.addr || Addr <- Rejected],
         'TransactionID' = ReqId,
-        'NetPoints' = credit_left(Customer#auth_customer_v1.pay_type, CreditLeft)
+        'NetPoints' = credit_left(Customer#auth_customer_v2.pay_type, CreditLeft)
     }};
 send_result(#send_result{result = Result}) ->
     {ok, #'SendResult'{
@@ -655,12 +655,12 @@ credit_left(prepaid, Credit) when is_float(Credit) ->
 
 authenticate(CustomerID, UserName, Password) ->
     case alley_services_auth:authenticate(
-            CustomerID, UserName, soap, Password) of
-        {ok, #auth_resp_v1{result = Result}} ->
+            CustomerID, UserName, Password, soap) of
+        {ok, #auth_resp_v2{result = Result}} ->
             case Result of
-                #auth_customer_v1{} ->
+                #auth_customer_v2{} ->
                     {ok, Result};
-                #auth_error_v1{code = Error} ->
+                #auth_error_v2{code = Error} ->
                     ?log_error("Authenticate response error: ~p", [Error]),
                     {error, authentication}
             end;
@@ -670,13 +670,13 @@ authenticate(CustomerID, UserName, Password) ->
     end.
 
 get_sms_status(Customer, UserId, TransactionId, Detailed) ->
-    CustomerUuid = Customer#auth_customer_v1.customer_uuid,
+    CustomerUuid = Customer#auth_customer_v2.customer_uuid,
     case alley_services_api:get_sms_status(
             CustomerUuid, UserId, TransactionId) of
         {ok, #sms_status_resp_v1{statuses = Statuses}} ->
             Statistics = build_statistics(Statuses),
-            Credit = credit_left(Customer#auth_customer_v1.pay_type,
-                                 Customer#auth_customer_v1.credit),
+            Credit = credit_left(Customer#auth_customer_v2.pay_type,
+                                 Customer#auth_customer_v2.credit),
             case Detailed of
                 true ->
                     Details = build_details(Statuses),
@@ -992,10 +992,10 @@ flash(true, ucs2) ->
     [{data_coding, 248}].
 
 common_smpp_params(Customer) ->
-    ReceiptsAllowed = Customer#auth_customer_v1.receipts_allowed,
-    NoRetry = Customer#auth_customer_v1.no_retry,
+    ReceiptsAllowed = Customer#auth_customer_v2.receipts_allowed,
+    NoRetry = Customer#auth_customer_v2.no_retry,
     Validity = alley_services_utils:fmt_validity(
-        Customer#auth_customer_v1.default_validity),
+        Customer#auth_customer_v2.default_validity),
     [
         {registered_delivery, ReceiptsAllowed},
         {service_type, <<>>},

@@ -10,8 +10,7 @@
 
 -include_lib("alley_common/include/supervisor_spec.hrl").
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Timeout, Type), {I, {I, start_link, []}, permanent, Timeout, Type, [I]}).
+-define(CHILD(I, Restart, Timeout, Type), {I, {I, start_link, []}, Restart, Timeout, Type, [I]}).
 
 %% ===================================================================
 %% API
@@ -26,4 +25,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, []}}.
+    {ok, {{one_for_one, 5, 10}, [
+        ?CHILD(alley_services_http_in_logger, permanent, 5000, worker)
+    ]}}.
