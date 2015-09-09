@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 import pytest
 
 import os
@@ -199,8 +203,15 @@ def test_SendSms_defdate_succ(client):
     assert res['SendSmsResult']['NetPoints'] == 'POSTPAID'
     assert res['SendSmsResult']['TransactionID'] != None
 
-def test_SendSms_succ(client):
+def test_SendSms_latin_succ(client):
     res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'OK'
+    assert res['SendSmsResult']['RejectedNumbers'] == []
+    assert res['SendSmsResult']['NetPoints'] == 'POSTPAID'
+    assert res['SendSmsResult']['TransactionID'] != None
+
+def test_SendSms_arabic_succ(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='بطاقتك مسروقة', recipientPhone=RECIPIENT, messageType='ArabicWithLatinNumbers', defDate='', blink=False, flash=False, Private=False)
     assert res['SendSmsResult']['Result'] == 'OK'
     assert res['SendSmsResult']['RejectedNumbers'] == []
     assert res['SendSmsResult']['NetPoints'] == 'POSTPAID'
@@ -782,8 +793,15 @@ def test_HTTP_SendSms_bad_defdate_fail(client):
     assert res['HTTP_SendSmsResult']['NetPoints'] == '0'
     assert res['HTTP_SendSmsResult']['TransactionID'] == None
 
-def test_HTTP_SendSms_succ(client):
+def test_HTTP_SendSms_latin_succ(client):
     res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['HTTP_SendSmsResult']['Result'] == 'OK'
+    assert res['HTTP_SendSmsResult']['RejectedNumbers'] == []
+    assert res['HTTP_SendSmsResult']['NetPoints'] == 'POSTPAID'
+    assert res['HTTP_SendSmsResult']['TransactionID'] != None
+
+def test_HTTP_SendSms_arabic_succ(client):
+    res = client.HTTP_SendSms(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='بطاقتك مسروقة', recipientPhone=RECIPIENT, messageType='ArabicWithLatinNumbers', defDate='', blink=False, flash=False, Private=False)
     assert res['HTTP_SendSmsResult']['Result'] == 'OK'
     assert res['HTTP_SendSmsResult']['RejectedNumbers'] == []
     assert res['HTTP_SendSmsResult']['NetPoints'] == 'POSTPAID'
