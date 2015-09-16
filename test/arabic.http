@@ -1,0 +1,26 @@
+POST /bmsgw/soap/messenger.asmx HTTP/1.1
+User-Agent: curl/7.35.0
+Host: 10.10.0.87:8088
+Accept: */*
+Soapaction: "http://pmmsoapmessenger.com/SendSms"
+Content-Length: 764
+Content-Type: text/xml; charset="UTF-8"
+
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <HTTP_SendSms xmlns="http://pmmsoapmessenger.com/">
+      <customerID>1</customerID>
+      <userName>user</userName>
+      <userPassword>password</userPassword>
+      <originator>orig</originator>
+      <smsText>بطاقتك مسروقة</smsText>
+      <recipientPhone>375296543210</recipientPhone>
+      <messageType>ArabicWithLatinNumbers</messageType>
+      <defDate></defDate>
+      <blink>false</blink>
+      <flash>false</flash>
+      <Private>false</Private>
+    </HTTP_SendSms>
+  </soap:Body>
+</soap:Envelope>
