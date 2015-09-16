@@ -162,14 +162,13 @@ dispatch_rules() ->
 onrequest_hook(Req) ->
     %% 2k recipients = 28k body for HTTP POST x-www-form-urlencoded
     {ok, Body, Req2} = cowboy_req:body(Req, [{length, 800000}]),
-    store_body(Body),
+    store_body(Body, calendar:universal_time()),
     Req2.
 
 -spec onresponse_hook(non_neg_integer(),
     list(), binary(), cowboy_req:req()) -> cowboy_req:req().
 onresponse_hook(RespCode, RespHeaders, RespBody, Req) ->
-    ReqBody = get_body(),
-    ReqTime = get_req_time(),
+    {ReqBody, ReqTime} = get_body(),
     RespTime = calendar:universal_time(),
     alley_services_http_in_logger:log(
         RespCode, RespHeaders, RespBody, RespTime, Req, ReqBody, ReqTime),
@@ -177,19 +176,21 @@ onresponse_hook(RespCode, RespHeaders, RespBody, Req) ->
         cowboy_req:reply(RespCode, RespHeaders, RespBody, Req),
     Req2.
 
-store_body(Body) ->
-    put(req_body, Body),
-    put(req_time, calendar:universal_time()).
+store_body(Body, ReqTime) ->
+    put(req_body, {Body, ReqTime}),
+    ok.
 
 get_body() ->
-    get(req_body).
-
-get_req_time() ->
-    get(req_time).
+    case get(req_body) of
+        undefined ->
+            {undefined, calendar:universal_time()};
+        {ReqBody, ReqTime} ->
+            {ReqBody, ReqTime}
+    end.
 
 clean_body() ->
     put(req_body, undefined),
-    put(req_time, undefined).
+    ok.
 
 %% ===================================================================
 %% cowboy_http_handler callbacks
@@ -228,7 +229,7 @@ handle(Req, St) ->
     end.
 
 terminate(_Reason, _Req, _St) ->
-    clean_body(),       %% Need to cleanup body record in proc dict
+    clean_body(),       %% Need to cleanup the body in proc dict
     ok.                 %% since cowboy uses one process per several
                         %% requests in keepalive mode
 
@@ -294,7 +295,7 @@ step(get_transport_type, Req, St) ->
     end;
 
 step(parse_xml, Req, St = #st{}) ->
-    Body = get_body(),
+    {Body, _} = get_body(),
     try erlsom:simple_form(Body, [{output_encoding, utf8}]) of
         {ok, SimpleForm, _} ->
             step(get_soap_envelope, Req, St#st{xml = SimpleForm})
@@ -707,7 +708,8 @@ get_qs_vals(Req) ->
         {<<"GET">>, Req2} ->
             cowboy_req:qs_vals(Req2);
         {<<"POST">>, Req2} ->
-            BodyQs = cow_qs:parse_qs(get_body()),
+            {Body, _} = get_body(),
+            BodyQs = cow_qs:parse_qs(Body),
             {BodyQs, Req2}
     end,
     QsValsLowerCase =

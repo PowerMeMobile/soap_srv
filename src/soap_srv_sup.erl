@@ -25,6 +25,8 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [
+    %% We sustain 100 logger crashes per sec.
+    %% If it's not enough set logger level to none.
+    {ok, {{one_for_one, 100, 1}, [
         ?CHILD(alley_services_http_in_logger, permanent, 5000, worker)
     ]}}.
