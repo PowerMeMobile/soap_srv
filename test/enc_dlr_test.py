@@ -32,8 +32,7 @@ USER_ID     = 'user'
 PASSWORD    = 'password'
 
 ORIGINATOR = '375296660003'
-SIM_RECIPIENT = '375296543210'
-SINK_RECIPIENT = '999296543210'
+RECIPIENT = '375296543210'
 
 #
 # Fixture
@@ -87,7 +86,7 @@ def get_batch_info(_request, transactionID):
 # messageType=Latin|ArabicWithArabicNumbers|ArabicWithLatinNumbers
 
 def check_message_parts_count(request, message, encoding, count):
-    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, message, SIM_RECIPIENT, encoding, '', False, False, False)
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, message, RECIPIENT, encoding, '', False, False, False)
     assert res['SendResult']['Result'] == 'OK'
     assert res['SendResult']['TransactionID'] != None
     tid = res['SendResult']['TransactionID']
@@ -138,7 +137,7 @@ def test_check_encodings(request):
 #
 
 def check_sink_delivery_status(request, command, status, timeout):
-    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, command, SINK_RECIPIENT, 'Latin', '', False, False, False)
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, command, RECIPIENT, 'Latin', '', False, False, False)
     assert res['SendResult']['Result'] == 'OK'
     assert res['SendResult']['TransactionID'] != None
     tid = res['SendResult']['TransactionID']
@@ -173,7 +172,7 @@ def test_check_sink_delivery_statuses(request):
 
 def test_check_deferred_status(request):
     defdate = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y%m%d%H%M%S')
-    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, 'Hello', SINK_RECIPIENT, 'Latin', defdate, False, False, False)
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, 'Hello', RECIPIENT, 'Latin', defdate, False, False, False)
     assert res['SendResult']['Result'] == 'OK'
     assert res['SendResult']['TransactionID'] != None
     tid = res['SendResult']['TransactionID']
