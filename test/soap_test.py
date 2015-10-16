@@ -55,7 +55,7 @@ BAD_USER = {
 ORIGINATOR = '375296660003'
 SHORT_CODE = '0031'
 RECIPIENT = '375296543210'
-BAD_RECIPIENT = '999999999999'
+BAD_RECIPIENT = '000999999999'
 RECIPIENT_BASE64 = 'Mzc1Mjk2NTQzMjEw'
 BAD_RECIPIENT_BASE64 = 'OTk5OTk5OTk5OTk5'
 
@@ -86,11 +86,37 @@ def client(request):
     #client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Details'] = None
 
     # SMSC_DELIVERED, 3e231a28-cdf2-4d95-ac2e-a8cd1e0a0a0a - TempFail_WillRetry
-    statistics = {'submitted':int, 'sent':int, 'failed':int, 'delivered':int, 'expired':int, 'deleted':int, 'undeliverable':int, 'accepted':int, 'unknown':int, 'rejected':int, 'SMSC_DELIVERED':int}
+    statistics = {
+        'submitted':int,
+        'sent':int,
+        'failed':int,
+        'delivered':int,
+        'expired':int,
+        'deleted':int,
+        'undeliverable':int,
+        'accepted':int,
+        'unknown':int,
+        'rejected':int,
+        'SMSC_DELIVERED':int,
+        'SMSC_ACCEPTED':int
+    }
     client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Statistics'] = {'statistics':statistics}
 
     numbers = [{'number':str, 'TimeStamp':str, 'StatusU':str}]
-    details = {'submitted':numbers, 'sent':numbers, 'failed':numbers, 'delivered':numbers, 'expired':numbers, 'deleted':numbers, 'undeliverable':numbers, 'accepted':numbers, 'unknown':numbers, 'rejected':numbers, 'SMSC_DELIVERED':numbers}
+    details = {
+        'submitted':numbers,
+        'sent':numbers,
+        'failed':numbers,
+        'delivered':numbers,
+        'expired':numbers,
+        'deleted':numbers,
+        'undeliverable':numbers,
+        'accepted':numbers,
+        'unknown':numbers,
+        'rejected':numbers,
+        'SMSC_DELIVERED':numbers,
+        'SMSC_ACCEPTED':numbers
+    }
     client.services['Messenger']['ports']['MessengerSoap']['operations']['GetSmsStatus']['output']['GetSmsStatusResponse']['GetSmsStatusResult']['Details'] = {'details':details}
 
     return client

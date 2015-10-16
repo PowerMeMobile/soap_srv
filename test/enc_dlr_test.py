@@ -33,6 +33,7 @@ PASSWORD    = 'password'
 
 ORIGINATOR = '375296660003'
 RECIPIENT = '375296543210'
+SINK_RECIPIENT = '999296543210'
 
 #
 # Fixture
@@ -182,3 +183,32 @@ def test_check_deferred_status(request):
     res = get_sms_status(request, CUSTOMER_ID, USER_ID, PASSWORD, tid, False)
     assert res['SmsStatus']['Result'] == 'OK'
     assert res['SmsStatus']['Statistics']['statistics']['SMSC_DEFERRED']
+
+#
+# Originator routing
+#
+
+def test_originator_routing_default_succ(request):
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, 'receipt:accepted', RECIPIENT, 'Latin', '', False, False, False)
+    tid = res['SendResult']['TransactionID']
+    time.sleep(2)
+    res = get_sms_status(request, CUSTOMER_ID, USER_ID, PASSWORD, tid, False)
+    assert res['SmsStatus']['Statistics']['statistics']['SMSC_ACCEPTED']
+
+def test_originator_routing_default_fail(request):
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, 'receipt:accepted', SINK_RECIPIENT, 'Latin', '', False, False, False)
+    assert res['SendResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+
+def test_originator_routing_sink_succ(request):
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, 'sink_default', 'receipt:accepted', SINK_RECIPIENT, 'Latin', '', False, False, False)
+    tid = res['SendResult']['TransactionID']
+    time.sleep(2)
+    res = get_sms_status(request, CUSTOMER_ID, USER_ID, PASSWORD, tid, False)
+    assert res['SmsStatus']['Statistics']['statistics']['SMSC_ACCEPTED']
+
+def test_originator_routing_sink_sim_succ(request):
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, 'sink_sim', 'receipt:accepted', SINK_RECIPIENT, 'Latin', '', False, False, False)
+    tid = res['SendResult']['TransactionID']
+    time.sleep(2)
+    res = get_sms_status(request, CUSTOMER_ID, USER_ID, PASSWORD, tid, False)
+    assert res['SmsStatus']['Statistics']['statistics']['SMSC_DELIVERED']

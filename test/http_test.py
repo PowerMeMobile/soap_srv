@@ -335,6 +335,7 @@ def test_HTTP_GetSmsStatus_detailed_false_succ(request):
     assert res['SmsStatus']['Result'] == 'OK'
     assert res['SmsStatus']['NetPoints'] == 'POSTPAID'
     assert res['SmsStatus']['Statistics']['statistics']['SMSC_DELIVERED']['#text'] == "1"
+
 def test_HTTP_GetSmsStatus_detailed_true_succ(request):
     res = send_sms(request, customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     trans_id = res['SendResult']['TransactionID']
