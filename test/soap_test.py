@@ -55,6 +55,7 @@ BAD_USER = {
 ORIGINATOR = '375296660003'
 SHORT_CODE = '0031'
 RECIPIENT = '375296543210'
+BLACKLISTED_RECIPIENT = '375296666666'
 BAD_RECIPIENT = '888999999999'
 RECIPIENT_BASE64     = 'Mzc1Mjk2NTQzMjEw'
 BAD_RECIPIENT_BASE64 = 'ODg4OTk5OTk5OTk5'
@@ -1199,3 +1200,28 @@ def test_HTTP_InboxProcessing_kill_old(client):
     assert iinfo['new'] == '1'
 
     client.HTTP_InboxProcessing(customerID=CUSTOMER_ID, userName=USER_ID, userPassword=PASSWORD, operation='kill-all', messageId=None)
+
+#
+# Blacklist
+#
+
+def test_blacklisted_recipient_fail(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=BLACKLISTED_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+    assert res['SendSmsResult']['RejectedNumbers'] == []
+    assert res['SendSmsResult']['NetPoints'] == '0'
+    assert res['SendSmsResult']['TransactionID'] == None
+
+def test_blacklisted_with_space_recipient_fail(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=' '+BLACKLISTED_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'FAILURE: All recipient numbers in your message are either Rejected or Blacklisted'
+    assert res['SendSmsResult']['RejectedNumbers'] == []
+    assert res['SendSmsResult']['NetPoints'] == '0'
+    assert res['SendSmsResult']['TransactionID'] == None
+
+def test_good_and_blacklisted_succ(client):
+    res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT+', '+BLACKLISTED_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
+    assert res['SendSmsResult']['Result'] == 'OK'
+    assert res['SendSmsResult']['RejectedNumbers'] == [{'string':BLACKLISTED_RECIPIENT}, {'string':None}]
+    assert res['SendSmsResult']['NetPoints'] == 'POSTPAID'
+    assert res['SendSmsResult']['TransactionID'] != None

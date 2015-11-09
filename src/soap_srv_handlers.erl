@@ -968,7 +968,7 @@ reformat_addr(Addr) ->
 reformat_addrs(undefined) ->
     [];
 reformat_addrs(BlobAddrs) ->
-    RawAddrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
+    RawAddrs = binary:split(BlobAddrs, [<<",">>, <<" ">>], [trim, global]),
     [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs].
 
 reformat_error(authentication) ->
