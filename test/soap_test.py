@@ -1222,6 +1222,6 @@ def test_blacklisted_with_space_recipient_fail(client):
 def test_good_and_blacklisted_succ(client):
     res = client.SendSms(user=USER, originator=ORIGINATOR, smsText='Hello', recipientPhone=RECIPIENT+', '+BLACKLISTED_RECIPIENT, messageType='Latin', defDate='', blink=False, flash=False, Private=False)
     assert res['SendSmsResult']['Result'] == 'OK'
-    assert res['SendSmsResult']['RejectedNumbers'] == [{'string':BLACKLISTED_RECIPIENT}, {'string':None}]
+    assert res['SendSmsResult']['RejectedNumbers'] == [{'string':BLACKLISTED_RECIPIENT}]
     assert res['SendSmsResult']['NetPoints'] == 'POSTPAID'
     assert res['SendSmsResult']['TransactionID'] != None
