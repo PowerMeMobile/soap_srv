@@ -44,6 +44,8 @@
     <<"Non-supported Inbox operation is specified!">>).
 -define(E_INBOX_NOT_ACTIVATED,
     <<"Inbox is not activated">>).
+-define(E_INVALID_ENCODING,
+    <<"Invalid encoding">>).
 
 %% ===================================================================
 %% API
@@ -237,7 +239,7 @@ handle(_, _) ->
     erlang:error(method_not_implemented).
 
 handle(check_params, Req = #'SendSms'{}, Customer) ->
-    SmsText =  Req#'SendSms'.smsText,
+    SmsText = Req#'SendSms'.smsText,
     case SmsText of
         <<>> ->
             send_result(#send_result{result = no_message_body});
@@ -248,7 +250,7 @@ handle(check_params, Req = #'SendSms'{}, Customer) ->
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'SendSms'{defDate = ParsedDefDate},
-                    handle(send, Req2, Customer);
+                    handle(check_encoding, Req2, Customer);
                 {error, invalid} ->
                     send_result(#send_result{result = invalid_def_date})
             end
@@ -266,7 +268,7 @@ handle(check_params, Req = #'HTTP_SendSms'{}, Customer) ->
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'HTTP_SendSms'{defDate = ParsedDefDate},
-                    handle(send, Req2, Customer);
+                    handle(check_encoding, Req2, Customer);
                 {error, invalid} ->
                     send_result(#send_result{result = invalid_def_date})
             end
@@ -287,7 +289,7 @@ handle(check_params, Req = #'SendSms2'{}, Customer) ->
                     case parse_def_date(DefDate) of
                         {ok, ParsedDefDate} ->
                             Req3 = Req2#'SendSms2'{defDate = ParsedDefDate},
-                            handle(send, Req3, Customer);
+                            handle(check_encoding, Req3, Customer);
                         {error, invalid} ->
                             send_result(#send_result{result = invalid_def_date})
                     end
@@ -308,7 +310,7 @@ handle(check_params, Req = #'SendServiceSms'{}, Customer) ->
             case parse_def_date(DefDate) of
                 {ok, ParsedDefDate} ->
                     Req2 = Req#'SendServiceSms'{defDate = ParsedDefDate},
-                    handle(send, Req2, Customer);
+                    handle(check_encoding, Req2, Customer);
                 {error, invalid} ->
                     send_result(#send_result{result = invalid_def_date})
             end;
@@ -350,6 +352,55 @@ handle(check_params, Req = #'HTTP_SendBinarySms'{}, Customer) ->
                 {error, invalid} ->
                     send_result(#send_result{result = invalid_def_date})
         end
+    end;
+
+handle(check_encoding, Req = #'SendSms'{}, Customer) ->
+    SmsText = Req#'SendSms'.smsText,
+    MsgType = Req#'SendSms'.messageType,
+    case check_encoding(SmsText, MsgType) of
+        ok ->
+            handle(send, Req, Customer);
+        {error, {given, Given, guessed, Guessed}} ->
+            ?log_error("Invalid encoding detected text: ~p, given: ~p, guessed: ~p",
+                [SmsText, Given, Guessed]),
+            send_result(#send_result{result = invalid_encoding})
+    end;
+
+handle(check_encoding, Req = #'HTTP_SendSms'{}, Customer) ->
+    SmsText = Req#'HTTP_SendSms'.smsText,
+    MsgType = Req#'HTTP_SendSms'.messageType,
+    case check_encoding(SmsText, MsgType) of
+        ok ->
+            handle(send, Req, Customer);
+        {error, {given, Given, guessed, Guessed}} ->
+            ?log_error("Invalid encoding detected text: ~p, given: ~p, guessed: ~p",
+                [SmsText, Given, Guessed]),
+            send_result(#send_result{result = invalid_encoding})
+    end;
+
+handle(check_encoding, Req = #'SendSms2'{}, Customer) ->
+    SmsText = Req#'SendSms2'.smsText,
+    MsgType = Req#'SendSms2'.messageType,
+    case check_encoding(SmsText, MsgType) of
+        ok ->
+            handle(send, Req, Customer);
+        {error, {given, Given, guessed, Guessed}} ->
+            ?log_error("Invalid encoding detected text: ~p, given: ~p, guessed: ~p",
+                [SmsText, Given, Guessed]),
+            send_result(#send_result{result = invalid_encoding})
+    end;
+
+handle(check_encoding, Req = #'SendServiceSms'{}, Customer) ->
+    SmsText = reformat_service_sms(
+        Req#'SendServiceSms'.serviceName, Req#'SendServiceSms'.serviceUrl),
+    MsgType = Req#'SendServiceSms'.messageType,
+    case check_encoding(SmsText, MsgType) of
+        ok ->
+            handle(send, Req, Customer);
+        {error, {given, Given, guessed, Guessed}} ->
+            ?log_error("Invalid encoding detected text: ~p, given: ~p, guessed: ~p",
+                [SmsText, Given, Guessed]),
+            send_result(#send_result{result = invalid_encoding})
     end;
 
 handle(send, Req = #'SendSms'{user = User}, Customer) ->
@@ -621,7 +672,9 @@ handle(inbox_processing, Req = #'HTTP_InboxProcessing'{}, Customer) ->
                          Customer#auth_customer_v2.credit),
     inbox_processing(CustomerUuid, UserId, Operation, MsgIds, Credit);
 
-handle(_, _, _) ->
+handle(Method, Req, _Customer) ->
+    ?log_error("Method not implemented method: ~p, req: ~p",
+        [Method, Req]),
     erlang:error(method_not_implemented).
 
 %% ===================================================================
@@ -944,6 +997,8 @@ reformat_error(bad_operation) ->
     ?E_INBOX_BAD_OPERATION;
 reformat_error(inbox_not_activated) ->
     ?E_INBOX_NOT_ACTIVATED;
+reformat_error(invalid_encoding) ->
+    ?E_INVALID_ENCODING;
 reformat_error(Result) ->
     atom_to_binary(Result, utf8).
 
@@ -1003,3 +1058,14 @@ common_smpp_params(Customer) ->
         {validity_period, Validity},
         {priority_flag, 0}
     ].
+
+check_encoding(Text, MsgType) ->
+    {Encoding, _NumType} = reformat_message_type(MsgType),
+    case alley_services_utils:guess_encoding(Text) of
+        {ok, Encoding} ->
+            ok;
+        {ok, GuessedEnc} ->
+            {error, {given, Encoding, guessed, GuessedEnc}};
+        {error, unknown} ->
+            {error, {given, Encoding, guessed, unknown}}
+    end.
