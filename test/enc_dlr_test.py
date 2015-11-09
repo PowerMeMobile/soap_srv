@@ -132,6 +132,11 @@ def test_check_encodings(request):
     for (message, encoding, count) in utf8_checks:
         check_message_parts_count(request, message, encoding, count)
 
+def test_invalid_encoding(request):
+    res = send_sms(request, CUSTOMER_ID, USER_ID, PASSWORD, ORIGINATOR, 'رمز التحقّق : 030344', RECIPIENT, 'Latin', '', False, False, False)
+    assert res['SendResult']['Result'] == 'Invalid encoding'
+    assert res['SendResult']['TransactionID'] == None
+
 #
 # Check delivery statuses
 #
