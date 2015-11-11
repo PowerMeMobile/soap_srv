@@ -961,15 +961,16 @@ reformat_integer(Binary) ->
     binary_to_integer(Binary).
 
 reformat_addr(undefined) ->
-    reformat_addr(<<"">>);
+    reformat_addr(<<>>);
 reformat_addr(Addr) ->
     alley_services_utils:addr_to_dto(Addr).
 
 reformat_addrs(undefined) ->
     [];
 reformat_addrs(BlobAddrs) ->
-    RawAddrs = binary:split(BlobAddrs, [<<",">>, <<" ">>], [trim, global]),
-    [alley_services_utils:addr_to_dto(Addr) || Addr <- RawAddrs, Addr =/= <<>>].
+    Addrs = binary:split(BlobAddrs, <<",">>, [trim, global]),
+    Addrs2 = [alley_services_coverage:strip_non_digits(A) || A <- Addrs],
+    [alley_services_utils:addr_to_dto(A) || A <- Addrs2].
 
 reformat_error(authentication) ->
     ?E_AUTHENTICATION;
