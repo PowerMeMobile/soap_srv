@@ -1,7 +1,9 @@
 ebin/*.beam
 ebin/*.app
 deps/
-rel/soap_srv/
+rel/soap_srv*
+rel/*tar.gz
+rel/_tmp
 .eunit/
 test/__pycache__/
 test/env/
