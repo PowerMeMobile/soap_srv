@@ -1,4 +1,5 @@
-ebin/
+ebin/*.beam
+ebin/*.app
 deps/
 rel/soap_srv/
 .eunit/
